@@ -1,0 +1,377 @@
+name: Deploy to Oracle VM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "discord_bot_server.py"
+      # WALP(!walp · MCP): 봇이 dispatch 로 임포트하고, 배포가 C++ 코어를 빌드한다.
+      - "walp/**"
+      - "log_streamer.py"
+      - "requirements.txt"
+      # 봇이 실제로 실행하는 공용 모듈. 빠져 있어서 에러 분류/쿼터 로직을 고쳐도 배포가
+      # 트리거되지 않았다 -- searcher.py 때와 같은 '코드가 서버에 도달하지 못하는' 경로다.
+      - "bot_tools.py"
+      - "quota_tracker.py"
+      # 후보 순회의 순서·멈춤(poolpick)과 분당 한도 간격(rpmgate). bot_tools 가 이것들을
+      # 부른다. 여기만 고치고 배포가 안 되면 서버는 계속 옛 순회를 돌며 같은 후보를
+      # 처음부터 다시 두드린다 -- 고치려던 바로 그 증상이 그대로 남는다.
+      - "poolpick.py"
+      - "rpmgate.py"
+      # 메일 첨부 가드. send_email 이 부른다.
+      - "mailattach.py"
+      - "main_public.py"
+      - "channels.py"
+      - "agent_context.py"
+      - "agent_memory.py"
+      # push 가 막혔을 때 따라잡는 법. 둘 다 이것을 부른다 -- 여기만 고치고
+      # 배포가 안 되면 봇은 계속 옛 방식(origin/main 에 rebase)으로 브랜치를 깨뜨린다.
+      - "gitsync.py"
+      - "public_agent_files.py"
+      - "secret_filter.py"
+      # 봇 도구가 서버에서 백그라운드로 띄우는 orchestrator 파이프라인. runs/ 는 일부러
+      # 뺐다 -- 런 산출물 커밋마다 재배포가 돌면 봇 재시작이 돌던 런을 죽인다.
+      - "orchestrator_tool.py"
+      - "orchestrator/solve.py"
+      - "orchestrator/planner.py"
+      - "orchestrator/orchestrator.py"
+      - "orchestrator/plan_schema.py"
+      - "orchestrator/llm_pool.py"
+      # 풀이 기본으로 부르는 Gemini 클라이언트. llm_pool.py 가 임포트하지만 이 목록은
+      # **임포트를 따라가지 않는다** -- 파일 이름이 그대로 적혀 있어야 배포가 걸린다.
+      # 이걸 빠뜨리면 gemini_http.py 만 고친 커밋은 서버에 안 간다. 다섯 번째가 될
+      # 뻔했다(searcher.py · bot_tools.py · gatekeeper.py · novel/ 에 이어).
+      - "orchestrator/gemini_http.py"
+      # 커밋 경로의 강제 장치. 이게 빠져 있어서 게이트를 새로 승격해도 서버는 옛 게이트
+      # 집합으로 계속 돌았다 -- searcher.py, bot_tools.py 와 같은 '코드가 서버에 도달하지
+      # 못하는' 경로이고, 하필 그 경로를 감시하는 장치 자신이 빠져 있었다. G013 이 이제
+      # 이 목록과 실제 실행 파일 집합이 어긋나면 커밋을 막는다.
+      - "gatekeeper.py"
+      - "self_challenge.py"
+      - "gates/**"
+      # 고정 명령의 배선과 격리 실행 판. 봇이 임포트한다(dispatch <- 서버,
+      # sandbox/ <- bot_tools.run_experiment 와 !실험). out/ 은 .gitignore 라 안 걸린다.
+      - "dispatch.py"
+      # SAR 고정 명령: 봇이 sar/discord_cmd 를 dispatch 로 임포트하고, !시나리오/!보증/
+      # !매트릭스/!search 가 배경으로 sar/*.py(mission·playback·camera·radar 등)를 띄운다.
+      # G013 은 패키지 하위(sar/)를 import-closure 로 못 따라간다(root-level 만 본다) --
+      # 그래서 sar/ 만 고친 커밋은 배포가 안 걸렸다(실측: !시나리오 Path 버그 수정이
+      # VM 에 안 갔다). 여기 적어야 그 경로가 서버에 도달한다. public_agent_memory/·
+      # sar/out(.gitignore)·sar/logs 는 산출물이라 안 걸린다.
+      - "sar/**"
+      # 실사 2D/3D 렌더(!렌더 · render_space · IV&V 훅). sar/ 와 같은 이유로 적는다 -- G013 은
+      # 패키지 하위를 import-closure 로 못 따라간다.
+      - "render3d/**"
+      # RuH2 배터리 도구(ruh2_battery · ruh2_make)와 보고서 정책(report_pdf). bot_tools 가 임포트한다.
+      # 패키지 하위라 G013 의 import-closure 가 못 따라간다 -- sar/·render3d/ 와 같은 이유로 적는다.
+      # vendor/(three.js·KaTeX) 도 데이터라 여기 있어야 VM 에 간다.
+      - "ruh2/**"
+      - "reportkit/**"
+      # RECON-R1 로버 도구(recon_rover · recon_make). 같은 이유 -- 패키지 하위라 G013 이 못 따라간다.
+      - "recon/**"
+      # 도구 중계(!중계). 서버와 bot_tools 둘 다 임포트한다.
+      - "inbox.py"
+      - "relay.py"
+      # 도구 호출 시점 게이트와 정확 편집. bot_tools 가 임포트한다.
+      - "toolgate.py"
+      # 같은 나무에 같은 명령을 막는다 -- run_shell 이 부른다 (2026-09-12)
+      - "shellmemo.py"
+      # 탐침 묶음 병렬 실행 -- run_probes 가 부른다 (2026-09-12)
+      - "probes.py"
+      - "filetools.py"
+      # 교재로 답하는 길(textbook 도구). **kb/ 는 데이터인데 여기 적어야 한다** --
+      # 이 목록은 임포트를 안 따라가고, 데이터는 더더욱 안 따라간다. 교재를 다시
+      # 지어 색인만 바뀐 커밋은 이 줄이 없으면 VM 에 영영 안 간다. 그러면 봇은
+      # 옛 색인으로 답하면서 그 사실을 모른다 (2026-09-20)
+      - "edu/kb.py"
+      - "edu/용어.py"
+      - "edu/kb/**"
+      # 번역은 **VM 에서** 돈다(Gemini 키가 거기 있다). 그런데 VM 은 장을 못 짓는다
+      # -- 그래서 렌더한 HTML 을 `edu/원문/` 에 커밋해 두고 번역이 그것을 먹는다.
+      # 이 줄이 없으면 장을 새로 써도 VM 의 번역은 옛 원문을 옮긴다 (2026-09-20)
+      - "edu/원문내기.py"
+      - "edu/원문/**"
+      - "edu/번역/**"
+      # 그림 읽기(read_image 도구). **langchain 이 없는 데서도 읽히게** bot_tools 에서
+      # 갈라 둔 파일이라 따로 적는다 -- 빠지면 봇이 임포트에서 죽는다 (2026-09-15)
+      - "imageread.py"
+      # 원장을 어디에 쓸지 한 자리에서 정한다. 기관 모듈 여섯이 임포트한다 (2026-09-15)
+      - "ledgerroot.py"
+      # 회로도(draw_circuit 도구). schemdraw 로 그린다 -- LaTeX 불필요 (2026-09-15)
+      - "circuitdraw.py"
+      # RTL 흐름(iverilog·verilator·yosys 를 부른다). 끝값이 아니라 **출력**으로
+      # 판정한다 -- vvp 는 FAIL 을 찍고도 0 을 낸다 (2026-09-15)
+      - "rtl.py"
+      # 아날로그(run_spice·spice_example). ngspice 를 부른다 -- 뜬 노드도, 없는
+      # 노드 이름도, 실패한 .meas 도 **전부 끝값 0** 이라 출력으로 판정한다 (2026-09-15)
+      - "spice.py"
+      # 파형(run_rtl 이 VCD 를 떠 그린다). x/z 를 0 으로 안 그린다 -- 전 구간 x 인데
+      # PASS 를 찍는 벤치가 있다(실측 2026-09-15) (2026-09-15)
+      - "vcd.py"
+      # 형식 검증(prove_rtl). yosys sat -- 반례도, 성질 없는 공허한 통과도,
+      # 얕은 BMC 통과도 **전부 끝값 0** 이라 출력으로 판정한다 (2026-09-15)
+      - "formal.py"
+      # 배치·배선·타이밍(place_rtl). 목표 주파수를 안 주면 nextpnr 가 제
+      # 기본값 12MHz 에 PASS 를 낸다 -- 그 초록은 뜻이 없다 (2026-09-15)
+      - "pnr.py"
+      # 집적회로 개념 목록(concept 도구). 항목이 가리키는 본보기를 검사가 전부
+      # 돌린다 -- 적혀 있다고 덮인 것이 아니다 (2026-09-15)
+      - "concepts.py"
+      # 회로 물음을 숙제 틀로 답하지 말라는 규칙. **두 프롬프트가 이것을 함께 쓴다** --
+      # 도구는 둘 다 물렸는데 규칙이 한쪽에만 있어 관리 채널이 회로를 수학 문제로
+      # 풀었다 (2026-09-15)
+      - "eda_prompt.py"
+      # 커버리지(run_rtl 의 min_coverage). Verilator 는 커버리지를 모으고 **버린다** --
+      # 생성된 main 이 write() 를 안 불러서, 그 한 줄을 끼워 넣는다 (2026-09-15)
+      - "cover.py"
+      # IP 사인오프 관문(ip_signoff). LINT -> SIM -> COVERAGE -> FORMAL -> SYNTH ->
+      # TIMING -> DOCS 를 한 번에 돌린다. **하나라도 못 재면 전체가 못잼**이다
+      - "ipflow.py"
+      # 와이어라인 SerDes 링크(serdes_link · quant_sweep). 닫힌 꼴 Q(10^(SNR/20)) 로
+      # 교정돼 있다. 오류 0 을 BER 0 이라 안 하고(3의 규칙), 오차막대 안의 차이를
+      # '열화 없음' 이라 안 적는다
+      - "serdes.py"
+      # 신경망 등화기(nn_equalizer). **선형 채널에서 선형을 이기면 구멍**이라는
+      # 대조가 이 파일 안에 있다. numpy 만 쓴다(torch 없음)
+      - "nneq.py"
+      # PAM4 심볼 매핑/BER. serdes.py 와 nneq.py 가 둘 다 임포트한다 -- 빠져 있어서
+      # 이것만 고치면 배포가 트리거되지 않았다(G013 이 잡았다).
+      - "pam.py"
+      # 고정소수점 기준모델과 등화기 Verilog(eq_area). **RTL 이 nnfix 와 비트까지
+      # 같은지**를 tests/test_nnfix.py 가 누산기 정수값으로 붙든다 -- 그것이 맞아야
+      # LC 숫자가 뜻을 갖는다. 견줄 선형 FFE·DFE 도 같이 둔다
+      - "nnfix.py"
+      - "eqrtl.py"
+      # 답에 박힌 LaTeX 를 유니코드·PNG 로 바꾼다. `_답보내기` 가 부른다 (2026-09-15)
+      - "latex_formatter.py"
+      # 메일(send_email 도구)과 열쇠(!열쇠). 봇이 임포트한다.
+      - "mailer.py"
+      - "keys.py"
+      - "sandbox/**.py"
+      # 무인체계 제어 정책 시뮬·3D 뷰. bot_tools.simulate_inspection 이 ctrl.model.inspect3d
+      # 와 ctrl.viz 를 임포트해 움직이는 검사 HTML 을 만든다 -- 임포트 폐포에 드니 G013 이
+      # 요구한다. .json/.jsonl(결정 원장·시뮬 데이터)은 안 건다 -- 산출물이라 걸면 재시작이
+      # 잦다(novel/·study/ 와 같은 까닭). ctrl/out·inbox/시뮬 은 .gitignore.
+      - "ctrl/**.py"
+      # 변경 감사(!감사)와 깃발 색인(!기억 · search_memory 가 얹어 보여줌). 둘 다
+      # 봇이 dispatch 로 임포트한다. graph/ledger.jsonl 은 일부러 뺐다 -- 밤일이
+      # 색인 줄을 붙일 때마다 재배포가 돌면 봇 재시작이 돌던 런을 죽인다(runs/ 와
+      # 같은 이유).
+      - "audit/**.py"
+      - "graph/**.py"
+      # 면역계 러너(!평가). ledger·questions 는 .py 가 아니라 안 걸린다 -- 평가
+      # 결과 커밋마다 재배포가 돌면 안 된다(runs/ 와 같은 이유). questions.jsonl
+      # 만 고친 커밋은 배포가 안 걸리니, 행을 늘릴 때는 .py 변경과 같이 밀 것.
+      - "eval/**.py"
+      # 역할 라우터(!경로). ledger 는 호출마다 자라므로 제외(runs/ 와 같은 이유).
+      - "router/**.py"
+      # 목표 원장(!목표)과 진화 현황(!진화). intent/ledger 는 사건마다 자라므로 제외.
+      - "intent/**.py"
+      - "evolve/**.py"
+      # 위임·병렬(!위임, delegate 도구). bot_tools 가 지연 임포트한다.
+      - "delegate/**.py"
+      # 고치기 루프(!고치기, repair 도구). bot_tools 가 지연 임포트한다.
+      - "repair/**.py"
+      # 보안 자가점검(!점검, security_audit 도구). bot_tools 가 지연 임포트한다.
+      - "secaudit/**.py"
+      # 코드화(!코드화, codify 도구). bot_tools 가 지연 임포트한다.
+      - "codify/**.py"
+      # 연구(!연구, research 도구) -- 목표를 추상 질의로 풀어 수집->코드화->결론. 봇이 지연 임포트한다.
+      - "research/**.py"
+      # 계획 승인(!계획) -- 그림자 diff, 사람이 승인. 봇이 지연 임포트한다.
+      - "plan/**.py"
+      # 대화 간추리기(맥락 관리) · GitHub 쓰기(create_pr, 머지는 사람). bot_tools 가 임포트한다.
+      - "compact.py"
+      - "github_write.py"
+      # 이스케이프 자동 수리 -- codify 가 저장 전에, 게이트가 --고치기 로 임포트한다.
+      - "escapes.py"
+      # 커밋 문지기(게이트·검사·CI) · CI 읽기 -- git_sync 와 on_ready 가 임포트한다.
+      - "commit_guard.py"
+      - "ci_watch.py"
+      # 영향 분석 -- commit_guard 와 plan 이 임포트한다.
+      - "impact.py"
+      # 리허설 -- plan 이 승인 전에 부른다(격리 판에서 미리 돌려 본다).
+      - "rehearsal.py"
+      - "mutate.py"
+      # 먼 검사 사각지대 -- 전체 검사를 주기로 돌려 '늦게 발견되는 빨강'을 잰다.
+      - "farcheck.py"
+      # π -- 개선하는 방법 자신. 사냥이 이것을 읽어 연산자를 고른다.
+      - "policy.py"
+      # 성능개선 -- 같은 워크로드로 견줘 실제로 빨라진 변경만 받아들인다.
+      - "perf.py"
+      - "judge.py"
+      - "improveloop.py"
+      - "falsegreen/**.py"
+      # 진입점을 세어 찾는다(배선 읽기점검·자가개선 틈). improve 가 임포트한다.
+      - "entrypoints.py"
+      # 증상에서 증거를 캔다(모델 안 씀). repair 가 모델보다 먼저 부른다.
+      - "diagnose.py"
+      # 빠른 검사를 재서 고른다. scripts/precheck.sh 가 부른다.
+      - "testtimes.py"
+      - "testtimes.json"
+      # 자가개선(!자가개선) -- 봇이 6h 마다 돌고 동의를 구한다. 봇이 지연 임포트한다.
+      - "improve/**.py"
+      # 조사(!조사) -- 긴 호흡 루프. repair 가 못 풀면 봇이 배경으로 띄운다.
+      - "investigate/**.py"
+      # 서버에서 도는 점검 도구. 능력 래칫이 커밋 게이트에서 여기로 옮겨왔다.
+      - "scripts/**"
+      # 소설 파이프라인. 봇이 서브프로세스로 띄우는 코드라 임포트 폐포에 안 잡히고,
+      # 그래서 G013 이 못 본다 -- searcher.py · bot_tools.py · gatekeeper.py 에 이어
+      # **네 번째** '코드가 서버에 도달하지 못하는' 경로다(실측 2026-09-07:
+      # GENRE=ropan 이 VM 에서 "모르는 갈래" 로 죽었다. 코드는 저장소에 있었다).
+      #
+      # **.py 만 건다.** targets.json · directives.json 은 VM 의 튜닝 루프가 밤새
+      # 고쳐 커밋하는 것들이라, 그것까지 걸면 학습 한 바퀴마다 봇이 재시작된다 --
+      # runs/ 를 일부러 뺀 것과 같은 이유다.
+      - "novel/**.py"
+      # 공개 채널 프롬프트가 **이름을 대고 시키는** 도구들. 봇은 이것을 임포트하지
+      # 않고 run_shell 로 띄우므로 G013 의 임포트 폐포에 안 잡힌다 -- searcher.py ·
+      # bot_tools.py · gatekeeper.py · novel/ · gemini_http.py 에 이어 **여섯 번째**
+      # '코드가 서버에 도달하지 못하는' 경로다(실측 2026-09-09: dig/ 가 이 목록에
+      # 한 줄도 없었다. 매 물음마다 도는 코드인데 dig 만 고친 커밋은 배포가 안 걸린다).
+      #
+      # 여기 .py 만 거는 것은 novel/ 과 같은 까닭이다 -- study/ 는 원장(json)을
+      # 봇이 직접 고쳐 커밋하므로, 그것까지 걸면 문제 하나 풀 때마다 봇이 재시작된다.
+      - "dig/**.py"
+      # 설계 하우스. `!회사` 가 `house/run.py` 를 셸로 띄우므로 G013 의 임포트 폐포에
+      # 안 잡힌다 -- searcher · bot_tools · gatekeeper · novel · gemini_http · dig 에
+      # 이어 **일곱 번째** '코드가 서버에 도달하지 못하는' 경로다(실측 2026-09-22:
+      # house/arch.py 의 메일 버그를 고쳐 머지했는데 VM 은 계속 옛 코드로 돌아
+      # 같은 오류를 다시 냈다. house/ 는 이 목록에 한 줄도 없었다).
+      #
+      # `.py` 만 건다 -- `house/ledger.jsonl` · `designs.json` · `out/*.pdf` 는
+      # 하우스가 돌 때마다 늘어나는 산출물이라, 그것까지 걸면 보고서 한 장마다
+      # 봇이 재시작된다(novel/ · study/ 를 그렇게 둔 것과 같은 까닭).
+      - "house/**.py"
+      - "study/**.py"
+      - "coin/**.py"
+      - "brief/**.py"
+      - "lol/**.py"
+      - "reason/**.py"
+      - "brain/**.py"
+      - "deploy/se-discord-bot.service"
+      - "deploy/se-log-streamer.service"
+      - "deploy/se-matrix-search.service"
+      # 제2의 뇌 24시간 루프 (dig/harvest 를 두 시간마다). timer 라 봇을 재시작하지 않는다.
+      - "deploy/se-harvest.service"
+      - "deploy/se-harvest.timer"
+      - "mathmetics/matrix_exponent/self_improve_loop.py"
+      - "mathmetics/matrix_exponent/improve_agent.py"
+      # 탐색 서비스가 실제로 실행하는 코드들. 빠져 있어서 searcher.py 를 통째로 갈아엎어도
+      # 배포가 트리거되지 않았다 -- 코드가 좋아져도 서버에 도달하지 못하는 경로였다.
+      - "mathmetics/matrix_exponent/searcher.py"
+      - "mathmetics/matrix_exponent/verifier.py"
+      - "mathmetics/matrix_exponent/optimizer.py"
+      - "mathmetics/matrix_exponent/benchmarks.json"
+      # 배포 스크립트 자신. 이게 없으면 배포 방식을 고쳐도 그 수정이 배포되지 않는다.
+      - ".github/workflows/deploy-oracle.yml"
+      # G013 자동 추가 -- 서버가 실행/임포트하는 파일.
+      # imageread.py 가 큰 PDF 를 만나면 이것으로 넘긴다.  이 목록은
+      # **임포트를 따라가지 않으므로** 이름이 적혀 있어야 배포가 걸린다.
+      - "pdfread.py"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and redeploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ORACLE_SSH_HOST }}
+          username: ${{ secrets.ORACLE_SSH_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: ${{ secrets.ORACLE_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /home/ubuntu/SE
+            # 배포가 git pull 에서 계속 막혔다. 두 가지가 겹쳐 있었다:
+            #   #36/#37: 탐색 루프가 쓰는 런타임 상태 파일이 추적 대상이라
+            #            "Your local changes would be overwritten by merge" 로 중단.
+            #   #38:     서버 main 이 origin 과 분기(divergent)해 pull.rebase 미설정으로
+            #            "Need to specify how to reconcile divergent branches" 로 중단.
+            # 이 서버는 배포 대상이지 개발 브랜치가 아니다 -- origin/main 을 정답으로 삼고
+            # 작업 트리를 거기에 맞춘다. 만약을 위해 현재 HEAD 를 로컬 백업 브랜치로
+            # 남겨두므로, 서버에만 있던 커밋이 있었다면 그 브랜치에서 되찾을 수 있다.
+            # reset --hard 는 추적되지 않는 파일을 지우지 않으므로, 이제 gitignore 된
+            # als_state.json / logs/history.jsonl 런타임 상태는 그대로 살아남는다.
+            git fetch origin main
+            git branch -f "deploy-backup-$(date +%Y%m%d-%H%M%S)" HEAD || true
+            # 실측 2026-09-12: 조사가 PR 갈래(fix/…)를 체크아웃한 채 끝나면 reset 은 그 갈래 이름에 남는다.
+            # 그러면 봇의 자동 반영 커밋이 계속 그 갈래로 밀린다(머지된 뒤에도 세 번). 배포 대상은 main 이다.
+            #
+            # `-f` 가 왜 있나 -- 실측 2026-09-20, 배포가 여기서 영영 막혔다:
+            #
+            #     error: Your local changes to the following files would be
+            #     overwritten by checkout:  .github/workflows/deploy-oracle.yml
+            #     Aborting
+            #
+            # 서버의 추적 파일 하나가 고쳐져 있으면 checkout 이 **중단**되고,
+            # 그것을 되돌릴 `reset --hard` 는 **바로 다음 줄이라 영영 안 돈다.**
+            # 복구 장치가 복구해야 할 상황 뒤에 놓여 있었던 셈이다.
+            # 결과: VM 이 머지 이전 커밋에 멈춰 있었고, 새 문서가 거기 없었다.
+            #
+            # 이 서버는 **배포 대상이지 작업 공간이 아니다.**  추적 파일의
+            # 로컬 수정은 지켜야 할 것이 아니라 버려야 할 것이다.  진짜 커밋이
+            # 있었다면 바로 위의 deploy-backup 브랜치에 남는다.
+            # (추적 안 되는 런타임 상태는 -f 도 reset 도 안 건드린다.)
+            git checkout -q -f -B main origin/main
+            git reset --hard origin/main
+            # 디스크 회수(재발방지) -- 사람에게 rm 을 시키지 않는다. 강제종료(OOM·타임아웃
+            # kill·컨테이너 회수)로 finally 를 놓친 sandbox 실행이 /tmp 에 워크트리를 남긴다
+            # (실측: 한 컨테이너에 95벌이 쌓여 VM 이 [Errno 28] 로 죽었다). sandbox/run.py 가
+            # 이제 실행마다 묵은 것을 쓸어내지만, 이미 꽉 찬 VM 은 그 코드가 돌기 전에 여기서
+            # 한 번 비워 준다. 곧 봇을 재시작하므로 도는 판을 지워도 그 판은 어차피 죽는다.
+            # 배포를 막지 않도록 전부 실패 허용(|| true).
+            for d in /tmp/sandbox-* /tmp/tmp.* /tmp/se-*; do
+              [ -e "$d" ] || continue
+              git worktree remove --force "$d" 2>/dev/null || true
+              rm -rf "$d" 2>/dev/null || true
+            done
+            git worktree prune 2>/dev/null || true
+            pip3 cache purge 2>/dev/null || true
+            sudo journalctl --vacuum-size=200M 2>/dev/null || true
+            df -h / | tail -1 || true
+            # G021: 코드(discord_pdf)가 기대는 한글 글꼴은 배포가 깐다 -- 사람에게 apt 를 시키지 않는다.
+            sudo apt-get install -y fonts-nanum || (sudo apt-get update -qq && sudo apt-get install -y fonts-nanum)
+            # RTL 흐름(run_rtl · lint_rtl · synth_rtl). **사람에게 시키지 않는다** --
+            # G021 과 같은 규율이다. iverilog 로 돌리고 verilator 로 린트하고
+            # yosys 로 셀 수를 센다. 첫 설치만 느리고 그 뒤엔 "already newest" 다.
+            # ngspice 도 같이 깐다 -- 아날로그를 **돌려** 봐야 회로도가 맞는지 안다.
+            sudo apt-get install -y iverilog verilator yosys ngspice nextpnr-ice40 fpga-icestorm \
+              || (sudo apt-get update -qq && sudo apt-get install -y iverilog verilator yosys ngspice nextpnr-ice40 fpga-icestorm) \
+              || echo "[경고] RTL 도구 설치 실패 -- run_rtl 이 '도구가 없다' 로 답한다"
+            # WALP: C++ 코어를 VM 에서 빌드한다(!walp 가 부른다). 컴파일러도 배포가 깐다 -- 사람에게
+            # 시키지 않는다(G021). 실패해도 배포는 계속된다 -- !walp 가 '빌드 실패' 를 그대로 말한다.
+            sudo apt-get install -y g++ make || (sudo apt-get update -qq && sudo apt-get install -y g++ make) \
+              || echo "[경고] g++/make 설치 실패 -- !walp 가 빌드를 못 한다"
+            # PDF 읽기(pdfread: pdfinfo · pdftotext · pdftoppm). WALP 실행 점검(2026-09-29)이 read_pdf 가 이것 없이
+            # 죽는 것을 찾았다 -- 코드는 부르기만 하고 설치 문구가 없어 G021 도 못 봤다. 이제 문구가 게이트에 묶는다.
+            sudo apt-get install -y poppler-utils || (sudo apt-get update -qq && sudo apt-get install -y poppler-utils) \
+              || echo "[경고] poppler-utils 설치 실패 -- read_pdf 가 'pdfinfo 가 없다' 로 답한다"
+            make -C walp BUILD=build -j2 build/walp_cli || echo "[경고] walp 빌드 실패"
+            pip3 install --break-system-packages -r requirements.txt discord.py
+            # render3d 의 헤드리스 실사 렌더용 chromium. 실패해도 배포는 계속된다 -- render3d 는
+            # matplotlib 대체로 그리고 출력에 '실사 아님' 을 적는다(render3d/pipeline.py).
+            python3 -m playwright install chromium \
+              || echo "[경고] chromium 설치 실패 -- render3d 는 matplotlib 대체 렌더로 돈다"
+            # install-deps 는 apt 를 쓴다(root). sudo python3 는 ~/.local 의 playwright 를 못 볼 수 있어
+            # 패키지에 든 드라이버(node + cli.js)를 직접 부른다 -- python playwright 가 쓰는 바로 그 경로다.
+            PWDRV="$(python3 -c 'from playwright._impl._driver import compute_driver_executable as c; print(*c())' 2>/dev/null)"
+            { [ -n "$PWDRV" ] && sudo $PWDRV install-deps chromium; } \
+              || echo "[경고] chromium 시스템 의존성 설치 실패 -- render3d 는 matplotlib 대체 렌더로 돈다"
+            sudo cp deploy/se-discord-bot.service /etc/systemd/system/
+            sudo cp deploy/se-log-streamer.service /etc/systemd/system/
+            sudo cp deploy/se-matrix-search.service /etc/systemd/system/
+            sudo cp deploy/se-harvest.service deploy/se-harvest.timer /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl restart se-discord-bot
+            sudo systemctl enable --now se-log-streamer
+            sudo systemctl restart se-log-streamer
+            sudo systemctl status se-discord-bot --no-pager
+            sudo systemctl status se-log-streamer --no-pager
+            sudo systemctl enable --now se-matrix-search
+            sudo systemctl restart se-matrix-search
+            sudo systemctl status se-matrix-search --no-pager
+            sudo systemctl enable --now se-harvest.timer
+            sudo systemctl list-timers se-harvest.timer --no-pager
