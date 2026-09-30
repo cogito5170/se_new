@@ -99,8 +99,13 @@ for f in ("discord_bot_server.py", "main_public.py"):
 wf = (뿌리 / ".github/workflows/deploy-oracle.yml").read_text(encoding="utf-8")
 ok('"recon/**"' in wf, "배포 경로 recon/**")
 ok("inbox/recon/" in (뿌리 / ".gitignore").read_text(encoding="utf-8"), "산출물 자리는 무시된다")
+# 2026-09-30: 기억 노트는 git 에 남기지 않는다(.gitignore) -- 체크아웃(CI)에는 없고 봇이 도는 기계에만 있다.
+# 그래서 "6개 있다" 는 이제 여기서 못 잰다. 있으면(그 기계) 머리말 꼴을 보고, git 이 안 받는다는 것을 본다.
 mem = list((뿌리 / "public_agent_memory").glob("20260929-1350*_*.md"))
-ok(len(mem) >= 6 and all(x.read_text(encoding="utf-8").startswith("---\ntopic:") for x in mem), f"RAG 노트 {len(mem)}개 (머리말 형식)")
+ok(all(x.read_text(encoding="utf-8").startswith("---\ntopic:") for x in mem), f"RAG 노트 {len(mem)}개 -- 있으면 머리말 형식")
+import subprocess  # noqa: E402
+ok(subprocess.run(["git", "check-ignore", "-q", "public_agent_memory/20260929-135000_x.md"], cwd=뿌리).returncode == 0,
+   "기억 노트는 git 에 안 남는다(대화 · 기록물은 기계에만)")
 
 print(f"\n{'실패 ' + str(len(FAIL)) if FAIL else '전부 통과'}")
 sys.exit(1 if FAIL else 0)

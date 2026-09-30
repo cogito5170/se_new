@@ -7,7 +7,11 @@ def test_goal_fe2bc1e0():
     import plan
     assert os.path.exists("plan/할일.py"), "plan/할일.py 존재해야 함"
     assert os.path.exists("plan/할일.jsonl"), "plan/할일.jsonl 존재해야 함"
-    assert os.path.exists("improve/ledger.jsonl") or os.path.exists("repair/ledger.jsonl"), "개선/수리 원장 존재"
+    # 2026-09-30: 개선 · 수리 원장은 기록물이라 git 에 남기지 않는다 -- 체크아웃에는 없을 수 있다. 있거나, git 밖 자리여야 한다.
+    import subprocess
+    def 자리(p):
+        return os.path.exists(p) or subprocess.run(["git", "check-ignore", "-q", p]).returncode == 0
+    assert 자리("improve/ledger.jsonl") and 자리("repair/ledger.jsonl"), "개선/수리 원장 자리(있거나 git 밖)"
 
 if __name__ == '__main__':
     test_goal_fe2bc1e0()

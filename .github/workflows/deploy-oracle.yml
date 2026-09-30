@@ -315,8 +315,17 @@ jobs:
             # 로컬 수정은 지켜야 할 것이 아니라 버려야 할 것이다.  진짜 커밋이
             # 있었다면 바로 위의 deploy-backup 브랜치에 남는다.
             # (추적 안 되는 런타임 상태는 -f 도 reset 도 안 건드린다.)
+            # **기록물을 지키고 나서 맞춘다(2026-09-30).** 기록물(대화 · 기억 노트 · 검색 · 요청 원장)을 추적에서 뺀
+            # 커밋을 받으면, checkout/reset 이 그 파일들을 디스크에서 **지운다** -- 추적하던 파일이 새 커밋에 없으면
+            # git 은 작업 트리에서도 치운다. 그래서 맞추기 전에 묶어 두었다가 맞춘 뒤 되돌린다(.gitignore 라 이제 추적 안 됨).
+            # 묶음은 홈에 남는다(지우지 않는다). 없는 경로는 건너뛴다 -- 배포를 막지 않도록 전부 실패 허용.
+            REC_TGZ="$HOME/se-records-$(date +%Y%m%d-%H%M%S).tgz"
+            tar -czf "$REC_TGZ" --ignore-failed-read public_agent_memory inbox Public_agent \
+                dig/harvest_ledger.jsonl dig/study_ledger.jsonl dig/door_ledger.jsonl \
+                repair/ledger.jsonl improve/ledger.jsonl research/ledger.jsonl 원장.json 내원장.json 2>/dev/null || true
             git checkout -q -f -B main origin/main
             git reset --hard origin/main
+            [ -s "$REC_TGZ" ] && tar -xzf "$REC_TGZ" --skip-old-files 2>/dev/null || true
             # 디스크 회수(재발방지) -- 사람에게 rm 을 시키지 않는다. 강제종료(OOM·타임아웃
             # kill·컨테이너 회수)로 finally 를 놓친 sandbox 실행이 /tmp 에 워크트리를 남긴다
             # (실측: 한 컨테이너에 95벌이 쌓여 VM 이 [Errno 28] 로 죽었다). sandbox/run.py 가
