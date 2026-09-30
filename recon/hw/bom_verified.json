@@ -1,0 +1,510 @@
+{
+ "date": "2026-09-29",
+ "parts": [
+  {
+   "key": "compute",
+   "name": "NVIDIA Jetson Orin Nano Super Developer Kit 8GB",
+   "specs": {
+    "power_modes_W": [
+     "7",
+     "15",
+     "25",
+     "MAXN SUPER (no SW cap, can burst >25 W)"
+    ],
+    "dc_jack_input_V": [
+     9,
+     20
+    ],
+    "dc_jack_max_A": 3,
+    "supplied_adapter_V": 19,
+    "carrier_total_budget_W": 45,
+    "typical_module_draw_W": {
+     "7W": "6-7.5",
+     "15W": "13-16.5",
+     "25W": "20-27 (third-party blog)"
+    },
+    "mass_g": 175,
+    "dims_mm": [
+     103,
+     90.5,
+     34.77
+    ],
+    "ai_perf_TOPS_sparse": 67,
+    "csi": "2x 22-pin MIPI CSI",
+    "m2": "Key-M 2280 PCIe x4 + 2230 (from NVIDIA docs, via snippet)"
+   },
+   "spec_errors": [
+    "POWER 표 'Jetson (15 W mode) peak 25 W' 는 모드 혼용: 15 W 모드 상한은 ~15-16.5 W, 25 W는 25W/MAXN SUPER 모드의 값. 25W 모드로 돌릴 거면 평균도 20 W급.",
+    "19 V 레일 가정 불필요: DC 잭 입력 9-20 V → 4S(12.0-16.8 V) 직접 가능. 레일을 쓰더라도 4S 최대 16.8 V < 19 V 이므로 buck-boost 가 아니라 boost 만으로 충분.",
+    "mass_g 176 vs 175 g (출처별 ±1 g, 무시 가능)."
+   ],
+   "price_usd": {
+    "unit_min": 249.0,
+    "unit_typical": 249.0,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "NVIDIA / JetsonHacks (MSRP)",
+   "source_url": "https://jetsonhacks.com/2024/12/17/jetson-orin-nano-super-developer-kit/ ; https://developer.nvidia.com/downloads/assets/embedded/secure/jetson/orin_nano/docs/jetson_orin_nano_devkit_carrier_board_specification_sp.pdf",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Jetson Orin NX 16GB 모듈 + 서드파티 캐리어",
+    "tradeoff": "메모리 2배·성능↑, 가격 크게↑(가격 미확인). 반대로 Raspberry Pi 5 는 싸지만 CUDA 없음 → elevation_mapping_cupy 불가.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "mcu",
+   "name": "ST NUCLEO-H743ZI2 (STM32H743ZI, Cortex-M7 480 MHz)",
+   "specs": {
+    "status": "NRND/obsolete (DigiKey, ST community)",
+    "core": "Cortex-M7",
+    "replacement": "NUCLEO-H753ZI (crypto 차이뿐, 바이너리 호환)"
+   },
+   "spec_errors": [
+    "단종(NRND/Obsolete) 부품. 대체품 NUCLEO-H753ZI 로 표기 변경 권장. power_W/mass_g 60 은 미확인."
+   ],
+   "price_usd": {
+    "unit_min": 28.15,
+    "unit_typical": 40.81,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "DigiKey (H743ZI2 $28.15 obsolete; H753ZI $40.81)",
+   "source_url": "https://www.digikey.com/en/products/detail/stmicroelectronics/NUCLEO-H743ZI2/10130892",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "NUCLEO-H753ZI",
+    "tradeoff": "ST 공식 대체, 코드 무수정 이식. +$12.66.",
+    "price_usd": 40.81
+   }
+  },
+  {
+   "key": "lidar",
+   "name": "Livox Mid-360",
+   "specs": {
+    "point_rate_pts_s": 200000,
+    "frame_Hz": "10 (typical)",
+    "fov_deg": "360 x 59 (-7..+52)",
+    "range_m": {
+     "10% refl": 40,
+     "80% refl": 70
+    },
+    "blind_zone_m": 0.1,
+    "range_precision_1sigma_cm": {
+     "@10 m": 2,
+     "@0.2 m": 3
+    },
+    "angular_precision_deg": "<0.15",
+    "power_W": {
+     "normal": 6.5,
+     "self-heating peak (-20..0 C)": 14
+    },
+    "supply_V": [
+     9,
+     27
+    ],
+    "recommended_V": 12,
+    "mass_g": 265,
+    "dims_mm": [
+     65,
+     65,
+     60
+    ],
+    "imu": "ICM40609 (+-4 g, +-2000 dps)",
+    "iface": "100BASE-TX",
+    "sync": [
+     "IEEE1588 PTPv2",
+     "GPS/PPS"
+    ],
+    "availability": "DJI Store: discontinued; Mid-360S successor"
+   },
+   "spec_errors": [
+    "noise_cm=2.0 은 @10 m 값. 근거리(@0.2 m)는 ≤3 cm. 거리 의존으로 모델링할 것.",
+    "POWER 표 peak 8.0 W: 0 °C 이하 자가발열 시 최대 14 W. 저온 운용 시 틀림.",
+    "range 40 m 는 10 % 반사율 조건(80 %에서 70 m) — 조건 명시 필요.",
+    "단종(DJI Store discontinued) — 신규 구매는 Mid-360S 가 현실적."
+   ],
+   "price_usd": {
+    "unit_min": 749.0,
+    "unit_typical": 979.0,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "DJI Store $979 (discontinued); third-party $749+ 주장",
+   "source_url": "https://store.dji.com/product/livox-mid-360 ; https://www.livoxtech.com/mid-360/specs",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Livox Mid-360S",
+    "tradeoff": "동일 치수·질량·전력·SDK2, 80 % 반사율 최대 100 m, 간섭내성↑. 근거리 정밀도 ≤4 cm@0.2 m (스니펫).",
+    "price_usd": 799.0
+   }
+  },
+  {
+   "key": "imu",
+   "name": "TDK ICM-42688-P breakout",
+   "specs": {
+    "gyro_noise_mdps_rtHz": 2.8,
+    "accel_noise_ug_rtHz": 70,
+    "current_6axis_LN_mA": 0.88,
+    "odr_used_Hz": 1000,
+    "iface": "SPI/I2C"
+   },
+   "spec_errors": [
+    "사양 수치는 맞음. 단 'SparkFun ICM-42688-P breakout' 은 검색에서 찾지 못함 — SparkFun 은 Mikroe 6DOF IMU 14 Click(SEN-17394) 을 판매. 보드명 수정 필요."
+   ],
+   "price_usd": {
+    "unit_min": 26.95,
+    "unit_typical": 26.95,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "SparkFun (Mikroe 6DOF IMU 14 Click)",
+   "source_url": "https://www.sparkfun.com/mikroe-6dof-imu-14-click.html ; https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Mid-360 내장 ICM40609 만 사용",
+    "tradeoff": "$0·배선 없음. 단 MCU 쪽 1 kHz 슬립 검출 경로가 사라지고 이더넷 지연을 탐. ICM40609 잡음 사양 미확인.",
+    "price_usd": 0
+   }
+  },
+  {
+   "key": "camera",
+   "name": "Raspberry Pi Camera Module v2 (IMX219)",
+   "specs": {
+    "res_still": "3280x2464",
+    "video": [
+     "1080p30",
+     "720p60",
+     "640x480p90"
+    ],
+    "lens": "fixed focus",
+    "peak_current_mA": 300,
+    "size_mm": [
+     25,
+     23,
+     9
+    ],
+    "connector": "15-pin"
+   },
+   "spec_errors": [
+    "Orin Nano devkit 은 22-pin CSI → 15→22 pin 변환 케이블 필요(BOM 누락).",
+    "power_W 0.25 는 과소 가능: 피크 300 mA(전압 조건 미확인)."
+   ],
+   "price_usd": {
+    "unit_min": 16.5,
+    "unit_typical": 16.5,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "PiShop.us",
+   "source_url": "https://www.pishop.us/product/raspberry-pi-camera-module-v2/ ; https://jetsonhacks.com/2025/03/04/jetson-orin-nano-super-with-the-raspberry-pi-v2-and-v3-cameras/",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Raspberry Pi Camera Module 3 (IMX708)",
+    "tradeoff": "오토포커스·HDR. Orin 에서의 드라이버 지원은 JetsonHacks 글 제목만 확인(미검증).",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "motor",
+   "name": "Pololu #4693 50:1 37Dx70L 24V gearmotor, 64 CPR encoder",
+   "specs": {
+    "noload_rpm_24V": 200,
+    "noload_mA": 100,
+    "stall_A_24V": 3.0,
+    "stall_torque_kgcm_24V": 23,
+    "cpr_motor": 64,
+    "cpr_output": 3200,
+    "shaft": "6 mm D, 16 mm",
+    "gross_weight_g_TME": 223.26
+   },
+   "spec_errors": [
+    "데이터시트 값(200 rpm, 3 A)은 spec.py 와 일치.",
+    "설계 오류: 14.4 V 구동 시 선형 환산 무부하 ~120 rpm, 스톨 ~1.8 A, 스톨토크 ~13.8 kg·cm(60 %). POWER 표 peak = 4×3.0 A×14.4 V = 173 W 는 과대(환산 ~104 W). 등판 토크 여유는 24 V 표 값의 60 %로 계산해야 함.",
+    "mass_g 215 미확인(TME 총중량 223 g 은 포장 포함 가능)."
+   ],
+   "price_usd": {
+    "unit_min": 60.95,
+    "unit_typical": 60.95,
+    "date": "2026-09-29"
+   },
+   "qty": 4,
+   "vendor": "Pololu / TME (unit $60.95; 5+ $56.07)",
+   "source_url": "https://www.pololu.com/product/4693 ; https://www.tme.com/us/en-us/details/pololu-4693/",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Pololu #4753 50:1 37Dx70L 12V + 64 CPR",
+    "tradeoff": "4S(14.4 V)에 맞는 권선 → 정격 속도·토크 거의 전부 사용. 대신 전류↑(12 V 버전 스톨 전류 미확인).",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "driver",
+   "name": "Cytron MDD20A dual 20 A",
+   "specs": {
+    "V": [
+     6,
+     30
+    ],
+    "I_cont_A_per_ch": 20,
+    "I_peak_A": 60,
+    "logic_V": [
+     1.8,
+     15
+    ],
+    "iface": "PWM+DIR"
+   },
+   "spec_errors": [],
+   "price_usd": {
+    "unit_min": 38.5,
+    "unit_typical": 38.5,
+    "date": "2026-09-29"
+   },
+   "qty": 2,
+   "vendor": "Cytron / Makermotor",
+   "source_url": "https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver-2-channels",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Cytron MDD10A (dual 10 A)",
+    "tradeoff": "모터 스톨 ≤3 A 이므로 10 A 로 충분·소형·저가. 가격 미확인.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "battery",
+   "name": "4S Li-ion 14.4 V ~10 Ah (18650 4S4P + BMS)",
+   "specs": {
+    "V_nom": 14.4,
+    "capacity_Ah": "10-10.4",
+    "mass_g_range": [
+     720,
+     950
+    ],
+    "examples": [
+     "Keeppower 4S4P 10.4Ah",
+     "Tenergy 4S4P 10.4Ah 6A PCB"
+    ]
+   },
+   "spec_errors": [
+    "mass 900 g 는 범위(720-950 g) 안. Tenergy 예시는 BMS 6 A 제한(스니펫) — 모터 피크 전류에 부족할 수 있으니 BMS 연속전류 확인 필수."
+   ],
+   "price_usd": {
+    "unit_min": 240.0,
+    "unit_typical": 240.0,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "MaxAmps-type retailer (14.4 V 10 Ah $240, snippet)",
+   "source_url": "https://maxamps.com/collections/4s-14-4v-li-ion",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "4S LiFePO4 12.8 V 10 Ah",
+    "tradeoff": "안전·수명↑, 무게↑·전압↓(Jetson 9 V 하한 여유는 있음). 가격 미확인.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "gnss",
+   "name": "SparkFun GPS-RTK2 (ZED-F9P) + L1/L2 antenna",
+   "specs": {
+    "rtk_rate_Hz_max": 20,
+    "rtk_acc": "0.01 m + 1 ppm CEP",
+    "rtk_convergence_s": "<10",
+    "standalone_acc_m": "1.5 or 2.0 CEP (datasheet revisions differ; unresolved)",
+    "board_current_mA": [
+     68,
+     130
+    ]
+   },
+   "spec_errors": [
+    "power_W 0.2 과소: 보드 68-130 mA → 3.3 V 기준 0.22-0.43 W (+안테나 LNA).",
+    "acc_m_single 1.5 m 는 데이터시트 판에 따라 2.0 m CEP 로도 보임 — 미해결.",
+    "안테나: ANN-MB-00(L1/L2) SparkFun 단종. ANN-MB5 는 L1/L5 → L1/L2 ZED-F9P(-02B/-04B)와 비호환."
+   ],
+   "price_usd": {
+    "unit_min": 326.9,
+    "unit_typical": 369.9,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "SparkFun (board $259.95 + antenna $66.95 retired / $109.95 L1/L2 mag-mount)",
+   "source_url": "https://www.sparkfun.com/sparkfun-gps-rtk2-board-zed-f9p-qwiic-gps-15136.html",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "확장 보류(실내·숲 정찰이면 제거)",
+    "tradeoff": "-$370. 절대 좌표·PPS 시각동기 상실(PTP 로 Jetson↔LiDAR 동기는 유지).",
+    "price_usd": 0
+   }
+  },
+  {
+   "key": "storage",
+   "name": "NVMe M.2 2280 ~500 GB (e.g. Crucial P3 Plus 500GB)",
+   "specs": {
+    "iface": "PCIe Gen4 x4 (devkit slot runs lower gen; unverified)"
+   },
+   "spec_errors": [],
+   "price_usd": {
+    "unit_min": 156.77,
+    "unit_typical": 156.77,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "Newegg (snippet; 2026 가격이 비정상적으로 높아 보임, 재확인 필요)",
+   "source_url": "https://www.newegg.com/crucial-500gb-p3-plus-nvme/p/N82E16820156299",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "256 GB NVMe",
+    "tradeoff": "로그 시간 절반. 가격 미확인.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "dcdc_19",
+   "name": "DC-DC → 19 V 5 A (95 W)",
+   "specs": {
+    "example": "12V→19V 5A 95W waterproof boost module"
+   },
+   "spec_errors": [
+    "4S 최대 16.8 V < 19 V 이므로 boost 전용으로 충분(buck-boost 과사양).",
+    "Jetson DC 잭 9-20 V → 레일 자체를 없앨 수 있음(아래 대안)."
+   ],
+   "price_usd": {
+    "unit_min": 15.57,
+    "unit_typical": 15.57,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "eBay (boost module)",
+   "source_url": "https://www.ebay.com/itm/235957619164",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "배터리 직결 + LC/TVS 필터",
+    "tradeoff": "-$16, 효율↑. 모터 전압강하·서지가 Jetson 에 그대로 → 12.0 V 컷오프에서도 9 V 하한 여유는 있으나 TVS·벌크캡 필수.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "dcdc_5",
+   "name": "Pololu D36V50F5 5 V 5.5 A",
+   "specs": {
+    "Vin": [
+     5.5,
+     50
+    ],
+    "Iout_A": 5.5,
+    "protections": [
+     "reverse 40 V",
+     "OV/UV",
+     "OCP",
+     "thermal",
+     "soft-start"
+    ]
+   },
+   "spec_errors": [],
+   "price_usd": {
+    "unit_min": 39.95,
+    "unit_typical": 39.95,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "Pololu",
+   "source_url": "https://www.pololu.com/product/4091",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "Pololu D36V28F5 (5 V 3.2 A)",
+    "tradeoff": "5 V 부하(MCU·카메라·IMU·팬) 합이 3 A 미만이면 충분, 저가. 가격 미확인.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "estop",
+   "name": "Mushroom E-stop + 30 A relay/contactor + 433 MHz wireless kill",
+   "specs": {
+    "wireless_example": "DC12V 30A 433 MHz latching relay, ~70 m range claim"
+   },
+   "spec_errors": [
+    "433 MHz 소비자용 리모컨 릴레이는 안전등급 아님 — '보조' 표기는 적절. 페일세이프(신호 상실 시 차단) 아님에 주의.",
+    "버섯형 E-stop·컨택터 가격 미확인."
+   ],
+   "price_usd": {
+    "unit_min": 21.71,
+    "unit_typical": 21.71,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": "eBay (wireless relay only)",
+   "source_url": "https://www.ebay.com/itm/126724678973",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "하트비트형 무선 E-stop(신호 상실 시 차단)",
+    "tradeoff": "페일세이프. 가격 미확인.",
+    "price_usd": null
+   }
+  },
+  {
+   "key": "fuse",
+   "name": "ATO blade fuses + holders (30/15/5/3 A)",
+   "specs": {},
+   "spec_errors": [
+    "가격 미확인."
+   ],
+   "price_usd": {
+    "unit_min": null,
+    "unit_typical": null,
+    "date": "2026-09-29"
+   },
+   "qty": 1,
+   "vendor": null,
+   "source_url": null,
+   "confidence": "미확인",
+   "alternative": {
+    "name": null,
+    "tradeoff": null,
+    "price_usd": null
+   }
+  },
+  {
+   "key": "chassis",
+   "name": "2020 extrusion frame + 3 mm Al deck + 4x 120 mm wheels",
+   "specs": {
+    "wheel_example": "goBILDA 3601 Rhino 120 mm, 70A rubber tread, 14 or 32 mm bore"
+   },
+   "spec_errors": [
+    "goBILDA 120 mm 바퀴는 14/32 mm 보어 → 6 mm D축 허브 어댑터 필요(BOM 누락).",
+    "익스트루전·데크 가격 미확인."
+   ],
+   "price_usd": {
+    "unit_min": 9.99,
+    "unit_typical": 9.99,
+    "date": "2026-09-29"
+   },
+   "qty": 4,
+   "vendor": "goBILDA (wheels only)",
+   "source_url": "https://www.gobilda.com/3601-series-rhino-wheel-14mm-bore-120mm-diameter/",
+   "confidence": "[조각]",
+   "alternative": {
+    "name": "goBILDA Strafer/Recon 섀시 킷",
+    "tradeoff": "완성도↑·조립시간↓, Strafer 는 메카넘(스키드 아님). Strafer V2 $499.99.",
+    "price_usd": 499.99
+   }
+  }
+ ],
+ "total_usd": {
+  "min": 2231.26,
+  "typical": 2516.92,
+  "min_without_gnss": 1904.36,
+  "typical_without_gnss": 2147.02,
+  "excludes": [
+   "fuses+holders",
+   "mushroom E-stop + contactor",
+   "2020 extrusion + deck",
+   "6 mm hub adapters",
+   "15-22 pin CSI cable",
+   "wiring/connectors/charger",
+   "shipping/tax"
+  ],
+  "note": "priced items only; all prices are search-snippet level [조각], not read on vendor page"
+ },
+ "verification_note": "All vendor/datasheet sites (pololu, livoxtech, nvidia docs, sparkfun cdn, u-blox, mouser, cytron, arxiv) were EGRESS_BLOCKED for WebFetch; only search snippets were seen → every spec is [조각]."
+}

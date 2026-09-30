@@ -1,0 +1,358 @@
+<title>RuH2-P1 Battery Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: an instrument console. One dark bench (3D) on top, then the lab notebook in cards. Deliberately single dark theme. */
+:root{
+  color-scheme:dark;
+  --bg:#0f1318; --panel:#161c24; --panel2:#1b232d; --line:#263040; --ink:#e8eef5; --ink2:#aab7c6; --muted:#7a8898;
+  --h2:#4d9fff; --ru:#9aa6b4; --o2:#eb6834; --good:#3fb877; --warn:#e0a526; --crit:#e66767; --lead:#ffd166;
+  --f-body:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:18px 56px;margin:0}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+h1,h2,h3{margin:0;line-height:1.25;text-wrap:balance}
+h1{font-size:clamp(1.55rem,3vw,2.2rem);font-weight:700}
+h2{font-size:1.28rem} h3{font-size:1rem;font-weight:600}
+p{margin:0;color:var(--ink2);max-width:72ch}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--f-mono);font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--ink2)}
+.chip.w{border-color:var(--crit);color:var(--crit)}
+header{display:flex;flex-direction:column;gap:10px}
+section{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.note{font-size:.84rem;color:var(--muted)}
+.mono,td{font-variant-numeric:tabular-nums}
+/* stage */
+.stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#151a21}
+.view{position:relative}
+#bat{display:block;width:100%;height:min(66vh,640px);min-height:360px;touch-action:none}
+#batOv{position:absolute;inset:0;pointer-events:none}
+.co-root{position:absolute;inset:0}
+.co-svg{position:absolute;left:0;top:0;overflow:visible}
+.co-line{fill:none;stroke:var(--lead);stroke-width:1.2;opacity:.85}
+.co-dot{fill:var(--lead);stroke:#151a21;stroke-width:1.5}
+.co-lab{position:absolute;font-size:12.5px;line-height:1.25;background:rgba(15,19,24,.9);border:1px solid #3a4658;border-radius:6px;padding:4px 8px}
+.co-lab b{display:block;color:#fff;font-size:13px}
+.co-lab span{display:block;color:var(--ink2);font-size:11.5px}
+.co-lab:hover{border-color:var(--lead)}
+.tb{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+button,.btn{font:inherit;font-size:.84rem;padding:5px 11px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;text-decoration:none}
+button[aria-pressed="true"]{border-color:var(--h2);color:var(--h2);font-weight:600}
+button:hover,.btn:hover{border-color:var(--ink2)}
+button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--h2);outline-offset:2px}
+.btn.primary{background:var(--h2);border-color:var(--h2);color:#07121f;font-weight:600}
+label.inl{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--ink2)}
+input[type=range]{accent-color:var(--h2)}
+.part{position:absolute;left:12px;bottom:12px;max-width:min(380px,calc(100% - 24px));background:rgba(22,28,36,.95);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.85rem;color:var(--ink2)}
+.part b{color:var(--ink)}
+/* simulator */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld label{font-size:.82rem;color:var(--ink2);display:flex;justify-content:space-between}
+.fld output{font-family:var(--f-mono);color:var(--ink)}
+select{font:inherit;font-size:.86rem;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)}
+.kpi span{display:block;font-size:.74rem;color:var(--muted)}
+.kpi b{font-family:var(--f-mono);font-size:1.05rem}
+.kpi.bad b{color:var(--crit)} .kpi.ok b{color:var(--good)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px}
+.ch{position:relative;height:190px;min-width:0}
+.play{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.play input{flex:1;min-width:160px}
+/* atom */
+.atomStage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0e141c;aspect-ratio:16/9;max-width:100%}
+#atom{display:block;width:100%;height:100%}
+#atomOv{position:absolute;inset:0;pointer-events:none;color:#e8eef5;font-size:clamp(9px,1.4vw,15px)}
+#atomOv .ov-title{position:absolute;left:3%;top:4%}
+#atomOv .ov-k{font-size:.8em;letter-spacing:.14em;color:var(--warn);font-weight:700}
+#atomOv .ov-t{font-size:1.6em;font-weight:700}
+#atomOv .ov-eq{position:absolute;left:3%;top:17%;font-family:var(--f-mono);font-size:1.15em;background:rgba(12,18,26,.75);border:1px solid #2c3a4c;padding:.2em .6em;border-radius:6px}
+#atomOv .ov-cap{position:absolute;left:3%;bottom:4%;width:52%;font-size:.95em;line-height:1.45;color:#c9d6e3;background:rgba(12,18,26,.75);padding:.5em .7em;border-radius:6px;border-left:3px solid var(--h2)}
+#atomOv .ov-dg{position:absolute;right:2.5%;bottom:4%;width:27%}
+#atomOv .ov-src{position:absolute;right:2.5%;top:3%;font-size:.7em;color:#7c8da0;max-width:40%;text-align:right}
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.segs button{font-size:.78rem;padding:3px 8px}
+video{width:100%;border-radius:10px;border:1px solid var(--line);background:#000;aspect-ratio:16/9}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.gal button{padding:0;overflow:hidden;display:flex;flex-direction:column;text-align:left;background:var(--panel2)}
+.gal img{width:100%;display:block;background:#fff}
+.gal span{padding:6px 8px;font-size:.8rem;color:var(--ink2)}
+dialog{max-width:min(96vw,1500px);width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+dialog .dimg{overflow:auto;max-height:80vh;background:#fff;border-radius:6px}
+dialog img{display:block;width:100%;min-width:900px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--ink2);font-weight:500}
+td:nth-child(2){font-family:var(--f-mono)}
+ul.plain{margin:0;padding-left:1.1em;color:var(--ink2);max-width:80ch} ul.plain li{margin:3px 0}
+a{color:var(--h2)}
+.warnbox{border:1px solid var(--crit);border-radius:8px;padding:10px 12px;color:#f3b0a8;font-size:.86rem}
+@media (max-width:700px){.co-root{display:none}.stage.showco .co-root{display:block}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">RUH2-P1 · 프로토타입 · 2026-09-29</div>
+  <h1>Ru 수소 전극 니켈–수소 배터리 프로토타입</h1>
+  <p>NiOOH 양극, 30 wt% KOH, Ru/C 가스확산 수소 전극을 316L 압력용기에 넣은 1 Ah 셀과 계측·보호 보드(RuH2-BMS)입니다. 3D는 설계 치수 그대로이고, 아래 시뮬레이터는 보고서와 같은 모델을 브라우저에서 직접 계산합니다.</p>
+  <div class="chips"><span class="chip">1.0 Ah · 1.25 V</span><span class="chip">H₂ ≤ 5 bar abs</span><span class="chip">Ru 64.5 mg</span><span class="chip">STM32G474 BMS</span><span class="chip w">시뮬레이션 · 실측 아님 · 설계 미검증</span></div>
+  <div class="chips"><a class="btn primary" href="RuH2-P1_prototype_report.pdf" target="_blank" rel="noopener">보고서 PDF 열기 (30쪽)</a><a class="btn" href="#videos">영상 2편</a><a class="btn" href="#drawings">회로도·기구도 7장</a><a class="btn" href="#sim">시뮬레이터</a></div>
+</header>
+
+<div class="stage" id="stage">
+  <div class="view">
+    <canvas id="bat" aria-label="RuH2-P1 셀, 압력 배관, BMS 보드, 모니터링 PC의 3D 모델. 드래그로 회전, 스크롤로 확대"></canvas>
+    <div id="batOv"></div>
+    <div class="part" id="part"><b>라벨을 누르면</b> 부품 설명이 여기에 나옵니다. 드래그로 회전, 스크롤이나 두 손가락으로 확대합니다.</div>
+  </div>
+  <div class="tb">
+    <div class="seg" role="group" aria-label="보기"><button id="vFull" aria-pressed="true">전경</button><button id="vCell" aria-pressed="false">셀 절개</button><button id="vBms" aria-pressed="false">BMS 보드</button></div>
+    <label class="inl" for="explode">스택 분해 <input id="explode" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label class="inl"><input id="cut" type="checkbox" checked> 절개</label>
+    <label class="inl"><input id="lbl" type="checkbox" checked> 라벨</label>
+    <span class="note" id="batState"></span>
+  </div>
+</div>
+
+<section id="sim">
+  <div class="eyebrow">실행 시뮬레이션</div>
+  <h2>충·방전을 돌리고 3D에서 재생하기</h2>
+  <p>0-D 전기화학·열 모델(Butler–Volmer, Nernst, 이상기체 압력, 과충전 O₂ 재결합, 압력 비례 자가방전, Ru 산화)을 이 페이지에서 계산합니다. 결과를 재생하면 위 3D의 압력계, H₂ 분자 수, 모니터 화면, LED가 따라 움직입니다.</p>
+  <div class="card">
+    <div class="form">
+      <div class="fld"><label for="prog">시험 프로그램</label><select id="prog">
+        <option value="std">표준 사이클 (110 % 충전 → 휴지 → 1.0 V 방전)</option>
+        <option value="sd">자가방전 72 h (완충 후 개방)</option>
+        <option value="fault">과방전 1C 1.4 h (고장 주입)</option>
+        <option value="oc">과충전 1C 2 h (종지 없음)</option></select></div>
+      <div class="fld"><label for="cr">C-rate <output id="crO">0.5 C</output></label><input id="cr" type="range" min="0.1" max="2" step="0.1" value="0.5"></div>
+      <div class="fld"><label for="tc">주위 온도 <output id="tcO">25 °C</output></label><input id="tc" type="range" min="0" max="45" step="1" value="25"></div>
+      <div class="fld"><label>옵션</label><label class="inl"><input id="pre" type="checkbox" checked> H₂ 예충전 1 bar</label><label class="inl"><input id="prot" type="checkbox" checked> HW 인터록 (0.9 V · 6 bar · 55 °C)</label></div>
+    </div>
+    <div class="play"><button class="btn primary" id="run">실행</button><button id="playB" aria-pressed="false">3D 재생</button><input id="scrub" type="range" min="0" max="1000" value="0" aria-label="재생 위치"><span class="note mono" id="tNow">t = 0.00 h</span></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="charts">
+      <div class="ch"><canvas id="cV"></canvas></div><div class="ch"><canvas id="cI"></canvas></div><div class="ch"><canvas id="cP"></canvas></div>
+      <div class="ch"><canvas id="cT"></canvas></div><div class="ch"><canvas id="cE"></canvas></div><div class="ch"><canvas id="cA"></canvas></div>
+    </div>
+    <p class="note" id="simNote"></p>
+  </div>
+</section>
+
+<section id="atomSec">
+  <div class="eyebrow">원자 반응</div>
+  <h2>Ru(0001) 표면의 수소 반응과 Ni 전극의 양성자 이동</h2>
+  <p>Ru 슬랩과 흡착 H*의 좌표는 본 작업에서 GPAW(PBE)로 이완한 구조입니다. 물·OH⁻·Ni 층의 위치는 모식적입니다. 오른쪽 아래 도표는 계산한 ΔG<sub>H*</sub>(Ru −0.37, Pt −0.21 eV)입니다.</p>
+  <div class="atomStage"><canvas id="atom" aria-label="원자 반응 애니메이션"></canvas><div id="atomOv"></div></div>
+  <div class="play"><button class="btn primary" id="aPlay">재생</button><input id="aScrub" type="range" min="0" max="66" step="0.05" value="8.5" aria-label="애니메이션 시간"><span class="note mono" id="aT">8.5 s</span></div>
+  <div class="segs" id="aSegs"></div>
+</section>
+
+<section id="videos">
+  <div class="eyebrow">영상 (MP4, 1280×720)</div>
+  <h2>예상 구현 영상</h2>
+  <div class="grid2">
+    <div class="card"><h3>배터리 시뮬레이션 · 70 s</h3><video controls preload="metadata" src="ruh2_battery_simulation.mp4"></video><p class="note">전경 → 절개·분해 스택 → C/2 사이클 재생(압력계·H₂·BMS 로그) → 요약. 1 s ≈ 7.3 min.</p></div>
+    <div class="card"><h3>원자 반응 · 66 s</h3><video controls preload="metadata" src="ru_atomic_reactions.mp4"></video><p class="note">Volmer ×2 → Tafel 탈착 → HOR → Ru 산화 고장 → Ni(OH)₂ ⇌ NiOOH.</p></div>
+  </div>
+</section>
+
+<section id="drawings">
+  <div class="eyebrow">설계 도면 · A3 · 설계 제안 (미검증)</div>
+  <h2>회로도와 기구도</h2>
+  <div class="gal" id="gal"></div>
+</section>
+
+<section>
+  <div class="eyebrow">사양</div>
+  <h2>하드웨어 사양과 취급 파라미터</h2>
+  <div class="grid2">
+    <div class="card"><h3>셀 · 용기</h3><div class="scroll"><table id="tCell"></table></div></div>
+    <div class="card"><h3>BMS · 인터록</h3><div class="scroll"><table id="tBms"></table></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>취급 파라미터</h3><div class="scroll"><table id="tHand"></table></div></div>
+    <div class="card"><h3>실험 부품 · 장비</h3><div class="scroll"><table id="tBom"></table></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">응용과 한계</div>
+  <h2>어디에 쓸 수 있나</h2>
+  <div class="grid2">
+    <div class="card"><div class="scroll"><table id="tApp"></table></div></div>
+    <div class="card"><h3>이 페이지가 증명하지 않는 것</h3><ul class="plain">
+      <li>모든 성능 수치는 가정 파라미터 모델의 출력입니다. 셀과 보드는 아직 만들지 않았습니다.</li>
+      <li>Ru 과전압이 ~1 mV라서 셀 전압과 EIS로는 Ru의 상태가 거의 보이지 않습니다. Ru 건강은 반전지와 사후 분석으로 따로 봐야 합니다.</li>
+      <li>압력과 SOC가 모델에서 완벽히 일치하는 것은 정의상 그렇습니다. 실제로는 누설, 수증기, 온도 구배가 끼어듭니다.</li>
+      <li>선행연구 인용은 검색 요약만 보고 달았습니다(보고서 참고문헌의 [조각] 표시).</li>
+    </ul><div class="warnbox">KOH 30 %는 부식성이고, H₂의 가연 범위는 4–75 vol%입니다. 내압 시험을 통과하지 않은 용기에는 가스를 넣지 마십시오.</div></div>
+  </div>
+</section>
+</div>
+
+<dialog id="dlg"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><b id="dlgT"></b><button id="dlgX">닫기</button></div><div class="dimg"><img id="dlgI" alt=""></div></dialog>
+
+<script src="__CDN_THREE__"></script>
+<script src="__CDN_ORBIT__"></script>
+<script src="__CDN_ROOM__"></script>
+<script src="__CDN_CHART__"></script>
+<script src="nih2.js"></script>
+<script src="battery3d.js"></script>
+<script src="atom3d.js"></script>
+<script>
+const D = /*__DATA__*/null;
+const SPEC = D.spec, P = D.params, $ = id => document.getElementById(id);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function pressed(ids, on) { ids.forEach(i => $(i).setAttribute("aria-pressed", String(i === on))); }
+
+/* ---------------- 3D battery ---------------- */
+const cv = $("bat");
+const R3 = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+R3.setPixelRatio(Math.min(devicePixelRatio, 2)); R3.outputEncoding = THREE.sRGBEncoding; R3.toneMapping = THREE.ACESFilmicToneMapping; R3.toneMappingExposure = 0.95;
+const S = makeBatteryScene(THREE, R3, SPEC, $("batOv"), { bg: 0x151a21, calloutTop: 12, calloutBottom: 70,
+  onPick: p => { $("part").innerHTML = `<b>${p.name}</b><br>${p.sub}<br>${PARTINFO[p.name] || ""}`; } });
+const PARTINFO = {
+  "압력 트랜스듀서": "H₂는 활물질이라 압력이 곧 남은 용량입니다. 완충 Δp는 3.48 bar/Ah(25 °C)입니다.",
+  "기계식 압력계": "전원이 꺼져도 읽히는 두 번째 압력 경로입니다.",
+  "릴리프 밸브": "운전 5 bar, 전자 차단 6 bar, 릴리프 8 bar, 파열판 12 bar, 설계 20 bar의 안전 계층을 이룹니다.",
+  "니들 밸브": "N₂ 퍼지 3회를 한 뒤 H₂를 1 bar abs로 예충전합니다. Ru 산화를 막는 핵심 조건입니다.",
+  "볼트 플랜지 (윗덮개)": "EPDM은 KOH에 강합니다. 볼트 하나에 걸리는 하중은 설계압에서 1.14 kN입니다.",
+  "316L 압력용기": "후프 응력은 설계압에서 19.8 MPa로 허용응력 115 MPa의 약 5.8배 여유입니다.",
+  "전극 스택 (4 unit)": "[가스 스크린 | Ru/C | 분리막 | Ni(OH)₂ | 분리막 | Ru/C] × 4, Ru/C 8장, 128.9 cm².",
+  "NTC (용기 벽)": "55 °C에서 하드웨어 래치, 45 °C 이상에서 충전 금지.",
+  "전극 피드스루 ×2": "PTFE로 실링한 Ø3 Ni 로드. 스택은 용기와 전기적으로 절연됩니다.",
+  "선형 전력단 + 방열판": "PMOS 전류원(충전)과 NMOS 전류 싱크(방전). 2 A에서 약 3.9 W를 소모하므로 7.7 K/W 이하 방열판이 필요합니다.",
+  "10 mΩ 션트 + INA240A2": "±3.3 A, 1.6 mA/LSB. 4선 켈빈 결선.",
+  "STM32G474RE": "ADC·DAC·비교기 내장. EIS lock-in 계산과 SOC 추정을 합니다.",
+  "USB 절연 ADuM3160": "PC 접지 루프를 끊습니다.",
+  "하드웨어 인터록 LED": "비교기 4채널이 wired-OR로 래치를 겁니다. MCU는 해제하지 못하고 수동 리셋만 풀 수 있습니다.",
+  "모니터링 PC": "V·I·p·T·H₂ 로그와 SOC, EIS 표시."
+};
+const ctrl = new THREE.OrbitControls(S.cam, cv); ctrl.enableDamping = true; ctrl.maxPolarAngle = Math.PI * 0.49; ctrl.minDistance = 6; ctrl.maxDistance = 120;
+const VIEWS = { full: [[-24, 26, 42], [9, 5, 0]], cell: [[-9, 8.5, 12.5], [0, 4.6, 0]], bms: [[12, 13, 20], [18, 1, 2]] };
+function setView(k) { const f = S.cam.aspect < 1 ? 1.9 : 1, v0 = VIEWS[k][0], tg = VIEWS[k][1]; S.cam.position.set(...v0.map((v, i) => tg[i] + (v - tg[i]) * f)); ctrl.target.set(...VIEWS[k][1]); ctrl.update(); pressed(["vFull", "vCell", "vBms"], { full: "vFull", cell: "vCell", bms: "vBms" }[k]); }
+$("vFull").onclick = () => setView("full"); $("vCell").onclick = () => setView("cell"); $("vBms").onclick = () => setView("bms");
+$("explode").oninput = e => S.setExplode(+e.target.value);
+$("cut").onchange = e => S.setCutaway(e.target.checked);
+$("lbl").onchange = e => { S.setCallouts(e.target.checked); $("stage").classList.toggle("showco", e.target.checked); };
+setView("full");
+if (innerWidth < 700) { $("lbl").checked = false; S.setCallouts(false); }
+let W = 0, H = 0;
+function resize() { W = cv.clientWidth; H = cv.clientHeight; R3.setSize(W, H, false); S.cam.aspect = W / H; S.cam.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize(); setView("full");
+let batVis = true, last = performance.now();
+new IntersectionObserver(e => batVis = e[0].isIntersecting).observe(cv);
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (batVis) { ctrl.update(); S.animate(dt); S.render(W, H); }
+  requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+/* ---------------- simulator ---------------- */
+const NM = makeNiH2(SPEC, P);
+let rows = [], idx = 0, playing = false;
+const charts = {};
+const cursor = { id: "cursor", afterDatasetsDraw(c) { if (!rows.length) return; const x = c.scales.x.getPixelForValue(rows[idx].t / 3600); const g = c.ctx; g.save(); g.strokeStyle = css("--lead"); g.lineWidth = 1; g.beginPath(); g.moveTo(x, c.chartArea.top); g.lineTo(x, c.chartArea.bottom); g.stroke(); g.restore(); } };
+Chart.defaults.color = css("--ink2"); Chart.defaults.font.family = css("--f-body"); Chart.defaults.font.size = 11;
+function mk(id, label, color, extra = {}) {
+  charts[id] = new Chart($(id), { type: "line", data: { datasets: [] }, plugins: [cursor],
+    options: Object.assign({ responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+      interaction: { mode: "nearest", intersect: false, axis: "x" },
+      plugins: { legend: { labels: { boxWidth: 10, usePointStyle: true } }, tooltip: { callbacks: { title: it => `t = ${it[0].parsed.x.toFixed(2)} h` } }, title: { display: true, text: label, align: "start", color: css("--ink"), font: { weight: "600" } } },
+      scales: { x: { type: "linear", title: { display: true, text: "시간 (h)" }, grid: { color: css("--line") } }, y: { grid: { color: css("--line") } } } }, extra) });
+  charts[id].__color = color;
+}
+mk("cV", "셀 전압 (V)", "--h2"); mk("cI", "전류 (A)", "--o2"); mk("cP", "H₂ 압력 (bar abs)과 SOC", "--good"); mk("cT", "온도 (°C)", "--warn"); mk("cE", "H₂ 전극 전위 (V vs RHE)", "--crit"); mk("cA", "Ru 활성 (%)", "--ru");
+function series(key, f = x => x) { const out = [], step = Math.max(1, Math.floor(rows.length / 900)); for (let i = 0; i < rows.length; i += step) out.push({ x: rows[i].t / 3600, y: f(rows[i][key]) }); return out; }
+const ds = (label, data, col, extra = {}) => Object.assign({ label, data, borderColor: css(col), backgroundColor: css(col), borderWidth: 2, pointRadius: 0 }, extra);
+function runSim() {
+  const kind = $("prog").value, cr = +$("cr").value, TC = +$("tc").value, pre = $("pre").checked, prot = $("prot").checked, Q = SPEC.CELL.Q_Ah;
+  let st = NM.init(0.02, TC, pre ? null : 0.0), out = [], trip = false;
+  const go = (prog, dt = 5) => { const r = NM.run(prog, st, TC, dt, prot); out = out.concat(r.rows); st = r.st; trip = trip || r.trip; return r.trip; };
+  if (kind === "std") go([["cc", cr * Q, { s_in: 1.10 }], ["rest", 0, { t: 3600 }], ["cc", -cr * Q, { V_min: 1.0 }], ["rest", 0, { t: 1800 }]]);
+  if (kind === "sd") { if (!go([["cc", cr * Q, { s_in: 1.0 }]])) go([["rest", 0, { t: 72 * 3600 }]], 60); }
+  if (kind === "fault") { if (!go([["cc", 0.5 * Q, { s_in: 1.05 }], ["rest", 0, { t: 600 }]])) go([["cc", -1.0 * Q, { t: 1.4 * 3600 }]]); }
+  if (kind === "oc") go([["cc", 1.0 * Q, { t: 2 * 3600 }]]);
+  rows = out; idx = 0;
+  const hsum = (f, cond) => rows.reduce((a, r) => a + (cond(r) ? f(r) * r.h : 0), 0);
+  const Qin = hsum(r => r.I, r => r.I > 0) / 3600, Qout = -hsum(r => r.I, r => r.I < 0) / 3600;
+  const Ein = hsum(r => r.I * r.V, r => r.I > 0) / 3600, Eout = -hsum(r => r.I * r.V, r => r.I < 0) / 3600;
+  const pmax = Math.max(...rows.map(r => r.p)), Tmax = Math.max(...rows.map(r => r.T)) - 273.15, Aend = rows[rows.length - 1].A_ru, Emax = Math.max(...rows.map(r => r.E_h2_rhe));
+  const k = (n, v, cls = "") => `<div class="kpi ${cls}"><span>${n}</span><b>${v}</b></div>`;
+  $("kpis").innerHTML = k("충전 입력", Qin.toFixed(3) + " Ah") + k("방전 출력", Qout.toFixed(3) + " Ah") + (Qin > 0 && Qout > 0 ? k("쿨롱 / 에너지 효율", (Qout / Qin * 100).toFixed(1) + " / " + (Eout / Ein * 100).toFixed(1) + " %") : "")
+    + k("최대 압력", pmax.toFixed(2) + " bar", pmax >= SPEC.VESSEL.p_trip_bar_abs ? "bad" : "") + k("최대 온도", Tmax.toFixed(1) + " °C", Tmax >= 55 ? "bad" : "")
+    + k("H₂ 전극 최대 전위", Emax.toFixed(2) + " V", Emax > 0.4 ? "bad" : "ok") + k("Ru 활성 (끝)", (Aend * 100).toFixed(0) + " %", Aend < 0.9 ? "bad" : "ok") + k("인터록", trip ? "트립 (래치)" : "정상", trip ? "bad" : "ok");
+  charts.cV.data.datasets = [ds("V", series("V"), "--h2")];
+  charts.cI.data.datasets = [ds("I", series("I"), "--o2")];
+  charts.cP.data.datasets = [ds("p (bar)", series("p"), "--good"), ds("SOC 압력 ×5", series("soc_p", v => v * 5), "--ink2", { borderDash: [5, 4], borderWidth: 1.5 }), ds("NiOOH 진값 ×5", series("s", v => v * 5), "--muted", { borderWidth: 1 })];
+  charts.cT.data.datasets = [ds("T", series("T", v => v - 273.15), "--warn")];
+  charts.cE.data.datasets = [ds("E(H₂)", series("E_h2_rhe"), "--crit"), ds("Ru 산화 개시 0.4 V", [{ x: 0, y: 0.4 }, { x: rows[rows.length - 1].t / 3600, y: 0.4 }], "--muted", { borderDash: [4, 4], borderWidth: 1 })];
+  charts.cA.data.datasets = [ds("Ru 활성", series("A_ru", v => v * 100), "--ru")];
+  Object.values(charts).forEach(c => c.update("none"));
+  $("simNote").textContent = { std: "휴지 중 압력이 떨어지는 것은 자가방전입니다(NiOOH + ½H₂ → Ni(OH)₂). 쿨롱 효율이 100 %보다 낮은 이유는 과충전 10 %와 자가방전입니다.",
+    sd: "압력 SOC(점선)는 진값을 따라가지만 쿨롱 카운팅은 자가방전을 보지 못합니다. 모델 안에서는 정의상 일치하므로, 실제 셀에서는 교정 시험 T7로 확인해야 합니다.",
+    fault: "예충전이나 인터록을 끄고 다시 실행해 보세요. 예충전 H₂가 없으면 역전 중 수소 전극이 0.4 V를 넘고 Ru 활성이 사라집니다.",
+    oc: "O₂가 Ru 표면에서 H₂와 재결합하므로 압력은 포화되고 과충전 에너지는 열이 됩니다. 온도가 올라가는 것을 확인하세요." }[kind];
+  setIdx(0);
+}
+function setIdx(i) {
+  idx = Math.max(0, Math.min(rows.length - 1, i)); const r = rows[idx];
+  const mode = r.trip ? "trip" : r.I > 0 ? "charge" : r.I < 0 ? "discharge" : "rest";
+  S.setState({ p: r.p, V: r.V, I: r.I, s: r.s, T: r.T - 273.15, soc_p: r.soc_p, A_ru: r.A_ru, mode }); S.drawScreen();
+  $("tNow").textContent = `t = ${(r.t / 3600).toFixed(2)} h`; $("scrub").value = Math.round(idx / (rows.length - 1) * 1000);
+  $("batState").textContent = `재생 중: ${mode === "charge" ? "충전" : mode === "discharge" ? "방전" : mode === "trip" ? "차단" : "휴지"} · ${r.V.toFixed(3)} V · ${r.p.toFixed(2)} bar · ${(r.T - 273.15).toFixed(1)} °C`;
+  Object.values(charts).forEach(c => c.draw());
+}
+$("scrub").oninput = e => setIdx(Math.round(+e.target.value / 1000 * (rows.length - 1)));
+$("run").onclick = runSim;
+$("cr").oninput = e => $("crO").textContent = (+e.target.value).toFixed(1) + " C";
+$("tc").oninput = e => $("tcO").textContent = e.target.value + " °C";
+let playT = 0;
+$("playB").onclick = () => { playing = !playing; $("playB").setAttribute("aria-pressed", String(playing)); if (playing) { if (idx >= rows.length - 1) idx = 0; document.getElementById("stage").scrollIntoView({ behavior: "smooth", block: "start" }); } };
+setInterval(() => { if (playing && rows.length) { const stepN = Math.max(1, Math.round(rows.length / 600)); if (idx >= rows.length - 1) { playing = false; $("playB").setAttribute("aria-pressed", "false"); } else setIdx(idx + stepN); } }, 33);
+runSim();
+
+/* ---------------- atom viewer ---------------- */
+const ac = $("atom"); const RA = new THREE.WebGLRenderer({ canvas: ac, antialias: true });
+RA.setPixelRatio(Math.min(devicePixelRatio, 2)); RA.outputEncoding = THREE.sRGBEncoding; RA.toneMapping = THREE.ACESFilmicToneMapping; RA.toneMappingExposure = 0.85;
+const AS = makeAtomScene(THREE, RA, D.geom, $("atomOv"));
+function aResize() { const w = ac.clientWidth, h = ac.clientHeight; RA.setSize(w, h, false); AS.cam.aspect = w / h; AS.cam.updateProjectionMatrix(); AS.render(+$("aScrub").value); }
+addEventListener("resize", aResize); aResize();
+let aPlay = false, aVis = false, aLast = performance.now();
+new IntersectionObserver(e => { aVis = e[0].isIntersecting; }).observe(ac);
+$("aPlay").onclick = () => { aPlay = !aPlay; $("aPlay").textContent = aPlay ? "일시정지" : "재생"; };
+$("aScrub").oninput = e => { $("aT").textContent = (+e.target.value).toFixed(1) + " s"; AS.render(+e.target.value); };
+AS.segments.forEach(sg => { const b = document.createElement("button"); b.textContent = sg[2]; b.onclick = () => { $("aScrub").value = sg[0] + 0.5; $("aScrub").oninput({ target: $("aScrub") }); }; $("aSegs").appendChild(b); });
+(function aLoop(now) { const dt = (now - aLast) / 1000; aLast = now;
+  if (aPlay && aVis) { let t = +$("aScrub").value + dt; if (t > AS.duration) t = 0; $("aScrub").value = t; $("aT").textContent = t.toFixed(1) + " s"; AS.render(t); }
+  requestAnimationFrame(aLoop); })(performance.now());
+
+/* ---------------- drawings, tables ---------------- */
+const DW = [["E-001_block", "E-001 시스템 블록도"], ["E-002_power", "E-002 전원·전력단·차단"], ["E-003_sense", "E-003 계측 AFE"], ["E-004_mcu_safety", "E-004 MCU·안전 인터록"], ["M-001_vessel", "M-001 압력용기 조립도"], ["M-002_stack", "M-002 전극 스택"], ["M-003_pcb", "M-003 PCB 배치"]];
+DW.forEach(([f, t]) => { const b = document.createElement("button"); b.innerHTML = `<img src="dwg/${f}_t.jpg" alt="${t}" loading="lazy"><span>${t}</span>`; b.onclick = () => { $("dlgT").textContent = t; $("dlgI").src = `dwg/${f}.png`; $("dlg").showModal(); }; $("gal").appendChild(b); });
+$("dlgX").onclick = () => $("dlg").close();
+const tbl = (id, head, rows) => $(id).innerHTML = "<tr>" + head.map(h => `<th>${h}</th>`).join("") + "</tr>" + rows.map(r => "<tr>" + r.map(c => `<td>${c}</td>`).join("") + "</tr>").join("");
+const C = SPEC.CELL, V = SPEC.VESSEL, L = SPEC.LIMITS;
+tbl("tCell", ["항목", "값"], [["용량 · 전압", `${C.Q_Ah} Ah · ${C.V_nom} V (충전 ${C.V_charge_max} / 종지 ${C.V_dis_min} / HW ${C.V_hw_cutoff} V)`], ["스택", `back-to-back ${C.n_units} unit, Ø${C.disc_od_mm}/${C.disc_id_mm} mm, ${V.stack_h_mm.toFixed(1)} mm`],
+  ["Ru/C 수소 전극", `${C.n_gde}장, ${C.h2_area_cm2.toFixed(1)} cm², ${C.ru_loading_mg_cm2} mg/cm² → Ru ${C.ru_total_mg.toFixed(1)} mg`], ["Ni(OH)₂ 전극", `${C.ni_thk_mm} mm, ${C.ni_areal_mAh_cm2.toFixed(1)} mAh/cm²`], ["전해질", `${C.koh_wt_pct} wt% KOH ${C.koh_mL} mL (결핍 설계)`],
+  ["용기", `316L OD ${V.od_mm}×${V.wall_mm}, ID ${V.id_mm.toFixed(2)}, 내부 ${V.inner_len_mm} mm`], ["체적", `내부 ${V.internal_mL.toFixed(1)} / 자유 기체 ${V.free_gas_mL.toFixed(1)} mL`], ["압력", `예충전 ${V.p_precharge_bar_abs} → 완충 ${V.p_full_bar_abs_25C.toFixed(2)} bar abs (25 °C)`],
+  ["안전 계층", `차단 ${V.p_trip_bar_abs} · 릴리프 ${V.p_relief_bar} · 파열판 ${V.p_burst_disk_bar} · 설계 ${V.p_design_bar} · 내압 ${V.p_proof_bar} bar`], ["후프 응력", `${V.hoop_stress_MPa_at_design.toFixed(1)} MPa @20 bar (허용 ${V.allow_316L_MPa})`]]);
+tbl("tBms", ["블록", "사양"], [["MCU", SPEC.BMS.mcu], ["전류", `${SPEC.BMS.shunt_mohm} mΩ + ${SPEC.BMS.ina_part} G${SPEC.BMS.ina_gain}, ±${SPEC.BMS.i_range_A} A, ${SPEC.BMS.i_lsb_mA.toFixed(2)} mA/LSB`], ["전압", SPEC.BMS.vcell_amp], ["압력", SPEC.BMS.p_sensor + ", 3.0 mbar/LSB"], ["온도 · H₂", SPEC.BMS.ntc + " · " + SPEC.BMS.h2_sensor],
+  ["전력단", SPEC.BMS.power_stage + " (Q3 ≈ 3.9 W @2 A)"], ["인터록", "과압 5.99 bar · 저전압 0.900 V · 과온 54.8 °C · H₂ 1 vol% → wired-OR → 래치 → 차단, 수동 리셋"], ["EIS", SPEC.BMS.eis], ["통신", SPEC.BMS.usb]]);
+tbl("tHand", ["파라미터", "값"], [["충·방전 전류", `≤ 0.5 C 권장, 최대 ${L.I_max_A} A`], ["충전 종지", "압력 기반(완충 Δp의 105 %) 또는 1.55 V"], ["방전 종지 / HW", `${C.V_dis_min} / ${C.V_hw_cutoff} V (Ru 산화 방지)`], ["온도", `충전 ${L.T_charge_C[0]}–${L.T_charge_C[1]} °C, 금지 ${L.T_inhibit_C} °C, 차단 ${L.T_trip_C} °C`],
+  ["압력", `운전 ≤ ${L.p_max_oper_bar_abs} bar abs`], ["H₂ 경보 / 차단", `${L.h2_alarm_vol_pct} / ${L.h2_trip_vol_pct} vol% (LFL ${L.h2_LFL_vol_pct} %)`], ["예충전", "N₂ 퍼지 3회 → H₂ 1.0 bar abs, 역화 방지기"], ["보관", "방전 상태, 10–25 °C, 예충전 유지"]]);
+tbl("tBom", ["구분", "품목 (예시, 데이터시트 확인)"], [["촉매", "RuCl₃·xH₂O, Vulcan XC-72R, 에틸렌글리콜, PTFE 분산액 60 %"], ["전극", "Co·Zn 도핑 Ni(OH)₂, CoO, CMC, Ni 폼 1.6 mm, Ni 메시, 다공성 PTFE 막"], ["셀", "316L 2in Sch10S 관, 플랜지·블라인드, EPDM O-ring, M6 A4-70 ×12, PTFE 엔드플레이트·타이로드, 지르코니아 직물 분리막"],
+  ["배관", "1/4in NPT 니플·티·크로스, 0–10 bar abs 트랜스듀서(내압 ≥ 20 bar), 압력계, 릴리프 8 bar, 파열판 12 bar, 니들 밸브, PTFE 피드스루 ×2"], ["전자", "STM32G474RE, INA240A2, OPA2333, OPA2991, INA181, TLV3202, 74LVC1G74, TPS62130/TPS62133, TLV75533, ADuM3160, 10 mΩ 4단자 션트, NTC 10k B3950, H₂ 센서"],
+  ["장비", "EIS 포텐쇼스탯, RDE, Hg/HgO, 흄후드, 튜브로(Ar), 프레스, 에어브러시, 스폿 용접기, 수압 펌프, H₂ 탐지기, ICP-OES·XRD·TEM·XPS"]]);
+tbl("tApp", ["분야", "맞는 이유 / 제약"], [["계통 ESS · 재생에너지", "긴 사이클 수명, 수계라 열폭주 없음 / 부피가 큼"], ["통신 · 데이터센터 백업", "넓은 온도 범위, 압력으로 SOC / 자가방전이 큼"], ["오프그리드 · 마이크로그리드", "매일 사이클에 강함 / 초기 비용"], ["우주 (역사적 주력)", "NASA 설계 유산 / Li-ion이 대체 중"], ["연구 · 교육 플랫폼", "촉매, 압력 SOC, EIS, 인터록을 한 셀에서 실험 / 1 Ah 규모"], ["부적합: 전기차 · 휴대기기", `이 프로토타입은 약 2 Wh/kg(용기가 지배), 상용 Ni–H₂는 55–75 Wh/kg`]]);
+window.__ok = true;
+</script>

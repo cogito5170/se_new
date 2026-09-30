@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--lead:#ffb454;--ink2:#b8c4d2}body{margin:0;width:1600px;height:900px;background:#1a1f26;font-family:"NanumGothic",sans-serif;overflow:hidden}
+#st{position:relative;width:1600px;height:900px}canvas{display:block}
+.co-root{position:absolute;inset:0;pointer-events:none}.co-svg{position:absolute;left:0;top:0;overflow:visible}.co-line{fill:none;stroke:var(--lead);stroke-width:1.3;opacity:.9}
+.co-dot{fill:var(--lead);stroke:#151a21;stroke-width:1.5}.co-lab{position:absolute;font-size:13px;line-height:1.25;background:rgba(15,19,24,.92);border:1px solid #3a4658;border-radius:6px;padding:4px 8px;color:#fff}
+.co-lab b{display:block;font-size:14px}.co-lab span{display:block;color:var(--ink2);font-size:12px}
+#ttl{position:absolute;left:300px;top:12px;color:#e6edf3;font-size:20px;font-weight:700;text-align:center}
+#ttl small{display:block;font-size:13px;color:#8b949e;font-weight:400}
+</style></head><body><div id="st"><canvas id="c" width="1600" height="900"></canvas><div id="ttl"></div></div>
+<script src="__THREE__"></script><script src="__ROOMENV__"></script><script src="rover3d.js"></script>
+<script>
+const SPEC=__SPEC__;
+const R=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});R.setSize(1600,900,false);R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=0.72;
+const V=makeRoverScene(THREE,R,SPEC,document.getElementById('st'),{calloutTop:90});
+V.cam.aspect=16/9;V.cam.updateProjectionMatrix();
+window.view=function(name){const c=V.cam;let t='';
+  if(name==='iso'){V.setExplode(0);V.setFov(false);V.setCallouts(true);c.fov=30;c.position.set(115,95,125);c.lookAt(0,22,0);t='RECON-R1 정찰·정보수집 로버 — 실물 치수 3D<small>1 칸 = 1 cm · 부품은 spec.py 에서 · 설계 제안(미제작)</small>'}
+  if(name==='explode'){V.setExplode(1);V.setFov(false);V.setCallouts(true);c.fov=36;c.position.set(150,120,170);c.lookAt(0,34,10);t='분해도 — 층별 (구동 · 전원 · 계산 · 센서 · 안전)<small>전원 층(배터리·드라이버·퓨즈·접촉기·급전)은 옆으로 뺐다 — 실제로는 아래 데크</small>'}
+  if(name==='side'){V.setExplode(0);V.setFov(true);V.setCallouts(false);c.fov=24;c.position.set(0,45,330);c.lookAt(40,30,0);t='측면 — 뒤집은 Mid-360 시야 -52..+7° 와 무게중심<small>주황 원 = LiDAR 사각 반경 0.47 m (바로 세우면 4.9 m) · 분홍 = 무게중심 16 cm</small>'}
+  if(name==='rear'){V.setExplode(0);V.setFov(false);V.setCallouts(true);c.fov=30;c.position.set(-135,80,-95);c.lookAt(0,22,0);t='후방 — 비상정지 · 무선 킬 · 전원 계통<small>E-stop 은 소프트웨어를 거치지 않고 접촉기 코일을 끊는다</small>'}
+  c.updateProjectionMatrix();document.getElementById('ttl').innerHTML=t;V.render(1600,900);};
+window.__ready=true;
+</script></body></html>

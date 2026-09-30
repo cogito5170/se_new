@@ -1,0 +1,1476 @@
+"""
+Oracle VM에서 systemd로 상시 실행되는 Discord 봇 (실시간 Gateway 연결).
+
+관리 채널(admin, 화이트리스트 있음)과 공개 채널(public, 화이트리스트 없음) 둘 다 이제
+Gemini + LangGraph 에이전트로 처리한다 (Claude Code 토큰 소진으로 claude -p에서 전환,
+2026-08-27). 공개 채널 로직은 main_public.py로, 두 채널이 공유하는 도구(run_shell,
+write_public_answer 등)는 bot_tools.py로 분리했다 -- 이 파일은 admin 에이전트 정의 +
+Discord 이벤트 라우팅만 담당한다.
+
+admin/public 둘 다 run_shell(임의 셸 실행) 도구를 가지고 있어 self-modification이
+가능하다. public은 화이트리스트가 없어 누구나 트리거할 수 있지만, 이 위험(비밀키 유출,
+repo 훼손 가능성)을 사용자가 명시적으로 인지하고 감수하겠다고 요청했다. public은 추가로
+write_public_answer로 Public_agent/ 폴더 안에만 결과물을 남길 수도 있다.
+API 쿼터를 나누려고 admin은 GEMINI_API_KEY_FALLBACK을, public은 GEMINI_API_KEY를 쓴다.
+
+실행: systemd 유닛(deploy/se-discord-bot.service)으로 등록해서 상시 구동할 것.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import re
+import os
+import subprocess
+import uuid
+from pathlib import Path
+
+import discord
+from dotenv import load_dotenv
+
+# main_public/bot_tools가 모듈 임포트 시점에 os.environ을 바로 읽으므로, 그것들을 import하기
+# 전에 .env를 먼저 로드해야 한다 (실측 확인됨: 순서를 바꾸면 KeyError로 임포트 자체가 실패함).
+load_dotenv()
+
+from langgraph.checkpoint.memory import MemorySaver  # noqa: E402
+
+import agent_context  # noqa: E402
+import channels  # noqa: E402
+import eda_prompt as _eda
+import agent_memory
+import gitsync  # noqa: E402
+import gatekeeper  # noqa: E402
+import commit_guard  # noqa: E402
+import poolpick  # noqa: E402  -- 막힌답인가(): 풀 고갈 안내엔 되묻기/검사표 안 붙인다
+import ci_watch  # noqa: E402
+import main_public  # noqa: E402
+import bot_tools  # noqa: E402
+import dispatch  # noqa: E402
+import time  # noqa: E402
+import keys  # noqa: E402
+import inbox  # noqa: E402
+import relay  # noqa: E402
+from bot_tools import (  # noqa: E402
+    REPO_DIR, run_shell, run_experiment, run_probes, read_file, read_image, read_pdf, draw_circuit, simulate_inspection, simulate_formation, render_space, run_rtl, lint_rtl, synth_rtl, prove_rtl, place_rtl, ip_signoff, serdes_link, quant_sweep, adc_sweep, loss_sweep, nn_equalizer, eq_area, run_spice, spice_example, monte_carlo, concept, textbook, edit_file, delegate, send_email, repair, set_key, security_audit, codify_paper, research, create_pr, dispatch_command, search_memory, save_memory,
+    build_agent_pool, run_with_fallback_pool,
+    register_thread, unregister_thread, request_cancel,
+    orchestrator_solve, orchestrator_status, orchestrator_resume, orchestrator_stop,
+    ruh2_battery, ruh2_make, report_pdf,
+    recon_rover, recon_make,
+)
+
+BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN"]
+# 관리자 채널(화이트리스트 있음, DISCORD_ALLOWED_USER_IDS): run_shell 전권 + git sync.
+# **빈 값으로 죽지 않게** channels.수() 로 읽는다. `int(os.getenv(...))` 는 키가 있고
+# 값이 비면 `""` 를 그대로 넘겨 ValueError 를 내고, 그것이 모듈 읽는 중이라 봇이
+# 통째로 멎는다(실측 2026-09-09, systemd 가 5초마다 되살리기를 13번 되풀이했다).
+ADMIN_CHANNEL_ID = channels.수("DISCORD_CHANNEL_ID", 1542081266315427912)
+# 이 서버(길드)에서 온 것만 받는다. **비우면 안 본다** -- 예전처럼 채널 id 로만 가린다.
+#
+# 채널 id 는 디스코드 전체에서 유일하므로 이것 없이도 남의 서버 글이 섞이지는 않는다.
+# 그런데 공개 채널에는 **사용자 화이트리스트가 없다**(main_public.py). 그러면 남은
+# 경계가 '그 채널인가' 하나뿐이고, 봇이 실수로 다른 서버에 초대되거나 채널 id 를
+# 잘못 넣으면 그 하나가 통째로 없어진다. 길드까지 보면 경계가 둘이 된다.
+GUILD_ID = channels.수("DISCORD_GUILD_ID", 0)
+ADMIN_ALLOWED_USER_IDS = {int(x) for x in os.getenv("DISCORD_ALLOWED_USER_IDS", "").split(",") if x.strip()}
+# **WALP 전용 자리** -- 여기서 온 말은 전부 WALP(LLM 없음)가 받고, 에이전트로는 절대 안 넘긴다.
+# 사용자(2026-09-30): "discord 서버를 하나 만들었어. 이제 여기는 오로지 walp만 사용해서 채팅을 할거야."
+# 길드 id 든 채널 id 든 맞으면 된다(서버 통째로 · 채널 하나 둘 다). **길드 필터(GUILD_ID)보다 먼저 본다** --
+# 새 서버는 GUILD_ID 와 다른 길드라, 뒤에 두면 길드 필터가 그 서버 말을 전부 버린다.
+# 더하려면 `.env` 의 WALP_ONLY_IDS=a,b (쉼표). 기본값은 지우지 않는다(비우기 ≠ 끄기 -- channels.수 와 같은 뜻).
+WALP_ONLY_IDS = {1554699881589899334} | {
+    int(x) for x in os.getenv("WALP_ONLY_IDS", "").replace(" ", "").split(",") if x.isdigit()}
+ADMIN_MODEL_NAME = os.getenv("DISCORD_ADMIN_MODEL", "gemini-3.5-flash-lite")
+# GEMINI_MODEL_POOL을 명시하면 그 모델들만 쓴다(수동 제한용). 비워두면 build_agent_pool이
+# 키마다 실제 쓸 수 있는 모델 전체를 API로 조회해서 자동으로 순환한다.
+_admin_extra_models = [m.strip() for m in os.getenv("GEMINI_MODEL_POOL", "").split(",") if m.strip()]
+ADMIN_MODEL_CANDIDATES = [ADMIN_MODEL_NAME] + [m for m in _admin_extra_models if m != ADMIN_MODEL_NAME] \
+    if _admin_extra_models else None
+# public과 API 쿼터를 분리하려고 별도 fallback 키를 쓴다 -- 한쪽이 무제한 루프를 돌려도(self
+# -modification 특성상 발생 가능) 다른 채널까지 같이 막히지 않게. 다만 fallback 키를 못 챙겨서
+# 비어있는 채로 배포되면 admin 채널 전체가 KeyError로 기동 자체를 못 하고 죽었다(실측 확인됨,
+# 2026-08-27) -- 그래서 없거나 비어있을 땐 GEMINI_API_KEY를 대신 쓴다. 게다가 admin 자기
+# 기본 키(FALLBACK)가 429로 소진돼도 public처럼 실시간으로 다른 키/모델로 못 넘어가서 계속
+# 막혔었다(실측 확인됨, 2026-08-28) -- 그래서 public과 동일한 (키 x 모델) 후보 풀로 바꿨다.
+ADMIN_PRIMARY_KEY = os.getenv("GEMINI_API_KEY_FALLBACK") or os.environ["GEMINI_API_KEY"]
+ADMIN_SECONDARY_KEY = os.environ["GEMINI_API_KEY"] if os.getenv("GEMINI_API_KEY_FALLBACK") else None
+
+ADMIN_TOOLS = [run_shell, run_experiment, run_probes, read_file, read_image, read_pdf, draw_circuit, simulate_inspection, simulate_formation, render_space, run_rtl, lint_rtl, synth_rtl, prove_rtl, place_rtl, ip_signoff, serdes_link, quant_sweep, adc_sweep, loss_sweep, nn_equalizer, eq_area, run_spice, spice_example, monte_carlo, concept, textbook, edit_file, delegate, send_email, repair, set_key, security_audit, codify_paper, research, create_pr, dispatch_command, search_memory, save_memory,
+               orchestrator_solve, orchestrator_status, orchestrator_resume,
+               orchestrator_stop, ruh2_battery, ruh2_make, report_pdf, recon_rover, recon_make]
+ADMIN_SYSTEM_PROMPT = (
+    "너는 이 저장소(SE)를 관리하는 전권을 가진 에이전트다. run_shell로 파일을 읽고 쓰고,\n"
+    "git commit/push하고, 네 자신의 코드(discord_bot_server.py, main_public.py, "
+    "bot_tools.py 등)를 수정할 수 있다.\n"
+    "run_shell 권한은 사용자가 명시적으로 요청한 것이다 -- 에러가 나도 스스로 이 도구를 "
+    "제거하거나 권한을 축소하지 마라. 대신 에러 원인을 파악해서 고쳐라.\n"
+    "요청받은 작업을 run_shell로 직접 수행하고, 명령 결과를 근거로 다음 행동을 결정하라.\n"
+    "코드를 고쳤으면 그 결과를 run_shell로 git add/commit/push까지 해서 반영하라.\n"
+    "무엇을 했는지 간결하게 보고하라.\n"
+    "\n"
+    "[자기 수정 절차 -- 반드시 이 순서로]\n"
+    "1. 기존 파일은 전체를 다시 쓰지 마라. **read_file 로 그 자리를 본 뒤 edit_file 로 "
+    "바꿀 줄만 고쳐라** -- old 가 정확히 한 번일 때만 바뀐다. run_shell 의 sed -i · heredoc "
+    "덮어쓰기는 쓰지 마라(그 형태가 4cd4473 · 1a82685 사고다). 고친 뒤 git diff --stat의 "
+    "삭제 줄 수가 요청 크기와 맞는지 확인하라.\n"
+    "1-1. run_shell 은 돌기 전에 도구 게이트를 지난다(toolgate). 게이트 삭제·판정 원장 "
+    "덮어쓰기·통째 삭제·--force·rebase·pkill -f 는 거절된다 -- 우회하지 말고 다른 길을 써라.\n"
+    "2. push 전에 `python3 gatekeeper.py`를 돌려라. 통과(exit 0)해야 커밋된다. "
+    "py_compile은 문법만 잡는다 -- 게이트는 임포트 순환, 독스트링 소실, 안전장치 삭제, "
+    "자격증명 노출, 대량 삭제를 잡는다.\n"
+    "3. 무언가 고장 냈다면 원인을 진단하고, 그 진단을 말로 주장하지 말고 검사 코드로 "
+    "써서 `python3 self_challenge.py prove --candidate <검사> --broken-commit <사고커밋>` "
+    "으로 증명하라. 고치기 전 코드에서 실패(RED)하고 고친 뒤 통과(GREEN)해야 PROVEN=1 이다. "
+    "고치기 전 코드에서 통과해버리면 그건 원인이 아니었다 -- 진단을 다시 세워라.\n"
+    "4. PROVEN=1 이면 그 검사는 gates/ 로 승격되어 이후 모든 커밋을 막는다. "
+    "증명되지 않은 진단은 메모리 노트로도 남기지 마라 -- 읽히지 않는 노트가 늘어나는 것이 "
+    "이 저장소가 실제로 겪은 실패다(2026-08-28: 검증 규칙을 저장하고 2분 뒤 그 규칙을 "
+    "어긴 코드를 push했다).\n"
+    "4-1. **초록이 참인지는 `!반례` 이 잰다** -- 코드를 조용히 틀리게 바꿔도 검사가 "
+    "초록이면 그 검사는 부르기만 하고 보지 않는다(`!반례` 1시간 · `!반례 24` · "
+    "`!반례 보고` 원장 요약 · `!반례 요약` 점수 추이). 그리고 **빠른 검사만 도는 "
+    "precheck 은 먼 검사를 안 본다** -- 그 사각지대는 `!반례 먼검사` 가 잰다(전체 검사를 "
+    "주기로 돌려 '몇 커밋째 안 들킨 빨강' 을 적는다).\n"
+    "5. 보고는 기억이 아니라 git diff 출력을 보고 적어라. 함께 커밋된 파일이 있으면 "
+    "요청과 무관해도 보고에 포함하라.\n"
+    "\n"
+    "[orchestrator -- 여러 단계로 쪼개야 풀리는 문제]\n"
+    "한 번에 답이 안 나오고 계획->계산->검증이 필요한 문제(수학 문제, 알고리즘 설계, "
+    "데이터 처리 파이프라인 등)는 네가 채팅 안에서 추론으로 때우지 말고 orchestrator_solve "
+    "로 넘겨라. 플래너가 DAG 로 쪼개고 노드마다 verifier 가 판정해서 검증된 결과만 채택한다 "
+    "-- 네 추론과 달리 결과에 근거가 남는다.\n"
+    "런은 백그라운드로 돈다(수 분). orchestrator_solve 가 돌려준 런 이름을 사용자에게 알리고 "
+    "그 턴을 끝내라 -- run_shell로 sleep을 걸어 기다리지 마라. 나중에 물어보면 "
+    "orchestrator_status 로 확인해서 답하고, 미완인데 프로세스가 없으면 orchestrator_resume "
+    "으로 이어 돌려라. 상태를 추측해서 말하지 말고 반드시 도구 출력을 근거로 답하라.\n"
+    "\n"
+    "[기관 -- 자연어로 부탁받으면 이 이름들을 직접 돌려라]\n"
+    "사용자는 `!계획` 처럼 치지 않고 그냥 말로 부탁한다. 그때 **네가 아래를 골라 돌려라.**\n"
+    "아래 것을 직접 짜지 마라 -- 이미 있고, 검사가 붙어 있고, 원장에 근거가 남는다.\n"
+    "  · 실험·검증·'고치면 어떻게 되나' -> run_experiment 도구 (깨끗한 판, 저장소 안 다침)\n"
+    "  · 파일 여럿을 살펴야 하는 물음 -> delegate 도구 (싼 탐색기에 동시에 던지고 원문에 "
+    "실재하는 인용만 받는다). 네가 cat 으로 수십 개를 읽지 마라 -- 비싸고 느리다\n"
+    "  · 바꾼 것이 성한가 -> `python3 audit/run.py` (바뀐 파일을 붙드는 검사만 골라 돌린다)\n"
+    "  · 기억·전에 뭐라고 했나 -> search_memory 먼저. 간추리기는 `python3 graph/night.py`, "
+    "깃발 조회는 `python3 graph/ask.py --말 '<말>'`, 요지문은 graph/digest.md\n"
+    "  · 뭐가 깨졌나·상태 점검 -> `python3 eval/run.py` (빠른 갈래. 전부는 몇 분 걸린다). "
+    "'참고(기억)를 주면 더 맞히나'·과제 성적 -> `python3 eval/tasks.py --참고 둘다` (모델을 "
+    "과제 수 x 2 번 부른다 -- 배경으로)\n"
+    "  · 밖에서 참고 모으기·제2의 뇌 -> `python3 dig/harvest.py --틈` (자가 틀린 자리 + 관심 분야를 "
+    "GitHub·HF·arXiv 에서 채운다. 최신 논문은 `--논문`, 관심 분야 더하기는 `--관심 '<주제>'`). "
+    "라이선스·문법은 코드가 거른다\n"
+    "  · 논문 한 편을 읽을 글자로(수식·알고리즘·그림 캡션) -> `python3 dig/paper.py --url <arxiv>`\n"
+    "  · 논문의 수식·알고리즘을 **코드로** -> `python3 codify/run.py --논문 <arxiv id>` 또는 codify 도구. "
+    "판정은 sandbox 끝값이 한다 -- 네가 '됐다' 고 말하지 마라\n"
+    "  · 메일 -> send_email 도구. SMTP 코드를 짜거나 사용법을 설명하지 마라. .env 의 값은 도구가 "
+    "별칭·꼴로 알아서 찾는다 -- '없다' 고 하기 전에 먼저 불러라. '내 메일' 은 to=\"me\"(USER_EMAIL), "
+    "'내 이름' 은 USER_NAME -- 없으면 한 번만 물어 set_key 로 적어라. **초안의 [자리표]는 네가 다 "
+    "채워서 보내라**(dig · search_memory · USER_NAME · 달력). 실존 인물 이름을 지어 서명하지 마라\n"
+    "  · **오류·실패를 만나면 -> repair 도구**(재현 명령 + 오류 문구). 실측→제2의 뇌→시도→실측을 "
+    "코드가 돌리고 실패 이유를 기억에 남긴다. 네가 손으로 세 번 해 보거나 '정책 때문' 이라 하지 마라\n"
+    "  · **세 바퀴로 안 풀리거나 사람이 '끝까지'·'시간이 걸려도' 라고 하면 -> `!조사 <증상> :: <재현 명령>`** "
+    "(dispatch_command). 한 턴이 아니라 한 시간이다: 증거(diagnose)→가설을 끝값으로 확인→고침→게이트·감사가 "
+    "초록이 될 때까지 바퀴를 돈다. 배경으로 돌고 끝나면 채널에 알린다. 해결되면 커밋·PR 까지 -- 머지는 코드가 문제를 잰 뒤 정한다(문제 없으면 붙인다)\n"
+    "  · 보안 점검·취약점 -> security_audit 도구(이 호스트 자신만 읽기 전용). 판정은 코드가 낸다 -- "
+    "네가 '안전해 보인다' 고 말하지 마라. 남의 기계를 공격하거나 익스플로잇을 실행하지 마라\n"
+    "  · **목표·주제를 주며 '논문을 완성해 달라'·'해결해 달라' -> research 도구**(목표 한 줄). 목표를 그대로 검색하지 말고(너무 구체적이면 0건이다) research 가 일반 방법론 질의로 풀어 넓게 모으고, 막히면 다시 추상화해 되풀이하고, 코드화로 검증하고, 과정->결과를 메모로 남긴다. harvest --관심/eval/graph ask 몇 번 부르고 '필요하면 말씀해 주세요' 로 떠넘기지 마라 -- research 한 번에 끝까지 하고 결과를 붙여라\n"
+    "  · **논문을 읽고 여러 편을 견주는 일은 `!논문`** (dispatch_command). `!논문 <주제>` 가 찾고·열리는 본문을 열고·**여러 편이 되풀이해 말하는 한계**를 센다. `!논문 한편 <doi>` 한 편이 어디까지 읽혔나, `!논문 거슬러 <doi>` 참고문헌을 과거로. **LLM 호출 0회다** -- 분당 한도를 안 쓴다. 본문이 안 열리면 ▨(초록만)·□(서지만) 로 표시되니 **그 표시를 그대로 사람에게 전하라** -- 초록만 읽고 본문을 읽은 것처럼 말하지 마라. 오래 걸리므로 백그라운드로 돈다\n"
+    "  · **회로 설계·검증·합성·DFT·물리설계 부탁은 `!회사`** (dispatch_command). Nowon Silicon Works 의 엔지니어 다섯 명이다 -- `!회사` 조직도 · `!회사 <사람>` 그 사람을 돌린다 · `!회사 <사람> 메일` 보고서 PDF 를 메일로 · `!회사 전체` 다섯 명 다 · `!회사 상태` 진행. 사람은 한글·영문이름·직무 아무 쪽으로나 부른다(검증/priya/dv · 합성/marcus/sta · 물리설계/kenji/gds · rtl/ethan/hls · dft/sofia/atpg). **보고서는 그림이 0장이면 안 나가고 메일은 첨부가 없으면 안 나간다**(코드가 막는다). 오래 걸리므로 백그라운드로 돌고, 끝났는지는 `!회사 상태` 가 답한다 -- 추측해서 답하지 마라\n"
+    "  · **지도 좌표(red spot)로 조난자 탐색은 `!search <위도>,<경도> [반경m] [시나리오]`** (dispatch_command). 실제 지형(DEM, AWS Terrarium)+정책코어로 3D 능동탐색을 돌려 조난자 georef·센서(EO/열 창발 전환)·매스텝 판단 로그 보고서를 낸다(배경, 끝나면 첨부). **시뮬/계획이며 실제 비행 명령은 사람이 승인한다**(비행은 사람 몫). 예: `!search 38.1194,128.4656 3000 설악산 산불 조난자 탐색`\n"
+    "  · **공간을 도면·실사 3D 로 그려 달라(매장·실내 배치, 홍대 플래그십, SAR 지형 세계)는 `render_space` 도구** (대상 hongdae/F1·F2·F3·B1 · store_module/asis·tobe · sar). 2D 평면 + three.js 실사 3D + 인터랙티브 HTML 을 답과 함께 올린다. 배경으로 돌리려면 `!렌더 홍대 2층` · `!렌더 sar` · 실사 렌더가 RGB 카메라(sar/camera.py)와 같은 수식(Beer-Lambert 안개·투영)으로 그리는지는 `!렌더 검증` (dispatch_command). **각 시점이 실사인지 matplotlib 대체(비실사)인지 도구가 적어 준 그대로 전하라.**\n"
+    "  · **자연어 상황은 `!시나리오 \"<상황>\"`** (dispatch_command, **공개 채널 가능**). 장소·날씨·조난자수를 알아듣고 그 일대 랜덤 실좌표·실 DEM 으로 **RGB+IMU baseline** 탐색을 돌린다. 8조건(정상/야간/안개/연기/화재/먼지/비/센서고장)을 물리(Beer-Lambert 소광·광자한계 SNR·IMU 드리프트)로 모델링하고, 센서정보 부족 시 **fallback/최소위험(NHTSA)**(추측항법·고지대 상승·복귀/체공)으로 행동한다. **실시간 화면(RGB 장면+IMU/GPS 상황표시+SAR 무전)과 사후 보고(시간축: 정책·센서 타임라인, 실패/회복 구간)**를 그림으로 낸다(배경, 끝나면 첨부). **위치를 못 알아들으면 어디냐고 되묻는다 — 사람이 지명/좌표를 답할 때까지 짓지 않는다.** 자연어→구조 변환은 지상국(봇)이 하고 드론은 결정적 정책만 돌린다(온보드 LLM 없음). 예: `!시나리오 \"설악산 일대 산불, 비, 조난자 2명 탐색\"`\n"
+    "  · **SAR 보증평가는 `!보증 [지명]`, 테스트 매트릭스는 `!매트릭스 [지명]`** (dispatch_command, **공개 채널 가능**). `!보증` = NASA 3축(Reliability 규정환경·Robustness 예상 off-nominal·Resilience 예상못한 사건 후 복구)을 실 DEM 위 물리로 재 보고서·그림을 낸다(이름이 `!보증` 인 것은 `!평가` 를 eval 모듈이 이미 쓰기 때문이다). `!매트릭스` = 직교 축(Geometry×Visibility×Disturbance×Sensor×Fault+전이타이밍) V&V 근거표. 둘 다 배경, 끝나면 첨부. 예: `!보증 오대산` · `!매트릭스`\n"
+    "  · **모델 검증은 `!검증`** (dispatch_command, **공개 채널 가능**). 자기채점이 아니라 **독립 referent 대조**(NASA V&V 3계층): SAR 초점폭↔회절 척도법칙(λR/2L·c/2B)을 재 R²·구현상수 k 로 보고하고, 접힌 동작점은 빼고, referent 없는 모델(실 안개영상·실 SAR·IMU 로그)은 GAP 으로 명시한다. '현장 validation 아님'을 못박는다. 배경, 끝나면 보고서·그림 첨부\n"
+    "  · **IV&V 독립검증은 `!독립검증`** (dispatch_command, **공개 채널 가능**). 자기채점을 **구조적으로** 없앤다: SUT(정책, 센서만 받음)·독립 참조세계(SUT 와 다른 물리 formulation, 숨은 truth)·독립 평가기(truth 로 채점)를 분리하고, 텔레메트리 버스가 SUT 에서 truth 를 뺀다. 숨은 시나리오 집합을 돌려 탐지율·위치RMSE·오경보를 독립 평가하고, **실시간 3D 뷰**(관찰자는 truth 를, SUT 는 센서만 본다)를 낸다. independent simulation-based evidence(현장 아님, validation domain 명시). 배경, 끝나면 보고서·3D GIF 첨부\n"
+    "  · **Rate-stratified 텔레메트리는 `!텔레메트리`** (dispatch_command, **공개 채널 가능**). 하나의 주기로 다 보내지 않는다 — **10Hz 기계상태 · 1Hz 운용보고 · 즉시 이벤트(탐지/재탐색/MRC)** 3계층으로 나눠 '보고'와 '데이터 전송'을 분리하고, 실측 주기(state 10Hz·report 1Hz)를 재서 낸다. SUT 에는 관측만(truth 격리). **10Hz 는 NASA 표준이 아니라 연구용 설계점**(1~20Hz 대역)임을 명시한다. 배경, 끝나면 보고서 첨부\n"
+    "  · **파이프라인 4계층 실측은 `!측정`** (dispatch_command, **공개 채널 가능**). 사용자가 든 네 축을 지어내지 않고 잰다 — 세계해상도(mpp·피처수) · 센서 데이터율(RGB·SAR raw 실 배열 nbytes) · 처리지연(벽시계 중앙값, 추정 FLOPs 아님)을 다섯 환경(숲·사막·도시·해안·고산)에서. 과장방지 4검사(재려던걸 쟀나·동작점·독립대조 perf vs cpu·사소한설명 죽이기)를 표에 건다. **임베디드 HW 아님**(컨테이너 CPU 상대 비교)임을 못박고, 탐지정확도는 대리수를 만들지 않고 IV&V(`!독립검증`)에 맡긴다(`!측정 정확도` 면 실 DEM 으로 ④ 까지). 배경, 끝나면 보고서 첨부\n"
+    "  · **센서 모델 스펙·선택 정책은 `!센서`** (dispatch_command, **공개 채널 가능**). RGB(ISETCam)·Thermal(Planck+MODTRAN)·LiDAR(waveform)·IMU(Allan variance)·GNSS(ESA)·Audio(Image Source) 의 **물리기반 reference model**(radar 제외 — radar.py 소유; 상용 시뮬레이터 재현 아님, Level-2 core)을 우리 환경변수(condition·V·조도·land-cover·온도·풍·gnss_env)에 fit 시킨다. 부족했던 변수(온도장·풍잡음·gnss_env·emissivity)를 유도/대표값으로 채우고 NASA-STD-7009B 로 measured/derived/assumed·GAP 을 정직히 감사한다. sensor-agnostic 선택 정책: 상황마다 물리 품질 q 로 센서를 고른다(맑음→RGB·야간/안개→Thermal·수관/짙은안개→Audio·협곡→IMU측위). 배경, 끝나면 보고서 첨부\n"
+    "  · **사람이 말한 개선은 `!개선 <말>`** -- 그 말을 그대로 넘겨라. 제2의 뇌를 근거로 패치를 지어 **레포 전체(검사 171개)를 격리 판에서 돌려 회귀가 없을 때만** 동의를 구한다\n"
+    "  · **시스템을 개선하라는 부탁은 `!자가개선`** (dispatch_command). 틈을 스스로 찾고, **틈이 없으면 제2의 뇌로 최신 기술 중 적용거리를 골라** 제2의 뇌를 근거로 패치를 지어 격리 판에서 red->green·리허설을 코드가 확인한 뒤 동의를 기다린다. `!자가개선 승인` 은 사람만 친다\n"
+    "  · **저장소 코드를 고칠 때는 `!계획 켜기` -> 고치기 -> `!계획 시험` -> (사람)`!계획 승인` 이 순서다.** `!계획 시험` 은 그림자를 격리 판에 복사해 문법·게이트·그 파일이 거는 검사를 미리 돌린다 -- **돌려 보지 않은 코드는 승인이 거절한다**(코드가 막는다). 빨강이면 고치고 다시 시험하라\n"
+    "  · **코드를 고치기 전에 `python3 impact.py --파일 <고칠 파일>` 을 돌려라** -- 그 코드를 누가 부르고 어느 입구(관리 채널 답변 경로 · 커밋 경로 · 게이트 · 24h 루프)에 닿는지 코드가 센다. 답변 경로에 망 호출이나 검사 실행을 넣지 마라(사람이 그만큼 기다린다). 커밋 경로를 막으면 봇이 아무것도 저장 못 한다. '모든 경우의 수' 를 머리로 세지 말고 이 표를 읽어라\n"
+    "  · **사람의 부탁은 dispatch_command 도구로 실행한다.** 사람 말을 그대로 넘겨라 -- 어느 고정 명령인지는 저장소의 표가 고른다(수집·연구·코드화·평가·점검·기억·경로·계획·고치기·조사·반례). **명령 목록을 나열하거나 '무엇을 원하시나요' 로 끝내지 마라**(실측 2026-09-11: 목록만 보여 주고 끝냈다). 못 골랐다고 돌아오면 그때 research·codify_paper·repair·security_audit 를 직접 불러라. `!계획 승인`·`!열쇠` 만 사람이 친다\n"
+    "  · 커밋이 **[검사 차단]·[CI 차단]** 으로 막히면 그 검사부터 고쳐라 -- `python3 tests/<검사>.py` 로 재현하고 repair 도구(재현 명령 + 오류)로 돌려라. 빨강 위에 자가 수정을 쌓지 않는다. 문체 규칙처럼 사람의 결정이 필요한 검사면 무엇을 정해야 하는지 한 줄로 사람에게 말하라\n"
+    "  · **저장소를 고치는 요청은 `!계획`** -- 사람이 `!계획 켜기 <요청>` 을 치면 edit_file · run_shell 은 그림자 워크트리에서 돌고, `!계획 보기` 의 diff 가 계획이다. `!계획 승인` 은 사람만 친다 -- 네가 승인하거나 그림자 밖에서 몰래 고치지 마라\n"
+    "  · 커밋을 PR 로 내야 하면 **create_pr 도구**(제목·본문). 밀기와 PR 열기만 한다 -- **머지는 네가 누르지 않는다.** 코드가 문제를 잰 뒤 정한다(문제 없으면 붙인다). main 에서는 안 열리니 갈래를 먼저 만들어라. 지어낸 해시·번호로 '열었다' 고 하지 말고 도구가 준 URL 만 말하라\n"
+    "\n"
+    "[사람에게 묻기 전에 -- 자가 해결 단계가 먼저다]\n"
+    "순서는 고정이다: (1) repair 도구(재현 명령 + 증상)로 실측→제2의 뇌(dig/harvest + search_memory)"
+    "→시도→실측을 돌린다 (2) 그래도 남으면 '해 본 것' 과 함께 **사람만 할 수 있는 한 가지**만 묻는다. "
+    "(1) 없이 (2) 로 가지 마라. 코드 자가 수정·자가 분석도 같다 -- 저장소를 고치기 전에 search_memory 와 "
+    "delegate 로 제2의 뇌와 저장소를 먼저 읽어라. **한 호흡으로 끝내라**: 중간에 멈춰 묻지 말고 네가 "
+    "할 수 있는 것을 전부 스스로 묻고 답하며 끝까지 한 뒤, 사람에게는 **최종 승인 하나**(승인 · "
+    "사람만 가진 값)만 내밀어라. 초안을 보여 주고 '보낼까요?' 로 끊지 마라 -- 다 채워서 보내고 "
+    "보냈다고 보고하라(되돌릴 수 없는 일이면 그때만 승인을 받아라).\n"
+    "\n"
+    "[수단이 없을 때 -- 설명하고 멈추지 마라]\n"
+    "실측 2026-09-11: 메일 부탁에 앱 비밀번호 발급 절차와 smtplib 코드를 설명하고 멈췄고, 다음엔 "
+    "'인프라가 없다' 고 멈췄고, 다음엔 '무료 SMTP 가입하거나 앱 비밀번호를 주면' 하고 선택지를 "
+    "나열했다. 셋 다 틀렸다. 규칙: **네가 얻을 수 있는 것은 네가 얻어라**(pip · 설정 파일 · "
+    "접속 · 재시도). **사람만 할 수 있는 것**(계정 가입 · 2단계 인증 · 앱 비밀번호/토큰 발급 · "
+    "결제)은 선택지를 나열하지 말고 **제일 짧은 길 하나를 골라 딱 그 값만** `!열쇠 이름=값` "
+    "꼴로 청하라. 받았다고 하면 묻지 말고 바로 이어서 하라. 도구가 '무엇이 없다' 고 돌려주면 "
+    "그 말을 그대로 전하면 된다. **사용자가 채팅으로 값을 주면(비밀번호·토큰·주소) 되묻지 말고 "
+    "set_key 로 즉시 .env 에 적어라** -- 네 대화 기억은 재시작(배포)마다 사라지고 .env 만 남는다 "
+    "(실측 2026-09-11: 준 값을 잊고 다시 물었다). **오류 문구(5.7.8 · 403 · refused …)를 받으면 '정책 때문' 이라 "
+    "보고하고 멈추지 마라** -- 진단 도구(`python3 mailer.py --진단`)를 돌리고, `python3 dig/harvest.py "
+    "--말 '<오류 문구>'` 로 제2의 뇌에 원인을 모은 뒤 search_memory 로 읽고, 해 본 것과 남은 한 "
+    "가지를 적어라.\n"
+    "  · 어느 모델로 나가나·비용 -> `python3 router/call.py --요약` · `python3 router/check.py`\n"
+    "  · 할 일·목표 -> `python3 intent/store.py --목록` / `--다음`. **새 목표는 제안까지만 "
+    "하고 승인은 사람에게 받아라** -- 승인 없는 목표는 집히지 않는다(그것이 설계다)\n"
+    "  · 게이트·자기 개조 -> `python3 gatekeeper.py`, 승격은 self_challenge 의 red-green\n"
+    "  · 소설·이어쓰기 -> `scripts/drift.sh` (novel 파이프라인). **네가 산문을 지어내지 "
+    "말고 그 스크립트도 덮지 마라** -- 실측 2026-09-10 `4cd4473`: '라노벨 상황극' 부탁 "
+    "하나가 drift.sh 287줄을 20줄 촌극으로 덮어 열 곳 넘는 참조가 끊겼다\n"
+    "  · 진행 상황을 보고 싶다는 말 -> 네가 켜지 말고 `!중계 켜기` 를 치라고 안내하라 "
+    "(사람이 켜는 스위치다. 도구·끝값·걸린 초만 보이고 네 생각은 안 실린다)\n"
+    "  · LLM 없는 명령 해석·자율 정책(WALP)을 써 보고 싶다는 말 -> **네가 치지 말고** "
+    "`!walp <명령>` 을 사람이 직접 치라고 안내하라(`!walp 도움`). 사용성은 저자·에이전트 없이 "
+    "재야 한다 -- 네가 말을 다듬어 넘기면 파서가 아니라 너를 재게 된다(walp/usability.py)\n"
+    "\n"
+    "**사진이 오면 `read_image` 로 읽는다.** `cat` 은 그림에 안 통한다 -- 깨진 바이트만 "
+    "나온다. 그리고 **보이지 않는다고 답하지 마라**(실측 2026-09-15: 그렇게 답했다).\n"
+    "" + _eda.갈래규칙 + "\n"
+    "" + _eda.교재규칙 + "\n"
+    "문제가 오면 **풀이 · 약한 개념 · 오답노트 · 예상 질문과 답변** 넷을 다 내라. "
+    "풀이는 한 걸음씩 쓰고 마지막 줄에 `답: ...`. 예상 질문은 **이 문제를 처음 보는 "
+    "사람**이 막힐 자리를 네가 먼저 묻고 답하는 것이다(`Q:` / `A:` 3~5개).\n"
+    "**수식은 LaTeX 로 써라** -- 줄 안은 `$...$`, 세우는 식은 `$$...$$`. 봇이 유니코드와 "
+    "PNG 로 바꿔 보낸다. 전부 화면에 글로 내고 파일로 쓰거나 커밋하지 마라.\n"
+    "\n"
+    "**회로 이야기가 나오면 `draw_circuit` 으로 그려라** -- 말로만 설명하지 마라. "
+    "`example` 로 검증된 본보기(current_mirror · cascode · cmos_inverter · common_source_amp · source_follower · common_gate · diff_pair · transmission_gate · rc_lowpass · cmos_nand2 · logic_gates · setup_hold · karnaugh_map)를 먼저 "
+    "그려 보고 그 꼴을 본떠 쓴다. **너는 네 그림을 볼 수 없으므로** 그 도구가 돌려주는 "
+    "확인 글을 읽고, 떠 있는 단자가 있다면 고쳐 다시 그려라. 그림은 자동으로 올라간다.\n"
+    "\n"
+    "**RTL 은 쓰지만 말고 돌려라** -- `run_rtl(design, testbench)` 가 iverilog 로 짓고 "
+    "돌린다. 판정은 **출력**으로 난다(vvp 는 FAIL 을 찍고도 끝값 0 이다) -- 벤치가 "
+    "`$display(\"PASS\")` / `$display(\"FAIL ...\")` 를 찍게 하고 `$finish` 를 넣어라. "
+    "둘 다 없으면 통과가 아니라 못잼이다. `lint_rtl` 은 verilator, `synth_rtl` 은 "
+    "yosys 셀 수다. **잰 빨강을 그대로 보고하라** -- 검사 안 한 초록보다 낫다.\n"
+    "각 폴더의 README.md 가 무엇을 하는지 적고 있다 -- 모르면 먼저 읽어라. 그리고 "
+    "**사용자가 `!` 로 시작하는 고정 명령을 쳤다면 그것은 너에게 오지 않는다**(봇이 먼저 "
+    "받는다). 너에게 왔다면 고정 명령이 아닌 말이므로, 네가 위에서 골라 돌리면 된다."
+)
+_admin_checkpointer = MemorySaver()
+ADMIN_AGENT_POOL = build_agent_pool(
+    keys=[ADMIN_PRIMARY_KEY, ADMIN_SECONDARY_KEY],
+    models=ADMIN_MODEL_CANDIDATES,
+    tools=ADMIN_TOOLS,
+    prompt=ADMIN_SYSTEM_PROMPT,
+    checkpointer=_admin_checkpointer,
+    fallback_models=[ADMIN_MODEL_NAME],
+)
+
+PROJECT_SLUG = REPO_DIR.replace("/", "-")
+# claude -p용 세션 ID. 토큰이 복구되면 run_claude()를 다시 쓸 수 있도록 남겨둔다.
+SESSION_ID = str(uuid.uuid5(uuid.NAMESPACE_URL, f"discord-channel-{ADMIN_CHANNEL_ID}"))
+
+intents = discord.Intents.default()
+intents.message_content = True
+client = discord.Client(intents=intents)
+
+# git_sync()가 동시에 여러 번 돌면 커밋/푸시가 충돌하므로 직렬화한다.
+GIT_LOCK = asyncio.Lock()
+
+_admin_thread_map: dict[str, str] = {}
+
+# thread_id별 현재 처리 중인 on_message 태스크와 그 프롬프트. "stop" 입력 시 이 태스크만
+# 취소한다 -- 서비스(systemd 유닛) 전체를 내리는 게 아니라 그 대화의 응답 대기만 중단한다.
+# 주의: run_shell로 이미 시작된 서브프로세스는 취소해도 백그라운드 스레드에서 계속 돌다가
+# 자연 종료된다(진짜 kill이 아님) -- 취소는 "그 결과를 기다리지 않고 지금까지 상황을
+# 보고한다"는 뜻이다.
+_active_tasks: dict[str, asyncio.Task] = {}
+_active_prompts: dict[str, str] = {}
+# thread_id 별 자물쇠. 같은 대화에 두 실행이 겹치면 도구 호출과 그 답이 어긋나
+# 대화가 통째로 깨진다(INVALID_CHAT_HISTORY). 방마다 하나씩이라 서로 안 막는다.
+_thread_locks: dict[str, asyncio.Lock] = {}
+
+# **"못 받았다" 는 말이 사실인지 잰다.**
+#
+# 실측 2026-09-09: 공개 채널이 "외부 네트워크 차단 및 보안 정책(403 Forbidden 등)으로
+# 직접적인 데이터 수집이 제한되고 있습니다" 라고 답했다. 사용자가 같은 주소를 VM 에서
+# 직접 돌려 보고 **"안막혔어"** 라고 했다. 즉 **안 해 보고 막혔다고 한 것**이다.
+#
+# 프롬프트에는 이미 적혀 있었다 -- "해 보기 전에 '수단이 없다' 고 하지 마라",
+# "안 되면 실패한 명령과 오류를 그대로 대라"(규칙 4·5). **적혀 있는데 어겼다.**
+# 그러면 규칙을 더 적을 것이 아니라 **말이 사실인지 코드가 재야 한다** -- 이 저장소가
+# 봇의 자동 rebase 에서 배운 것과 같다(규칙은 사람에게 적혀 있었고 그 줄은 봇에게
+# 적혀 있었다).
+#
+# 잡는 것은 **거짓말이 아니라 어긋남**이다: 못 받았다고 하는데 부른 것이 없거나,
+# 부른 것이 다 성공했는데 못 받았다고 하는 것. 답을 지우지는 않는다 -- 옆에 적는다.
+못받았다말 = ("차단", "막혀", "막았", "403", "수집이 제한", "접근이 제한",
+             "긁어올 수 없", "가져올 수 없", "조회할 수 없", "제한되고 있",
+             "직접 접근이 불가", "실시간 데이터를 제공할 수 없")
+
+
+def _말과_한것이_맞나(reply: str, 부른것: list) -> str:
+    """답이 '못 받았다' 고 하는데 실제로 한 것과 어긋나면 그 말을 돌려준다."""
+    if not reply or not any(w in reply for w in 못받았다말):
+        return ""
+    if not 부른것:
+        return ("**[검사] 이 답은 '못 받았다' 고 하는데 이번 턴에 셸을 한 번도 "
+                "안 불렀다.** 막힌 것이 아니라 **안 해 본 것**이다. "
+                "`python3 dig/run.py --url '<주소>'` 를 실제로 돌리고, "
+                "그래도 안 되면 그 명령과 오류를 그대로 붙여라.")
+    실패 = [c for c, ok in 부른것 if not ok]
+    if not 실패:
+        return (f"**[검사] 이 답은 '못 받았다' 고 하는데 부른 {len(부른것)}개가 "
+                "전부 성공했다.** 무엇이 막혔는지 그 출력으로 보여라.")
+    return ""
+
+
+async def _스스로고치기(channel, 명령: str, 증상: str, 로그파일: str = "", 증거글: str = "") -> None:
+    """배경 일이 터졌을 때 **사람에게 트레이스백만 던지지 않는다** -- repair 로 고쳐 보고 결과를 말한다.
+
+    사용자(2026-09-11): "문제가 생기면 능동적으로 해결해서 결과로 오류 메시지를 출력하지 않게 하라.
+    추론이나 지식이 부족하면 제2의 뇌의 도움을 받아 해결하라." repair 가 그 둘을 한다 --
+    격리 판 실측 -> dig/harvest + graph 로 원인 모으기 -> 수리기 제안 -> 격리 시도 -> 다시 실측(3바퀴).
+    어느 버그인지는 여기 안 적는다(일반해). 못 고치면 **해 본 것과 남은 한 가지**를 말한다."""
+    try:
+        await channel.send(f"⚠ 터졌다 -- 스스로 고쳐 본다: `{증상[:120]}`")
+        from repair import run as _rp
+        # **로그 꼬리를 들려 보낸다.** 격리 판에서 재현이 안 되는 사고가 있다 -- 낡은 판이
+        # 배포돼 터진 경우가 그렇다(여기 트리는 최신이라 재현이 안 된다). 그때도 로그에
+        # 적힌 **줄번호**는 진실을 말하고, 진단은 그것으로 '도는 코드가 낡았다' 를 짚는다.
+        # 증거글은 **이 실행이 쓴 출력**이다(relay.배경로그). 로그 파일 전체를 읽으면 덧쓰기로
+        # 남은 옛 트레이스백까지 진단에 들어간다 -- 실측 2026-09-12: 옛 줄번호로 "낡았다" 고 했다.
+        증거글 = (증거글 or "")[-8000:]
+        r = await asyncio.to_thread(lambda: _rp.고치기(명령, 증상, 증거글=증거글))
+        진 = (r.get("진단") or {}).get("가설") or []
+        if 진:
+            await channel.send(("🔎 **증거부터 캤다**(모델 안 씀): " + 진[0]["무엇"][:300]
+                                + "\n  -> " + 진[0]["고칠거리"][:300])[:1900])
+        if r.get("해결"):
+            말 = (f"🔧 **스스로 고쳤다** ({r['바퀴']}바퀴) -- `{증상[:90]}`\n"
+                  f"  다시 돌려 보라: `{명령[:120]}`")
+        elif r.get("입력오류"):
+            말 = f"🙋 **주어진 정보가 틀렸다**(이용자 측) -- {r.get('남은것', '')[:300]}"
+        else:
+            해본 = " · ".join(f"{h.get('꼴', '?')}:{h.get('판정', '?')}" for h in (r.get("해본것") or [])[:3])
+            말 = (f"🔧 못 고쳤다 ({r.get('바퀴', 0)}바퀴: {해본 or '없음'})\n"
+                  f"  남은 것: {(r.get('남은것') or '')[:300]}")
+        if r.get("메모"):
+            말 += f"\n  메모: {r['메모']}"
+        await channel.send(말[:1900])
+        # **세 바퀴로 안 풀리면 긴 호흡으로 넘긴다.** 사용자(2026-09-12): "50분~1시간이 걸리더라도
+        # 문제를 해결했으면 좋겠어." repair 는 짧은 루프다. 조사는 판정(게이트·감사)이 초록이 될
+        # 때까지 두뇌를 바퀴마다 다시 불러 끝까지 판다 -- 배경으로, 끝나면 이 채널에 알린다.
+        # **끝까지 간다.** 진단이 "코드가 아니라 도달" 이라 했으면 그 확인을 여기서 실제로 한다 --
+        # 사용자(2026-09-12): "여기서 끝나네 끝까지 못 고쳐주고?" 확인이 '고칠 코드가 없다' 로
+        # 끝나면 그것이 끝이다. 그 밖의 못 푼 것은 긴 호흡(조사)으로 넘긴다.
+        첫가설 = (진[0] if 진 else {})
+        if not r.get("해결") and 첫가설.get("탐침") == "판이낡았나":
+            import diagnose as _dg
+            _m = re.search(r"`([0-9a-f]{7,12})`", 첫가설.get("무엇", ""))
+            if _m:
+                d = await asyncio.to_thread(_dg.도달확인, _m.group(1), REPO_DIR)
+                await channel.send(("🧭 **도달 확인**: " + d["말"][:600] + "\n  -> " + d.get("고칠거리", "")[:300])[:1900])
+                return
+        if not r.get("해결") and not r.get("입력오류"):
+            from investigate import discord_cmd as _iv
+            argv = ["python3", "investigate/run.py", "--증상", 증상[:300], "--명령", 명령[:300]]
+            if 증거글:
+                _증거파일 = os.path.join(REPO_DIR, "logs", "증거_조사.log")
+                with open(_증거파일, "w", encoding="utf-8") as _f:
+                    _f.write(증거글)
+                argv += ["--증거", _증거파일]
+            띄움 = await asyncio.to_thread(_iv._배경으로, argv, _iv.로그, "investigate/run.py")
+            await channel.send(("🕵️ **긴 호흡으로 넘긴다** (최대 한 시간, 판정이 초록이 될 때까지)\n" + 띄움)[:1900])
+            for 배경 in relay.배경꺼내기():
+                asyncio.create_task(_배경지켜보기(channel, 배경))
+    except Exception as e:                                          # noqa: BLE001 -- 고치다 터져도 조용히 죽지 않는다
+        print(f"[스스로고치기] 실패: {type(e).__name__}: {e}")
+        try:
+            await channel.send(f"🔧 스스로 고치기가 막혔다: {type(e).__name__} -- `!고치기 {명령[:80]} :: {증상[:60]}`")
+        except Exception:                                           # noqa: BLE001
+            pass
+
+
+async def _배경지켜보기(channel, 배경: dict, 간격: float = 20.0, 상한초: float = 6 * 3600) -> None:
+    """pgrep 으로 지켜보다 끝나면 로그 끝을 붙여 알린다.
+
+    **재시작을 살아 넘긴다.** 붙을 때 맡김 파일에 적고(relay.배경맡김), 알리거나 포기할 때 지운다
+    (relay.배경놓음). 봇이 다시 뜨면 on_ready 가 맡긴 것을 읽어 감시를 다시 붙인다 -- 그 사이에
+    일이 끝났으면 첫 확인에서 바로 알린다. 실측 2026-09-12: 16:08 에 띄운 일을 16:22 배포가
+    재시작하면서 감시만 죽어 아무도 끝을 알리지 않았다."""
+    시작 = time.monotonic()
+    맡김 = ""
+    try:
+        맡김 = await asyncio.to_thread(relay.배경맡김, 배경, getattr(channel, "id", 0))
+    except Exception as e0:                                        # noqa: BLE001 -- 맡김이 안 돼도 감시는 돈다
+        print(f"[배경] 맡김 실패: {type(e0).__name__}: {e0}")
+    try:
+        await _배경지켜보기_속(channel, 배경, 간격, 상한초, 시작)
+    finally:
+        if 맡김:
+            try:
+                await asyncio.to_thread(relay.배경놓음, 맡김)
+            except Exception:                                      # noqa: BLE001
+                pass
+
+
+async def _배경지켜보기_속(channel, 배경: dict, 간격: float, 상한초: float, 시작: float) -> None:
+    _스트림 = {"off": 0}                # 실시간 진행 스트리밍: 이미 민 로그 길이
+    while time.monotonic() - 시작 < 상한초:
+        await asyncio.sleep(간격)
+        # 실시간 진행 스트리밍 -- **opt-in**: 로그에 [[STREAM]] 마커가 있는 일만 매 폴에서
+        # 새 `진행>` 줄을 채널에 민다. 마커 없는 일(연구·조사 등)엔 영향 없다. 배경 처리와
+        # 독립이라 try 로 감싸 실패해도 끝 알림은 그대로 돈다(야전 실시간성 -- 시뮬 텔레메트리).
+        try:
+            _본 = await asyncio.to_thread(relay.배경로그, 배경)
+            _r = relay.진행스트림(_본, _스트림["off"]); _스트림["off"] = _r["off"]
+            if _r["on"] and _r["lines"]:
+                await channel.send(("[실시간 텔레메트리]\n" + "\n".join(_r["lines"][-14:]))[:1900])
+        except Exception as _se:                                  # noqa: BLE001 -- 스트림은 부수기능
+            print(f"[배경] 스트림 실패: {type(_se).__name__}: {_se}")
+        if await asyncio.to_thread(relay.배경끝났나, 배경):        # 찾을말(pgrep 이름)로 본다
+            try:
+                산출 = await asyncio.to_thread(relay.산출물찾기, 배경, REPO_DIR)
+                꼬리 = ("\n📄 산출물: " + ", ".join(산출) if 산출 else "")
+                터졌, 증상 = await asyncio.to_thread(relay.터졌나, 배경)
+                await channel.send((relay.배경보고(배경) + 꼬리)[:1900])
+                # **`!개선` 이 '조사로' 로 끝나면 코드가 긴 호흡을 띄운다.** 모델이 사람 몫이 아닌 이유로
+                # 물러났거나 패치를 못 붙인 경우다(improve 가 코드로 가른다). 프롬프트로 설득하지 않는다.
+                _출 = await asyncio.to_thread(relay.배경로그, 배경)
+                if "판정: **조사로**" in _출:
+                    _m = re.search(r"^개선 부탁: (.+)$", _출, re.M)
+                    if _m:
+                        from investigate import discord_cmd as _iv2
+                        띄움 = await asyncio.to_thread(_iv2._배경으로,
+                                                     ["python3", "investigate/run.py", "--증상", _m.group(1).strip()[:300], "--목표"],
+                                                     _iv2.로그, "investigate/run.py")
+                        await channel.send(("🕵️ **부탁을 긴 호흡(목표 모드)으로 넘긴다** -- 검사로 못박고 지날 때까지\n" + 띄움)[:1900])
+                        for 배경2 in relay.배경꺼내기():
+                            asyncio.create_task(_배경지켜보기(channel, 배경2))
+                if 터졌 and 배경.get("명령"):
+                    # **오류를 그대로 내보내고 끝내지 않는다.** 재현 명령과 증상이 손에 있으니
+                    # 스스로 고쳐 본다(repair: 실측 -> 제2의 뇌 -> 시도 -> 실측). 사람에겐 결과만.
+                    # 증거는 **이 실행이 쓴 출력만** -- 덧쓰기 로그의 옛 트레이스백을 넘기지 않는다.
+                    증거글 = await asyncio.to_thread(relay.배경로그, 배경)
+                    asyncio.create_task(_스스로고치기(channel, 배경["명령"], 증상, 배경.get("로그", ""), 증거글))
+                # **결론이 담긴 메모는 저장소에만 있었다** -- 파일로 붙여 사람이 그 자리에서 읽게 한다.
+                for rel in 산출:
+                    try:
+                        await channel.send(file=discord.File(os.path.join(REPO_DIR, rel), filename=os.path.basename(rel)))
+                    except Exception as e2:                         # noqa: BLE001 -- 하나가 커도 나머지는 보낸다
+                        print(f"[배경] 산출물 {rel} 못 붙임: {type(e2).__name__}: {e2}")
+                    # **핸드폰에서 열리는 꼴로도 붙인다.** 사용자(2026-09-12): "md가 안보이니 discord에서는 pdf로."
+                    # .md 는 그대로 두고(원문), 같은 내용의 .pdf 를 하나 더. 한글 글꼴이 없으면 PDF 안에 그렇다고 적힌다.
+                    if rel.endswith(".md"):
+                        try:
+                            from investigate import discord_pdf
+                            r_pdf = await asyncio.to_thread(discord_pdf.md파일을pdf로, os.path.join(REPO_DIR, rel))
+                            await channel.send(file=discord.File(r_pdf["경로"], filename=os.path.basename(r_pdf["경로"])))
+                            if not r_pdf["한글"]:
+                                await channel.send("⚠ 이 기계에 한글 글꼴이 없어 PDF 의 한글이 안 그려진다 -- `sudo apt-get install -y fonts-nanum`")
+                        except Exception as e3:                     # noqa: BLE001 -- PDF 가 실패해도 .md 는 이미 갔다
+                            print(f"[배경] {rel} PDF 못 만듦: {type(e3).__name__}: {e3}")
+            except Exception as e:                                  # noqa: BLE001
+                print(f"[배경] 끝 알림 실패: {type(e).__name__}: {e}")
+            return
+    try:
+        await channel.send(f"⏳ `{배경['무엇']}` 이 {상한초 / 3600:.0f}시간째 안 끝났다 -- 로그를 보라: {배경['로그']}")
+    except Exception:                                               # noqa: BLE001
+        pass
+
+
+async def _handle_stop(message: discord.Message, thread_id: str) -> None:
+    task = _active_tasks.get(thread_id)
+    if task is None or task.done():
+        await message.channel.send("[중단] 현재 진행 중인 요청이 없습니다.")
+        return
+    prompt = _active_prompts.get(thread_id, "(알 수 없음)")
+    # request_cancel: (1) 다음 fallback 후보로 넘어가기 전에 루프를 멈추게 하는 플래그를
+    # 세우고, (2) 이 스레드가 run_shell로 이미 띄운 서브프로세스가 있으면 실제로
+    # terminate/kill한다 -- proc.wait(timeout=3)이 섞여 있어 이벤트 루프를 막지 않게
+    # 실행기(executor)에서 돌린다.
+    loop = asyncio.get_running_loop()
+    killed = await loop.run_in_executor(None, request_cancel, thread_id)
+    task.cancel()
+    note = "실행 중이던 run_shell 서브프로세스를 강제 종료했습니다." if killed else \
+        "죽일 서브프로세스는 없었고, 다음 모델/키 후보로 넘어가기 전 루프를 멈춥니다(이미 나간 API 요청 자체는 취소 불가)."
+    await message.channel.send(
+        "[중단됨] 이번 응답 생성을 멈췄습니다. 봇 자체는 계속 실행 중입니다.\n"
+        f"진행 중이던 프롬프트: {prompt[:300]}\n"
+        f"{note}"
+    )
+
+
+def run_claude(prompt: str) -> str:
+    """Claude Code 토큰이 있을 때 쓰던 경로. 지금은 호출되지 않지만 토큰 복구 시 다시
+    _handle_admin_message에서 run_admin_agent 대신 이걸 쓰도록 되돌리면 된다."""
+    jsonl_path = os.path.expanduser(f"~/.claude/projects/{PROJECT_SLUG}/{SESSION_ID}.jsonl")
+    resume_flag = ["--resume", SESSION_ID] if os.path.isfile(jsonl_path) else ["--session-id", SESSION_ID]
+    # se-discord-bot.service의 cgroup 밖에서 돌려서, 이 안에서 백그라운드로 뜬 작업이
+    # 서비스 재배포(systemctl restart)에 딸려 죽지 않게 한다 (실측 확인됨: cgroup 안에 있으면
+    # KillMode=control-group 기본값 때문에 setsid로 분리해도 재배포 시 다 같이 죽었음).
+    scope_unit = f"se-claude-{uuid.uuid4().hex[:12]}"
+    result = subprocess.run(
+        [
+            "sudo", "-E", "systemd-run", "--scope", "--quiet", "--collect",
+            "--uid=ubuntu", "--gid=ubuntu", f"--unit={scope_unit}",
+            "--", "claude", "-p", *resume_flag, "--permission-mode", "bypassPermissions", prompt,
+        ],
+        cwd=REPO_DIR,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
+    out = (result.stdout or "").strip()
+    err = (result.stderr or "").strip()
+    return out if out else (err or "(출력 없음)")
+
+
+def git_sync() -> str | None:
+    """작업 트리에 변경이 있으면 커밋 + push. 변경 없으면 None 반환.
+
+    이 VM 말고 다른 곳(예: 개발 세션)에서도 같은 repo에 직접 push할 수 있어서, origin이
+    이 VM의 로컬 HEAD보다 앞서 있는 경우(non-fast-forward)가 실제로 발생한다. 그럴 때 단순
+    `git push`는 거부되고 그대로 실패만 반환했는데, 그러면 이 VM에서 만든 변경이 origin에
+    영영 반영이 안 되고(Obsidian이 못 받아봄) 조용히 로컬에만 쌓이게 된다. 그래서 push가
+    non-fast-forward로 거부되면 **지금 브랜치의 origin을 merge**하고 한 번 더 시도한다.
+    rebase가 아니고 origin/main도 아니다 -- `_reconcile()` 의 사고 기록을 볼 것.
+
+    공개/관리 채널 에이전트의 save_memory나 run_shell도 같은 워킹트리에 커밋할 수 있으므로,
+    스레드 간에도 통하는 agent_memory.GIT_MUTEX를 함께 잡아서 여러 경로가 동시에 git을
+    만지지 않게 한다."""
+    with agent_memory.GIT_MUTEX:
+        return _git_sync_locked()
+
+
+
+
+def _verify_pushed() -> str:
+    """push가 성공 리턴코드를 줬어도 그걸로 끝내지 않고, 로컬 HEAD가 실제로 origin에
+    반영됐는지 fetch로 재확인한다.
+
+    2026-08-29 사고: 관리 채널 에이전트가 'requirements.txt에 X 추가하고 커밋했다,
+    해시 539e168'이라고 보고했는데 그 해시는 origin 어디에도 없었다. push 성공을 그대로
+    믿고 보고하면 로컬에만 쌓인 커밋이나 지어낸 해시를 사용자가 걸러낼 수 없다. 이 저장소
+    메모리에 이미 '산출물은 원격 반영까지 확인하고 보고하라'가 있었지만(20260828-190336)
+    코드가 강제하지 않아 또 어겨졌다. 그래서 보고 문자열 자체를 fetch 확인 결과로 만든다.
+
+    실제 반영 여부만 보고한다 -- 지어낼 해시가 없다."""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO_DIR,
+                          capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "fetch", "origin"], cwd=REPO_DIR, capture_output=True, text=True)
+    contains = subprocess.run(
+        ["git", "branch", "-r", "--contains", head, "origin/main"],
+        cwd=REPO_DIR, capture_output=True, text=True,
+    )
+    short = head[:7]
+    if contains.returncode == 0 and "origin/main" in contains.stdout:
+        return f"[git push 확인됨] origin/main에 {short} 반영됨. Obsidian에서 pull하면 보입니다."
+    return (f"[경고] push는 리턴코드 0이었으나 origin/main에서 {short}를 확인하지 못했다 -- "
+            f"원격 반영 실패 가능. 로컬에만 커밋됐을 수 있으니 수동 확인하라.")
+
+
+# 에이전트가 "저장소에 무언가를 남겼다"고 주장할 때 쓰는 신호어. 이게 응답에 있는데 정작
+# 이번 턴에 커밋된 변경이 없으면(git_sync가 None), 주장과 실제 저장소 상태가 어긋난 것이다.
+# 2026-08-29에 admin/public 에이전트가 "result.md 저장", "searcher 전면 개편", "history
+# 축적"을 보고했지만 원격엔 해당 커밋/파일이 없었다(4회 반복). 메모리 노트로는 못 막혀서
+# 봇 레벨에서 실제 원격 상태를 자동 대조해 사용자에게 알린다.
+_PERSISTENCE_CLAIM_HINTS = (
+    "커밋", "commit", "푸시", "push", "저장했", "저장 완료", "저장하였", "반영",
+    "구현했", "구현하였", "생성했", "생성하였", "작성했", "작성하였", "추가했", "추가하였",
+    "개편", "수정했", "수정하였", "변경했", "변경하였", "고쳤", "갱신했", "업데이트했",
+    "history.jsonl", "result.md", ".py를", ".py에", "파일에 저장",
+)
+
+
+def _claims_persistence(reply: str) -> bool:
+    low = reply.lower()
+    return any(h.lower() in low for h in _PERSISTENCE_CLAIM_HINTS)
+
+
+def _remote_status_note() -> str:
+    """현재 로컬 HEAD가 원격에 반영돼 있는지, 미커밋 변경이 남아있는지 사실만 보고한다.
+    에이전트의 주장이 아니라 저장소의 실제 상태다."""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO_DIR,
+                          capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "fetch", "origin"], cwd=REPO_DIR, capture_output=True, text=True)
+    contains = subprocess.run(["git", "branch", "-r", "--contains", head],
+                              cwd=REPO_DIR, capture_output=True, text=True)
+    dirty = subprocess.run(["git", "status", "--porcelain"], cwd=REPO_DIR,
+                           capture_output=True, text=True).stdout.strip()
+    on_remote = contains.returncode == 0 and "origin/" in contains.stdout
+    short = head[:7]
+    parts = [f"HEAD {short}"]
+    parts.append("원격 반영됨" if on_remote else "⚠️ 원격 미반영")
+    parts.append("미커밋 변경 있음" if dirty else "미커밋 변경 없음")
+    return "[저장소 상태 자동확인] " + " · ".join(parts)
+
+
+def _integrity_note(reply: str, sync_note: str | None) -> str | None:
+    """에이전트가 저장소에 뭔가 남겼다고 '주장'했는데 이번 턴 git_sync가 아무것도 커밋하지
+    않았다면(sync_note is None), 실제 원격 상태를 대조해 붙인다. git_sync가 이미 커밋/차단
+    결과를 냈으면(sync_note가 있으면) 그게 진실을 보여주므로 중복하지 않는다."""
+    if sync_note is not None:
+        return None
+    if not _claims_persistence(reply):
+        return None
+    note = _remote_status_note()
+    return (f"{note}\n(에이전트가 저장/커밋을 주장했으나 이번 턴에 커밋된 변경은 없습니다 -- "
+            f"위 상태로 실제 반영 여부를 확인하세요.)")
+
+
+def _git_sync_locked() -> str | None:
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=REPO_DIR, capture_output=True, text=True)
+    if not status.stdout.strip():
+        return None
+
+    # 강제 게이트. 에이전트가 메모리 노트를 읽었는지와 무관하게 여기서 막힌다 -- 그것이
+    # 요점이다. 2026-08-28에 에이전트는 "push 전에 임포트부터 시켜봐라"를 저장하고 2분 뒤
+    # 임포트 불가 코드를 push했다. 진단은 저장소의 마크다운에 있었을 뿐 커밋 경로 위에
+    # 없었다. 게이트를 통과 못 하면 커밋하지 않고 위반 목록을 그대로 돌려준다.
+    # 위반은 띄우기 전에 **먼저 고친다**(fix 가 있는 게이트만: G017 이스케이프 · G013 배포 경로).
+    # 고친 뒤에도 남는 것만 막는다. 사용자(2026-09-11): '띄우는 게 아니라 자동으로 고쳐줘야지'.
+    # 문은 셋이다(commit_guard): 게이트 -> 바뀐 파일의 검사 -> main CI. 실측 2026-09-11: 게이트만
+    # 보고 커밋했더니 main 이 하루 넘게 빨강인 채 자가 커밋이 35번 넘게 쌓였다 -- CI 를 아무도 안 읽었다.
+    통과, 보고 = commit_guard.검사(Path(REPO_DIR), 빠름=True)      # 답변 경로 -- 망 안 타고, 코드 변경 때만 검사
+    print(f"[git_sync] 문지기\n{보고}")
+    if not 통과:
+        # **코드를 안 바꾼 턴이면 게이트 차단을 사용자 답에 안 붙인다(D, 2026-09-25).**
+        # 실측: 사용자가 관세 회사를 물었는데(연구 턴, 원장·기억만 변경) 답 뒤에
+        # "[게이트 차단] 커밋하지 않았다" 가 붙었다. 그 게이트가 막은 것은 이 턴 탓이
+        # 아니라 저장소에 남아 있던 **잠재 위반**이다 -- 물어본 사용자가 고칠 것도,
+        # 알 이유도 없다. 로그(위 print)와 관리자가 볼 자리다. 코드(.py)를 실제로 바꾼
+        # 턴이면 그대로 붙인다 -- 그건 그 턴이 만든 것이고 봐야 한다.
+        바뀐py = commit_guard._바뀐py(Path(REPO_DIR)) or []
+        if not 바뀐py:
+            print("[git_sync] 코드 변경 없는 턴 -- 게이트 차단은 로그에만 남기고 답에 안 붙인다")
+            return None
+        # **표 전체를 답에 붙이지 않는다.** 사용자(2026-09-20): "디스코드 답변에
+        # 계속 딸려와." 무엇이 막았는지 한두 줄만 보내고 표는 위 로그에 남긴다.
+        return commit_guard.요약(보고, 통과)
+
+    # check=True 로 두면 실패가 CalledProcessError 로 튀어나와 호출자의 답변 전송까지
+    # 무너뜨린다. 게다가 이제 이 저장소에는 git 작성자가 둘이다 -- 이 봇과, 별도
+    # 프로세스(se-matrix-search)로 도는 improve_agent 다. GIT_MUTEX 는 파이썬 스레드
+    # 락이라 프로세스 경계를 못 넘으므로, add 와 commit 사이에 improve_agent 가 커밋해
+    # 인덱스를 비워버리면 여기 commit 이 "nothing to commit"(exit 1)으로 실패한다
+    # (실측 2026-08-30). 그건 정상 상황이므로 조용히 넘어가되, 그 외의 실패는 반드시
+    # 보고한다 -- "실패를 전부 무시"로 뭉뚱그리면 게이트/훅이 막은 것도 성공한 척하게 된다.
+    add = subprocess.run(["git", "add", "-A"], cwd=REPO_DIR, capture_output=True, text=True)
+    if add.returncode != 0:
+        return f"[git add 실패] {add.stderr.strip()}"
+
+    # **검사가 낳은 원장은 커밋에서 뺀다(§303 재발방지, 2026-09-25).** 봇이 답하는 중에
+    # eval/run.py·gatekeeper.py 같은 하네스를 직접 돌리면 그 검사들이 추적되는 원장에
+    # 줄을 쌓고, 바로 위 add -A 가 그것을 자동 커밋에 쓸어 담는다(실측: eval·improve·
+    # router 원장이 커밋에 담겼다). 스테이지에서만 빼므로 남의 워크트리 일은 안 지운다.
+    빠진원장 = gitsync.검사원장_스테이지에서빼기(
+        lambda a: subprocess.run(["git", *a], cwd=REPO_DIR, capture_output=True, text=True))
+    if 빠진원장:
+        print(f"[git_sync] 검사가 낳은 원장을 커밋에서 뺐다: {빠진원장}")
+
+    commit = subprocess.run(
+        ["git", "commit", "-m", "SE-agent: Discord 요청 처리 결과 자동 반영"],
+        cwd=REPO_DIR, capture_output=True, text=True,
+    )
+    if commit.returncode != 0:
+        combined = f"{commit.stdout}\n{commit.stderr}"
+        if "nothing to commit" in combined or "no changes added to commit" in combined:
+            # 다른 작성자가 먼저 커밋해 갔다. 남길 변경이 없으니 할 일이 끝난 것이다.
+            return None
+        return f"[git commit 실패] {combined.strip()[:500]}"
+    _git = lambda a: subprocess.run(["git", *a], cwd=REPO_DIR, capture_output=True, text=True)  # noqa: E731
+    push_rc, push_msg = gitsync.인증푸시(_git, repo=REPO_DIR)   # 토큰 인증 push(없으면 평범)
+    if push_rc == 0:
+        # `보고` 는 위 commit_guard.검사 가 준 문지기 보고다. 전에 여기 없는 이름(`report`)을 불러 **밀기가
+        # 성공한 경로에서만** NameError 가 터졌다 -- 사용자는 커밋·푸시가 다 된 뒤에 "[git 동기화 실패]" 를
+        # 보았다(실측 2026-09-12). 그 결은 rehearsal.미정의이름 이 패치마다 잡는다.
+        # 밀기가 성공하면 **문지기 보고를 안 붙인다** -- 그것은 답이 아니라 운영
+        # 정보이고, 답마다 따라붙으면 답보다 길어진다(공개 채널에서 이미 끈 것과
+        # 같은 이유다). 보고는 위 print 로 로그에 남는다. 남기는 한 줄은
+        # `_verify_pushed()` -- "저장했다" 는 말이 참인지 재는 장치라 끄지 않는다.
+        return _verify_pushed()
+
+    caught, why = gitsync.reconcile(_git)
+    if not caught:
+        return (f"[git push 실패] origin이 앞서 있어 따라잡으려 했으나 안 됐다: {why}\n"
+                f"{push_msg}")
+
+    retry_rc, retry_msg = gitsync.인증푸시(_git, repo=REPO_DIR)
+    if retry_rc != 0:
+        return f"[git push 실패] {why} 뒤에도 실패: {retry_msg}"
+    return f"({why} 뒤 재시도) " + _verify_pushed()
+
+
+def _회사로넘기기(prompt: str, 지어낸답: str) -> str:
+    """재지 않고 수를 지어낸 답을 버리고, 그 요청을 회사(`house/`)에 넘긴다.
+
+    **못 넘기면 버리지 않는다.** 회사가 안 돌면(이미 돌고 있다 · 쓰기 막힘 · 아무것도
+    못 읽음) 답이 통째로 사라지는 것이 더 나쁘다 -- 그때는 예전처럼 `안잼표` 를 붙여
+    내보내고 왜 못 넘겼는지 같이 적는다."""
+    _HOUSE = None
+    try:
+        from house import discord_cmd as _HOUSE
+        r = _HOUSE.설계로넘기기(prompt)
+    except Exception as e:                                   # noqa: BLE001
+        r = {"돌았나": False, "까닭": f"회사를 못 불렀다: {e}", "글": ""}
+    relay.적기(f"→ 회사로 넘김: {'떴다' if r['돌았나'] else r['까닭']}")
+    if r["돌았나"] and _HOUSE is not None:
+        return _HOUSE.넘김글(prompt, r)
+    꼬리 = f"\n\n_(회사로 넘기려 했으나 못 넘겼습니다: {r['까닭']}.)_"
+    if r.get("글"):
+        꼬리 += "\n" + r["글"]
+    return f"{지어낸답}\n\n{relay.안잼표}{꼬리}"
+
+
+def run_admin_agent(prompt: str, thread_id: str, 중계판=None) -> str:
+    """관리 채널용 -- LangGraph ReAct 에이전트(Gemini, run_shell 전권)로 답한다.
+    중계판이 있으면 이 실행기 스레드에 묶어, 도구가 돌 때마다 진행 메시지가 갱신된다."""
+    print(f"[admin-agent] thread={thread_id} prompt={prompt[:120]!r}")
+    relay.등록(중계판)
+    # 요청 맥락을 채운다. 예전에는 admin 경로만 이걸 빼먹어서 호출자 ID가 늘 "unknown"이었고
+    # (실측 2026-09-02), save_memory가 남기는 작성자도 전부 "unknown"이었다 -- 추적하려고
+    # 작성자를 남기는 설계가 admin 쪽에서만 성립하지 않았다.
+    agent_context.current_author.set(thread_id.removeprefix("admin-"))
+    # 채널 종류. run_shell이 이 값을 보고 공개 채널에서만 자식 환경의 비밀값을 지운다 --
+    # admin은 배포/탐색 스크립트가 실제로 그 키들을 필요로 하므로 그대로 둔다.
+    agent_context.current_channel.set("admin")
+    # stop 명령이 이 스레드가 띄운 run_shell 서브프로세스를 죽이고 fallback 루프를 멈출 수
+    # 있도록, 지금 실행 중인 OS 스레드를 discord thread_id에 등록해둔다.
+    register_thread(thread_id)
+    try:
+        reply = run_with_fallback_pool(ADMIN_AGENT_POOL, _admin_thread_map, thread_id, prompt, "[admin-agent]")
+        # **도구 0회 답은 한 번 되묻는다.** 실측 2026-09-11: chainlink 시세·뉴스 분석 같은
+        # 물음에 에이전트가 도구를 한 번도 안 부르고 지식으로 답했다. 규칙을 더 적지 않고
+        # 코드가 센 도구 수(relay.마지막도구)로 판정해 실측을 요구한다. 그래도 0 이면 답에
+        # 그렇다고 적는다 -- 답을 지우지는 않는다.
+        # 되묻는 조건 두 가지: (1) 도구 0회인데 실측이 필요하거나, (2) 떠넘김 문구로 끝났는데
+        # **무거운 일(논문·코드화·수집·연구·수리)** 은 하나도 안 돌았다 -- 값싼 도구 몇 개만
+        # 부르고 소개만 한 답(실측 2026-09-11: harvest --관심/eval/graph ask 뒤 "필요하면 말씀").
+        def _설계인데안쟀나():
+            # **읽은 것과 잰 것을 가른다.** textbook()/concept() 은 도구라서 '도구 0회' 를
+            # 벗어나게 해 주지만, 그것은 읽은 것이지 잰 것이 아니다. 실측 2026-09-21:
+            # 8탭 FIR MAC 데이터패스 물음에 교재 여덟 칸으로 답하면서 f_max·면적·지연을
+            # 전부 지어냈다 -- yosys 도 verilator 도 안 돌았다("에이전트가 안하고 LLM이
+            # 하는데?"). 재는 양을 요구한 물음이면 재는 도구가 돌았는지를 따로 본다.
+            return (relay.설계요구(prompt)
+                    and not relay.잰적있나(thread_id, bot_tools.이번셸()))
+
+        def _더필요():
+            도구들 = relay.마지막도구.get(thread_id)
+            무거웠나 = relay.무거운일(thread_id, bot_tools.이번셸())
+            # 셸 원장에 이번 턴 줄이 있으면 도구는 **확실히** 돌았다 -- 메시지에서 세는 쪽이
+            # 눈이 멀어도(제공자가 tool_calls 를 안 실어 보내는 꼴) 없는 잘못을 씌우지 않는다.
+            if not 도구들 and not bot_tools.이번셸() and relay.실측필요(prompt, reply):
+                return True
+            return relay.떠넘김(reply) and not 무거웠나
+        # **풀 고갈 안내는 되묻지도 벌주지도 않는다(D, 2026-09-25).** 모델이 하나도 못
+        # 돌아 "다 쉬는 중" 안내만 나간 것인데, 그 뒤에 "설계인데 안 쟀다"·"도구 0회" 로
+        # 되물으면 그 되묻기가 또 고갈된 풀을 두드리고 또 안내를 받아 벌표만 붙는다.
+        if poolpick.막힌답인가(reply):
+            print(f"[admin-agent] thread={thread_id} 풀 고갈 안내 -- 되묻기/검사표 건너뜀")
+        elif _설계인데안쟀나():
+            print(f"[admin-agent] thread={thread_id} 설계를 물었는데 잰 도구가 0회 -- 되묻기")
+            relay.적기("↺ 설계인데 잰 것이 없다 -- 실제로 돌려서 다시 답하라고 되묻는다")
+            reply = run_with_fallback_pool(ADMIN_AGENT_POOL, _admin_thread_map, thread_id,
+                                           relay.설계되묻는말, "[admin-agent]")
+            if not poolpick.막힌답인가(reply) and _설계인데안쟀나():
+                # **두 번째도 안 쟀으면 모델에게 세 번째로 부탁하지 않는다 -- 회사가 받는다.**
+                # 실측 2026-09-22: 에이전트가 `iverilog ... && vvp` · `yosys -s ...` 를
+                # 적으며 "PASS · 셀 2,474개" 로 답했는데 **그 명령은 한 줄도 안 돌았다.**
+                # 사용자의 말: "왜 회사로 답변안하지?" 지어낸 수에 경고표를 붙여 내보내는
+                # 대신 요청을 `house/` 에 넘기고, 넘어갔으면 지어낸 답은 **버린다.**
+                reply = _회사로넘기기(prompt, reply)
+        elif _더필요():
+            print(f"[admin-agent] thread={thread_id} 실행이 비었다(떠넘김/도구0) -- 되묻기")
+            relay.적기("↺ 실행이 비었다(떠넘김/도구0) -- 한 호흡에 실행하라고 한 번 되묻는다")
+            reply = run_with_fallback_pool(ADMIN_AGENT_POOL, _admin_thread_map, thread_id,
+                                           relay.되묻는말, "[admin-agent]")
+            if not poolpick.막힌답인가(reply) and _더필요():
+                reply = f"{reply}\n\n{relay.도구없음표}"
+        print(f"[admin-agent] thread={thread_id} reply={reply[:200]!r}")
+        return reply
+    except Exception as e:
+        print(f"[admin-agent] thread={thread_id} error={e}")
+        return f"(에이전트 오류) {e}"
+    finally:
+        relay.해제()
+        unregister_thread(thread_id)
+
+
+async def _자가개선지켜보기(간격초: float = None) -> None:
+    """IMPROVE_SEC(기본 6h)마다 자가개선을 한 바퀴 돌려, 동의 대기 후보가 새로 생기면 관리 채널에 묻는다.
+    사용자(2026-09-11): "24시간 모니터링하면서 계속 업데이트한다" -- 단, 붙이는 것은 사람의 동의 뒤다."""
+    간격 = float(간격초 or os.getenv("IMPROVE_SEC", "21600") or 21600)
+    await asyncio.sleep(min(간격, 600))                  # 켜지자마자 돌지 않는다 -- 배포 직후는 조용히
+    지난 = None
+    while True:
+        try:
+            from improve import run as _im
+            r = await asyncio.to_thread(_im.자가개선, None, 3, 120, False, False, True)
+            d = r.get("동의대기")
+            ch = client.get_channel(ADMIN_CHANNEL_ID)
+            if d and d.get("id") != 지난 and ch is not None:
+                지난 = d["id"]
+                await ch.send(("🛠 **자가개선 후보가 동의를 기다린다** [" + d["id"] + "]\n" + _im.보고(r))[:1900])
+            print(f"[improve] 틈 {r.get('틈수')} · 동의대기 {(d or {}).get('id')} · {r.get('남은것', '')[:80]}")
+        except Exception as e:                        # noqa: BLE001
+            print(f"[improve] 못 돌림: {e!r}")
+        await asyncio.sleep(간격)
+
+
+async def _ci지켜보기(간격초: float = None) -> None:
+    """main CI 의 마지막 결론을 주기적으로 읽어, **상태가 바뀔 때만** 관리 채널에 알린다.
+    실측 2026-09-11: main 이 60회 연속 초록 0 인데 아무도 몰랐다 -- 뒤늦은 신호는 읽어야 신호다."""
+    간격 = float(간격초 or os.getenv("CI_WATCH_SEC", "7200") or 7200)
+    while True:
+        try:
+            r = await asyncio.to_thread(ci_watch.보기, None)
+            if await asyncio.to_thread(ci_watch.바뀌었나, r, None):
+                ch = client.get_channel(ADMIN_CHANNEL_ID)
+                if ch is not None:
+                    await ch.send(("🔴 " if r["상태"] == "빨강" else "🟢 " if r["상태"] == "초록" else "⚪ ")
+                                  + r["말"][:1800]
+                                  + ("\n자가 수정 커밋은 초록이 될 때까지 막힌다(commit_guard)." if r["상태"] == "빨강" else ""))
+                print(f"[ci_watch] {r['상태']} {r['sha']} 실패 {r['실패']}")
+        except Exception as e:                        # noqa: BLE001 -- 감시가 죽으면 신호가 사라진다
+            print(f"[ci_watch] 못 읽음: {e!r}")
+        await asyncio.sleep(간격)
+
+
+@client.event
+async def on_ready():
+    print(
+        f"[SE-agent] 로그인됨: {client.user} "
+        f"(관리 채널 {ADMIN_CHANNEL_ID}, 공개 채널 "
+        f"{', '.join(str(c) for c in main_public.PUBLIC_CHANNEL_IDS)} 감시 중"
+        + (f", 길드 {GUILD_ID} 만" if GUILD_ID else ", 길드 안 가림") + ")"
+    )
+    # **켜질 때 확인한다.** 길드 id 를 잘못 넣으면 봇이 조용히 아무 말도 안 듣는데,
+    # 그것은 '봇이 죽었다' 와 화면에서 똑같이 보인다. 여기서 한 번 말해 주면 갈린다.
+    # **켜질 때 채널을 하나씩 확인한다.** 채널 id 를 잘못 넣으면 봇이 그 채널에서
+    # 조용히 아무 말도 안 듣는데, 그것이 '봇이 죽었다' 와 화면에서 똑같이 보인다.
+    # 길드 id 를 채널 자리에 넣는 것이 특히 흔하다 -- 둘 다 같은 꼴의 수라 눈으로는
+    # 안 갈리고, 넣어도 아무 오류가 안 난다(그냥 영영 안 맞을 뿐이다).
+    if channels.이상한값:
+        print(f"[SE-agent] **경고: 수로 못 읽은 설정** {channels.이상한값} -- "
+              "기본값으로 돌아갔다. 딴 채널을 보고 있을 수 있다")
+    if main_public.PUBLIC_CHANNEL_이상:
+        print(f"[SE-agent] **경고: 채널 id 로 못 읽은 값** "
+              f"{main_public.PUBLIC_CHANNEL_이상} -- 그 채널은 안 듣는다")
+    for cid in [ADMIN_CHANNEL_ID] + list(main_public.PUBLIC_CHANNEL_IDS):
+        ch = client.get_channel(cid) or client.get_partial_messageable(cid)
+        if getattr(ch, "guild", None) is None and not hasattr(ch, "name"):
+            # **DM 은 캐시에 없으면 get_channel 이 None 을 준다.** 그것을 '못 찾았다'
+            # 로 찍으면 멀쩡한 관리 채널에 거짓 경고가 난다(실측 2026-09-09).
+            # DM 은 길드가 없으므로 길드 필터와도 무관하다 -- 아무 말 안 한다.
+            continue
+        if ch:
+            # **보이는 것과 듣는 것은 다르다.** 길드 필터가 켜져 있는데 그 채널이
+            # 다른 길드에 있으면, 봇은 채널을 멀쩡히 보면서 그 채널의 메시지를
+            # 전부 버린다 -- `on_message` 가 길드부터 보기 때문이다. 그러면 화면에는
+            # '감시 중' 이라고 찍히는데 실제로는 아무 말도 안 듣는다.
+            # 실측 2026-09-09: 8월에 만든 채널들과 9월에 만든 길드를 같이 켰다.
+            그길드 = getattr(getattr(ch, "guild", None), "id", None)
+            if GUILD_ID and 그길드 != GUILD_ID:
+                print(f"[SE-agent] **경고: 채널 {cid} 는 길드 {그길드} 에 있는데 "
+                      f"DISCORD_GUILD_ID 는 {GUILD_ID} 다.** 채널은 보이지만 "
+                      "**그 채널 메시지는 전부 버려진다.** 길드를 그 값으로 바꾸거나 "
+                      "DISCORD_GUILD_ID 를 비워라")
+            continue
+        왜 = ("**이건 길드 id 다** -- 채널 자리에 넣으면 영영 안 맞는다"
+              if cid == GUILD_ID else
+              "봇이 그 채널을 못 본다 (id 가 틀렸거나 권한이 없다)")
+        print(f"[SE-agent] **경고: 채널 {cid} 를 못 찾았다.** {왜}. "
+              "이대로면 그 채널에서 아무 말도 안 듣는다")
+
+    for wid in sorted(WALP_ONLY_IDS):
+        g = client.get_guild(wid)
+        c = None if g else client.get_channel(wid)
+        if g or c:
+            print(f"[SE-agent] WALP 전용: {'길드' if g else '채널'} {wid} ('{g or c}') -- 여기 말은 전부 WALP 가 받는다")
+        else:
+            print(f"[SE-agent] **경고: WALP 전용 {wid} 가 안 보인다.** 봇이 그 서버에 초대되지 않았거나 id 가 틀렸다. "
+                  f"들어가 있는 길드: {[x.id for x in client.guilds]}")
+    if GUILD_ID and not client.get_guild(GUILD_ID):
+        # **이건 봇이 통째로 안 듣는 자리다.** 채널 하나가 아니라 전부.
+        채널인가 = client.get_channel(GUILD_ID)
+        print(f"[SE-agent] ***** 봇이 아무 말도 안 듣는다 *****")
+        print(f"[SE-agent] DISCORD_GUILD_ID={GUILD_ID} 인데 그런 길드가 없다.")
+        if 채널인가:
+            print(f"[SE-agent] **이건 길드가 아니라 채널이다** "
+                  f"('{채널인가}') -- 길드 자리에 채널 id 를 넣으면 "
+                  "message.guild.id 와 절대 안 맞아 모든 메시지를 버린다.")
+        print(f"[SE-agent] 들어가 있는 길드: {[g.id for g in client.guilds]}")
+        print("[SE-agent] **DISCORD_GUILD_ID 를 비워라** -- 비면 검사를 아예 안 "
+              "하므로 예전과 똑같이 돈다. 틀린 값을 넣느니 비우는 것이 낫다.")
+
+    asyncio.create_task(_ci지켜보기())      # CI 빨강을 봇이 읽는다(2h)
+    asyncio.create_task(_자가개선지켜보기())  # 6h 마다 스스로 개선 후보를 찾아 동의를 구한다
+    asyncio.create_task(_맡긴배경다시())      # 재시작 전에 지켜보던 배경 일을 다시 맡는다
+
+_다시맡은것: set = set()
+
+
+async def _맡긴배경다시() -> None:
+    """재시작 전에 지켜보던 배경 일에 감시를 다시 붙인다. 그 사이 끝났으면 첫 확인에서 알린다.
+
+    on_ready 는 재연결마다 불릴 수 있으므로 아이디로 두 번 붙는 것을 막는다 -- 두 번 붙으면 두 번 알린다."""
+    try:
+        맡긴 = await asyncio.to_thread(relay.배경맡긴것)
+    except Exception as e:                                         # noqa: BLE001
+        print(f"[배경] 맡긴 것을 못 읽었다: {type(e).__name__}: {e}")
+        return
+    for x in 맡긴:
+        아이디 = x["아이디"]
+        if 아이디 in _다시맡은것:
+            continue
+        ch = client.get_channel(x["채널id"])
+        if ch is None:
+            try:
+                ch = await client.fetch_channel(x["채널id"])
+            except Exception:                                      # noqa: BLE001 -- 채널이 사라졌으면 놓는다
+                await asyncio.to_thread(relay.배경놓음, 아이디)
+                continue
+        _다시맡은것.add(아이디)
+        print(f"[배경] 다시 맡는다: {x['배경'].get('무엇')} (채널 {x['채널id']})")
+        asyncio.create_task(_배경지켜보기(ch, x["배경"], 간격=5.0))
+
+
+ATTACHMENTS_DIR = os.path.join(REPO_DIR, "inbox", "discord_attachments")
+
+
+async def _save_attachments(message: discord.Message) -> list[str]:
+    """스크린샷 등 첨부파일을 로컬에 저장하고 절대경로 목록을 반환한다.
+
+    **여기 적혀 있던 말이 틀렸었다** (실측 2026-09-15). 전에는 "에이전트는 텍스트
+    프롬프트만 받으므로 이미지 자체를 전달할 방법이 없다" 고 적고 `cat` 으로 열어 보라고
+    했다. PNG 를 cat 하면 깨진 바이트가 나오고, 봇은 "아직 문제 이미지가 보이지 않습니다"
+    라고 답했다. 그런데 **그 방법은 이미 있었다** -- `orchestrator/gemini_http.py` 의
+    `invoke(prompt, images=)` 가 inline_data 로 그림을 싣고 `law/ocr.py` 가 그 길로
+    시험지를 읽고 있었다. 봇만 안 쓰고 있었다. 지금은 `read_image` 도구가 그 길이다."""
+    if not message.attachments:
+        return []
+    os.makedirs(ATTACHMENTS_DIR, exist_ok=True)
+    saved_paths = []
+    for att in message.attachments:
+        safe_name = f"{message.id}_{att.filename}"
+        path = os.path.join(ATTACHMENTS_DIR, safe_name)
+        await att.save(path)
+        saved_paths.append(path)
+    return saved_paths
+
+
+# **그림이면 `cat` 하라고 시키지 않는다.** 그 한 줄이 이 버그의 전부였다.
+_그림꼴 = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".heic", ".pdf")
+
+
+def _첨부안내(paths: list) -> str:
+    """첨부 경로를 프롬프트에 적는 말. **두 채널이 같은 말을 쓴다.**"""
+    if not paths:
+        return ""
+    줄 = ["", "", "첨부 파일:"]
+    그림있나 = False
+    pdf있나 = False
+    for p in paths:
+        if p.lower().endswith(".pdf"):
+            pdf있나 = True
+            줄.append(f"- {p}  <- PDF 다. **`read_pdf` 로 읽어라** "
+                     f"(read_image 로 통째로 보내면 토큰이 터진다)")
+        elif p.lower().endswith(_그림꼴):
+            그림있나 = True
+            줄.append(f"- {p}  <- 그림이다. **`read_image` 로 읽어라** (cat 하지 마라)")
+        else:
+            줄.append(f"- {p}  <- 글 파일이다. read_file 또는 run_shell 로 읽어라")
+    if pdf있나:
+        # 실측 2026-09-19: 2000 쪽짜리 PDF 에 대해 봇이 "토큰이 너무 커서 못 읽는다,
+        # 텍스트를 복사해 붙여넣거나 스크린샷으로 나눠 올려 달라" 고 답했다.
+        # 사람에게 일을 떠넘긴 것이다 -- 도구가 있는데 안 썼다.
+        줄 += ["", "**PDF 가 커서 못 읽는다고 답하지 마라.** 쪽수와 상관없이 읽는 길이 있다:",
+              "  1. `read_pdf(path)`                          먼저 훑는다 -- 쪽수와 목차가 나온다",
+              "  2. `read_pdf(path, 물음='찾을 말')`           그 말이 나오는 쪽만 본다",
+              "  3. `read_pdf(path, 쪽='120-150')`             그 범위만 글로 읽는다",
+              "  4. `read_pdf(path, 모드='그림', 쪽='137')`    도면이나 스캔본이면 그 쪽만 그림으로",
+              "**사용자에게 텍스트를 복사해 달라거나 스크린샷으로 나눠 올려 달라고 하지 마라.**"]
+    if 그림있나:
+        줄 += ["", "**보이지 않는다고 답하지 마라.** 읽을 도구가 있다 -- 먼저 read_image 를 부르고,",
+              "정말 못 읽으면 그 도구가 돌려준 실패 문구를 그대로 사용자에게 보여 줘라."]
+    return "\n".join(줄)
+
+
+async def _handle_admin_message(message: discord.Message) -> None:
+    """관리 채널: Gemini+LangGraph 에이전트(run_shell 전권) + git sync."""
+    if ADMIN_ALLOWED_USER_IDS and message.author.id not in ADMIN_ALLOWED_USER_IDS:
+        return
+    content = message.content.strip()
+    thread_id = f"admin-{message.author.id}"
+
+    if content.lower() == "stop":
+        await _handle_stop(message, thread_id)
+        return
+
+    attachment_paths = await _save_attachments(message)
+    if not content and not attachment_paths:
+        return
+    if attachment_paths:
+        content = (content or "(첨부파일 확인)") + _첨부안내(attachment_paths)
+
+    loop = asyncio.get_running_loop()
+    _active_tasks[thread_id] = asyncio.current_task()
+    _active_prompts[thread_id] = content
+    reply = None
+    sync_note = None
+    integrity_note = None
+    # 도구 중계: 켜져 있으면 진행 메시지 하나를 먼저 띄우고, 도구가 돌 때마다 그것을 갱신한다.
+    # 답이 오기 전까지 봇이 멈춘 듯 보이는 것을 없앤다 -- 보이는 것은 검사 가능한 것뿐이다.
+    중계판 = None
+    if relay.상태["켜짐"]:
+        try:
+            진행메시지 = await message.channel.send("⏳ 진행 중 · 도구 0개")
+            중계판 = relay.중계판(lambda t: 진행메시지.edit(content=t), loop)
+        except Exception as e:                                    # noqa: BLE001
+            print(f"[relay] 진행 메시지를 못 띄웠다: {type(e).__name__}: {e}")
+    try:
+        async with message.channel.typing():
+            reply = await loop.run_in_executor(None, run_admin_agent, content, thread_id, 중계판)
+            if 중계판 is not None:
+                await 중계판.마무리()
+            # 사용자가 채팅으로 준 값을 에이전트가 set_key 로 적었으면 그 메시지는 채널에 남으면
+            # 안 된다 (실측 2026-09-11: 앱 비밀번호가 채널에 그대로 남았다).
+            if "set_key" in (relay.마지막도구.get(thread_id) or []):
+                try:
+                    await message.delete()
+                except Exception as e:                              # noqa: BLE001
+                    print(f"[keys] 값을 적은 메시지를 못 지움: {type(e).__name__}: {e}")
+            # 답변은 이미 완성됐다. 이후 단계(git 동기화 등)에서 무슨 일이 나든 답변 전달을
+            # 막아서는 안 된다 -- 예전엔 이 블록 전체가 하나의 try 였고 except가
+            # CancelledError만 잡아서, git_sync가 던진 예외가 그대로 전파되며 전송 루프에
+            # 도달하지 못했다(실측 2026-08-30: 답변이 로그에는 찍혔는데 Discord로는 안 감).
+            # 그래서 여기서부터는 실패를 예외가 아니라 '보고할 메모'로 바꾼다.
+            # **그리고 답을 먼저 보낸다** -- `_답보내기` 의 까닭을 볼 것. 동기화가 취소되면
+            # 그 뒤는 못 돌지만, 답은 이미 사용자에게 가 있다.
+            await _답보내기(message, reply, thread_id)
+            sync_note, integrity_note = await _sync_and_note(loop, message, reply)
+    except asyncio.CancelledError:
+        # "stop"으로 취소됨 -- _handle_stop이 이미 상태 메시지를 보냈으므로 조용히 반환한다.
+        return
+    finally:
+        _active_tasks.pop(thread_id, None)
+        _active_prompts.pop(thread_id, None)
+
+    if sync_note:
+        await message.channel.send(sync_note)
+    if integrity_note:
+        await message.channel.send(integrity_note)
+
+
+async def _답보내기(message: discord.Message, reply: str | None,
+                 thread_id: str = "") -> None:
+    r"""**답이 생기는 즉시 보낸다.** 뒤에 오는 단계가 답을 먹지 못하게.
+
+    실측 2026-08-30, 그리고 **또 2026-09-13.** 답이 로그에는 찍혔는데 Discord 로는 안 갔다.
+    첫 번째는 git_sync 의 **예외**가 전송 루프까지 못 가게 막은 것이었고, 그때 예외는
+    `_sync_and_note` 안에서 메모로 바꿔 막았다. 그런데 같은 함수가 `CancelledError` 만은
+    **일부러 다시 올린다**(stop 명령의 정상 경로라서). 그래서 부름쪽의
+
+        sync_note, integrity_note = await _sync_and_note(...)   # git fetch/commit/push
+        except asyncio.CancelledError:
+            return                                              # <- 답을 안 보내고 끝
+
+    이 남아 있었다. git 단계는 망을 타고 잠금을 기다리므로 수 초가 걸리고, 그 사이에 같은
+    방에 물음이 하나 더 오거나 stop 이 걸리면 **이미 다 만들어진 답이 통째로 사라진다.**
+
+    고칠 자리는 예외 처리가 아니라 **순서**다. 답은 산출물이고 git 동기화는 뒷정리다.
+    뒷정리가 산출물을 먹을 수 있는 순서면, 막아도 다음 경로로 또 샌다."""
+    if not reply:
+        # 에이전트 호출 자체가 실패한 경우에도 무응답을 겪지 않게 한다.
+        await message.channel.send("(응답 생성 실패 -- 로그를 확인하세요)")
+        return
+    # **답 안의 LaTeX 를 보이게 바꾼다** (사용자 2026-09-15: "풀이는 latex 를 제공해줘야해").
+    # 안 하면 디스코드에 `$\frac{-3\pm\sqrt{17}}{2}$` 라는 날글자가 그대로 나간다 --
+    # 풀이를 LaTeX 로 쓰게 시켜 놓고 그것을 사람이 못 읽으면 시킨 보람이 없다.
+    # **여기 한 자리에 둔다.** 두 채널이 다 이 함수를 지나므로 한쪽만 고쳐질 일이 없다.
+    그림들 = []
+    try:
+        import latex_formatter
+        다듬 = latex_formatter.답다듬기(reply)
+        if 다듬["셈"]["덩어리"] or 다듬["셈"]["줄안"]:
+            reply, 그림들 = 다듬["글"], 다듬["그림들"]
+            print(f"[수식] 덩어리 {다듬['셈']['덩어리']} · 줄안 {다듬['셈']['줄안']} "
+                  f"· 그림 {다듬['셈']['그림']} · 못그림 {다듬['셈']['못그림']}")
+    except Exception as e:                                        # noqa: BLE001
+        # **답을 먹지 않는다.** 이 함수의 머리말이 적고 있는 그 사고와 같은 부류다 --
+        # 뒷단장이 산출물을 삼키면 사용자는 아무것도 못 받는다.
+        print(f"[수식] 다듬기 실패, 원문 그대로 보낸다: {type(e).__name__}: {e}")
+    for 시작 in range(0, len(reply), 1900):
+        await message.channel.send(reply[시작:시작 + 1900] or "(빈 응답)")
+    # **이 실행이 그린 회로도도 같이 올린다.** 도구가 경로를 돌려줘도 사용자는 그것을
+    # 못 연다 -- 화면에 올라가야 본 것이다. 에이전트가 답에 경로를 적는 데 기대지
+    # 않는다(적는 것을 잊으면 그림이 통째로 사라진다). `bot_tools` 가 실행마다 적어 둔
+    # 자리를 여기서 읽는다 -- `마지막셸` 과 같은 자리·같은 때에 옮겨진다.
+    if thread_id:
+        그림들 = list(그림들) + (bot_tools.마지막그림.pop(thread_id, None) or [])
+    for 쪽 in 그림들:
+        try:
+            await message.channel.send(file=discord.File(쪽, filename=os.path.basename(쪽)))
+        except Exception as e:                                    # noqa: BLE001
+            print(f"[그림] 못 보냄 {쪽}: {type(e).__name__}: {e}")
+
+
+async def _sync_and_note(loop, message: discord.Message, reply: str) -> "tuple[str | None, str | None]":
+    """답변 생성 이후 단계(git 동기화 + 무결성 확인)를 돌리고 그 결과를 메모로 돌려준다.
+
+    여기서 예외를 밖으로 내보내지 않는 것이 핵심이다. 답변은 이미 만들어져 있는데 부수
+    단계의 실패로 사용자가 답을 못 받는 일은 없어야 한다. 다만 '조용히 삼키는' 것도 안 된다
+    -- 실패하면 그 사유를 메모에 담아 답변과 함께 보낸다. 그래야 "답은 왔는데 저장은 안 됨"을
+    사용자가 알 수 있다.
+
+    CancelledError는 stop 명령의 정상 경로이므로 그대로 올려보낸다.
+    """
+    sync_note = None
+    integrity_note = None
+    try:
+        # 게스트 보안 정책: 차단 목록(agent_context.BLOCKED_USER_IDS, 환경변수
+        # GUEST_BLOCKED_USER_IDS로 지정)에 든 사용자는 git sync를 타지 않는다.
+        if agent_context.is_blocked(message.author.id):
+            sync_note = "[보안 제한] 게스트 사용자의 Git 접근이 제한되었습니다."
+        else:
+            async with GIT_LOCK:
+                sync_note = await loop.run_in_executor(None, git_sync)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        sync_note = f"[git 동기화 실패] {type(e).__name__}: {e} -- 답변은 정상이며 저장만 실패했다."
+        print(f"[git_sync] 예외: {type(e).__name__}: {e}")
+
+    try:
+        async with GIT_LOCK:
+            integrity_note = await loop.run_in_executor(None, _integrity_note, reply, sync_note)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        integrity_note = f"[무결성 확인 실패] {type(e).__name__}: {e}"
+        print(f"[_integrity_note] 예외: {type(e).__name__}: {e}")
+
+    return sync_note, integrity_note
+
+
+async def _handle_public_message(message: discord.Message) -> None:
+    """공개 채널: 화이트리스트 없음 -- main_public.py의 에이전트(run_shell 포함)로 답한다.
+    유저별로 대화 맥락이 이어진다."""
+    content = message.content.strip()
+    # **첨부를 여기서 받지 않고 있었다** (실측 2026-09-15). 위 두 줄이 예전에는
+    # `if not content: return` 이라, 사진만 올린 메시지는 **저장조차 안 하고 버려졌다.**
+    # 사용자에게는 봇이 사진을 못 보는 것으로 보였다. 관리 채널과 같은 길을 쓴다.
+    attachment_paths = await _save_attachments(message)
+    if not content and not attachment_paths:
+        return
+    if attachment_paths:
+        content = (content or "(첨부파일 확인)") + _첨부안내(attachment_paths)
+
+    # **방마다 다른 대화.** 한때 사람 id 하나였는데, 같은 사람이 두 채널에서 물으면
+    # **같은 LangGraph 스레드 위에서 두 실행이 겹쳤다**(실측 2026-09-09: 10:17:30 에
+    # 채널 2 요청이 dig 를 두 번 부른 뒤, 8초 만에 채널 1 요청이 같은 스레드로 들어와
+    # 채널 2 쪽이 잘렸다). 겹치면 도구 호출과 그 답이 어긋나서
+    # `Found AIMessages with tool_calls that do not have a corresponding ToolMessage`
+    # 가 난다 -- 10:05:19 에 실제로 났다.
+    thread_id = f"{message.channel.id}:{message.author.id}"
+    author_id = str(message.author.id)
+    # **어느 채널에서 온 것인지 남긴다.** 공개 채널이 여럿이 된 뒤로 로그만 보고는
+    # 어느 채널의 요청인지 알 수가 없었다 -- 둘의 성능이 다를 때 견줄 것이 없다.
+    # thread_id 가 채널이 아니라 **사람**이라는 것도 여기 같이 보인다: 같은 사람이
+    # 두 채널에서 물으면 맥락이 이어지고, 다른 사람이 물으면 빈 맥락에서 시작한다.
+    print(f"[public] ch={message.channel.id} author={message.author.id} "
+          f"thread={thread_id}")
+
+    if content.lower() == "stop":
+        await _handle_stop(message, thread_id)
+        return
+
+    loop = asyncio.get_running_loop()
+    # **stop 이 줄 서 있는 것도 끊을 수 있게** 자물쇠보다 먼저 등록한다.
+    _active_tasks[thread_id] = asyncio.current_task()
+    _active_prompts[thread_id] = content
+    reply = None
+    sync_note = None
+    integrity_note = None
+    try:
+        # **한 대화에서 한 번에 하나만.** 같은 방에 두 물음이 잇달아 오면 예전에는
+        # 둘이 같은 스레드 위에서 동시에 돌았다(실측 10:13:32/10:13:35 -- 3초 사이에
+        # 두 번 들어와 답이 두 번 나갔다). 도구 호출과 답이 어긋나면 그 대화가
+        # 통째로 깨진다. 줄을 세운다 -- 늦어질 뿐 안 깨진다.
+        async with _thread_locks.setdefault(thread_id, asyncio.Lock()):
+            async with message.channel.typing():
+                reply = await loop.run_in_executor(
+                    None, main_public.run_public_agent, content, thread_id, author_id)
+            부른것 = bot_tools.마지막셸.get(thread_id) or []
+            어긋남 = _말과_한것이_맞나(reply, 부른것)
+            if 어긋남:
+                print(f"[public] ch={message.channel.id} **어긋남** "
+                      f"셸 {len(부른것)}회 -- {어긋남[:80]}")
+                reply = f"{reply}\n\n{어긋남}"
+            # **답을 먼저 보낸다.** admin 경로와 같은 까닭이고, 같은 사고가 한 번 더 났다
+            # (실측 2026-09-13: 로그에 reply 가 다 찍혔는데 채널에는 아무것도 안 왔다).
+            await _답보내기(message, reply, thread_id)
+            sync_note, integrity_note = await _sync_and_note(loop, message, reply)
+    except asyncio.CancelledError:
+        return
+    finally:
+        _active_tasks.pop(thread_id, None)
+        _active_prompts.pop(thread_id, None)
+
+    # **공개 채널에는 sync_note 를 안 보낸다.** 그것은 답이 아니라 운영 정보다 -- 관문 사슬
+    # (Commit = BasePass ∧ ToolInvoked ∧ ...)·커밋 해시·"Obsidian에서 pull하면 보입니다".
+    # 실측 2026-09-13: `1+1 문제 풀어줘` 와 `누가 이겨?` 에 그 블록이 답보다 길게 따라붙었다.
+    # 공개 채널에서 묻는 사람은 저장소를 안 본다. 버리지는 않는다 -- 로그에는 남긴다.
+    if sync_note:
+        print(f"[public] ch={message.channel.id} sync_note={sync_note[:400]!r}")
+    # **integrity_note 는 보낸다.** 그것은 보고가 아니라 **경고**다 -- 에이전트가 "저장했다"
+    # 고 말했는데 원격에 그 커밋이 없을 때만 뜬다(2026-08-29 사고, 4회 반복). 이것까지 끄면
+    # 거짓 보고가 조용해진다. 시끄러운 것과 틀린 것을 가려서 끈다.
+    if integrity_note:
+        await message.channel.send(integrity_note)
+
+
+# ---------------------------------------------------------------- 2000자 벽
+# 사용자(2026-09-22): "2000자 제한 때문에 스펙이 전부 안들어가 이건 어떻게 해결해야할까?"
+#
+# 벽은 **양쪽**에 있다. 들어오는 쪽은 첨부 파일로 넘긴다(`inbox.py`). 나가는 쪽이
+# 여기다 -- 전에는 `reply[:2000]` 이었다. **말없이 잘랐다.** 제안서 요약이 길면
+# 뒤가 통째로 사라지는데 아무도 그것을 모른다. 이 저장소의 규율로 치면 가장 나쁜 꼴
+# 이다: 사람이 보는 것(답)과 실제(답 전체)가 다르고, 다르다는 표시가 없다.
+#
+# 그래서 **쪼개 보낸다.** 줄 경계에서 자르고(코드블록·표가 덜 깨진다), 몇 쪽 중
+# 몇 쪽인지 적는다. 너무 길면 그때는 자르되 **잘랐다고 적는다.**
+답한도 = 1900          # 2000 에서 쪽 표시 자리를 뺀다
+최대쪽 = 6             # 이보다 길면 자른다 -- 채널을 도배하지 않는다
+
+
+def 쪼개기(글: str, 한도: int = 답한도, 최대: int = 최대쪽) -> "list[str]":
+    """긴 글을 디스코드 한 통에 들어가게 쪼갠다. **줄 경계에서 자른다.**"""
+    글 = 글 or ""
+    if len(글) <= 한도:
+        return [글] if 글 else []
+    쪽들, 이번 = [], ""
+    for 줄 in 글.split("\n"):
+        while len(줄) > 한도:                    # 한 줄이 한도를 넘으면 그 줄만 자른다
+            if 이번:
+                쪽들.append(이번)
+                이번 = ""
+            쪽들.append(줄[:한도])
+            줄 = 줄[한도:]
+        if len(이번) + len(줄) + 1 > 한도:
+            쪽들.append(이번)
+            이번 = 줄
+        else:
+            이번 = (이번 + "\n" + 줄) if 이번 else 줄
+    if 이번:
+        쪽들.append(이번)
+    if len(쪽들) > 최대:
+        쪽들 = 쪽들[:최대]
+        쪽들[-1] += f"\n\n**[여기서 잘랐다 — {최대}쪽 상한]** 전체는 첨부/로그에 있다."
+    if len(쪽들) > 1:
+        쪽들 = [f"{t}\n_({i+1}/{len(쪽들)})_" for i, t in enumerate(쪽들)]
+    return 쪽들
+
+
+async def _길게답하기(message, 글: str) -> list:
+    """`reply[:2000]` 대신. 첫 통은 답글로, 나머지는 이어서 보낸다. 보낸 메시지들을 돌려준다
+    (WALP 센서가 '이 답에 달린 반응' 을 알아보려면 답 id 가 필요하다 — walp/sensors.py)."""
+    쪽들 = 쪼개기(글)
+    if not 쪽들:
+        return []
+    보낸 = [await message.reply(쪽들[0])]
+    for t in 쪽들[1:]:
+        보낸.append(await message.channel.send(t))
+    return 보낸
+
+
+@client.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+    if _walp전용(getattr(message.guild, "id", None), message.channel.id):
+        await _walp전용답(message)
+        return
+    # **길드가 정해져 있으면 그 길드만.** 다만 **DM 은 여기서 안 거른다.**
+    #
+    # 실측 2026-09-09: 관리 채널(1542081266315427912)이 서버 채널이 아니라 **DM**
+    # 이었다(`type=1, guild=None`). DM 은 `message.guild` 가 None 이라 이 검사에
+    # 절대 안 맞고, 그래서 길드를 켜는 순간 **관리 채널이 통째로 죽었다.**
+    # 길드 필터는 '남의 서버 글을 안 받겠다' 는 뜻이지 'DM 을 안 받겠다' 가 아니다.
+    #
+    # DM 을 통과시켜도 경계는 안 무너진다 -- 아래에서 채널 id 로 한 번 더 거르고,
+    # 관리 채널은 사용자 화이트리스트까지 있다.
+    if GUILD_ID and message.guild is not None and message.guild.id != GUILD_ID:
+        return
+    admin = message.channel.id == ADMIN_CHANNEL_ID
+    public = message.channel.id in main_public.PUBLIC_CHANNEL_IDS
+    if not (admin or public):
+        return
+
+    # **고정 명령이 먼저다 -- 그런데 아는 접두사(`!소설` · `!계획`)로 시작하는 것만.**
+    # 배선은 dispatch.py 한 곳에 있다 -- 새 기관의 명령은 거기 목록에 넣는다.
+    #
+    # 배포판이란 남이 같은 말을 쳤을 때 같은 일이 나는 것이다. 에이전트는 그것을 보장하지
+    # 않는다 -- 매번 다르게 알아듣고, 때로는 저장소를 고친다(실측 2026-09-10 `4cd4473`:
+    # "라노벨 상황극" 요청이 `scripts/drift.sh` 를 20줄짜리 촌극으로 덮었다).
+    #
+    # **셸을 뺏는 것이 아니다.** `dispatch.run` 은 모르는 말에 `None` 을 돌려주고,
+    # 그러면 아래로 떨어져 예전 그대로 에이전트(run_shell 전권)가 받는다. VM 을 셸로
+    # 만져야 하는 일은 하나도 안 줄어든다 -- 한 갈래가 그 앞에 생겼을 뿐이다.
+    #
+    # 쓰는 명령(시작 · 이어 · 멈춤 · 보내기)은 **관리 채널의 화이트리스트 안에서만** 듣는다.
+    # 공개 채널은 누구나 치므로 읽는 것만 -- `멈춤` 하나로 밤새 도는 런이 죽는다.
+    may_write = admin and (not ADMIN_ALLOWED_USER_IDS
+                           or message.author.id in ADMIN_ALLOWED_USER_IDS)
+    # **첨부 파일을 요청 글에 이어 붙인다.** 사용자(2026-09-22): "2000자 제한 때문에
+    # 스펙이 전부 안들어가." 디스코드 한 메시지는 2000자인데 진짜 IP 요구사항서는
+    # 그보다 길다(2026-09-21 MERA HAS 편지가 4천 자 넘었다). **첨부에는 그 벽이 없다.**
+    # 전에는 이 길(고정 명령)이 `message.content` 만 봤으므로, `!회사 설계` 에 스펙
+    # 파일을 붙여도 그 파일은 아무도 안 읽었다.
+    본문 = message.content
+    첨부말 = []
+    if message.attachments:
+        _첨 = await _save_attachments(message)
+        본문, 첨부말 = await asyncio.to_thread(inbox.붙이기, message.content, _첨)
+    # 고정 명령도 호출자를 안다 — `!walp` 사용성 원장이 세션을 사람별로 가른다(ID 는 해시로만 적는다).
+    agent_context.current_author.set(str(message.author.id))
+    reply = await asyncio.to_thread(dispatch.run, 본문, None, may_write)
+
+    # **자연어도 몇 갈래는 앞세운다.** 실측 2026-09-21: 사용자가 "SAR ADC calibration
+    # 논문" 을 물었는데 봇이 `!논문` 이 아니라 **교재 여덟 칸**으로 답했다 -- 논문을 한
+    # 편도 안 찾고 모델이 기억으로 쓴 글이었다. 표(dispatch.고르기)가 LLM **뒤에** 있어서,
+    # 에이전트가 `dispatch_command` 를 부르기로 결심해야만 닿았기 때문이다.
+    #
+    # 전부 앞세우지는 않는다 -- 표의 패턴이 넓어 평범한 물음까지 납치한다. 흰 목록
+    # (dispatch.앞세우는규칙)에 든 갈래만, 그리고 "에이전트:" 로 시작하면 건너뛴다.
+    if reply is None:
+        앞, 왜 = await asyncio.to_thread(dispatch.앞세울것, 본문)
+        if 앞:
+            print(f"[앞세움] {왜} <- {본문[:60]!r} -> {앞[:80]!r}")
+            reply = await asyncio.to_thread(dispatch.run, 앞, None, may_write)
+            if reply is not None:
+                reply = (f"_({왜} 갈래로 알아듣고 `{앞[:60]}` 을 돌렸습니다. "
+                         f"에이전트에게 직접 물으시려면 앞에 `에이전트:` 를 붙이세요.)_\n\n"
+                         + reply)
+        elif 왜 and "주제" in 왜:
+            reply = 왜
+
+    if reply is not None and 첨부말:
+        # **무엇을 몇 자 읽었는지 적는다.** 말없이 자르는 것이 2000자 벽의 병이다.
+        reply = "_첨부: " + " · ".join(첨부말) + "_\n\n" + reply
+
+    if reply is not None:
+        보낸 = await _길게답하기(message, reply)
+        if 본문.strip() == "!walp" or 본문.strip().startswith("!walp "):
+            await asyncio.to_thread(_walp_이어두기, message, 보낸, 본문)
+        # 백그라운드로 띄운 일은 끝나면 알린다 (실측: 끝났는지 알 길이 없었다).
+        for 배경 in relay.배경꺼내기():
+            asyncio.create_task(_배경지켜보기(message.channel, 배경))
+        # `!열쇠 이름=값` 은 값이 채널에 남는다 -- 지울 권한이 있으면 지운다. 못 지우면
+        # 답이 이미 "이 메시지는 지워라" 고 말했다.
+        if message.content.startswith(keys.PREFIX) and "=" in message.content:
+            try:
+                await message.delete()
+            except Exception as e:                                  # noqa: BLE001
+                print(f"[keys] 메시지 못 지움: {type(e).__name__}: {e}")
+        return
+
+    if admin:
+        await _handle_admin_message(message)
+    else:
+        await _handle_public_message(message)
+
+
+# ---------------------------------------------------------------- WALP 전용 서버
+def _walp전용(guild_id, channel_id) -> bool:
+    return (guild_id is not None and guild_id in WALP_ONLY_IDS) or channel_id in WALP_ONLY_IDS
+
+
+def _walp_run(본문: str, may_write: bool):
+    from walp import discord_cmd
+    return discord_cmd.run(본문, None, may_write)
+
+
+async def _walp전용답(message) -> None:
+    """WALP 전용 자리의 말 하나. `!walp` 를 안 붙여도 붙인 것으로 받는다. **에이전트로 떨어지는 길이 없다** --
+    WALP 가 모르는 말이면 WALP 가 모른다고 답한다(그것이 재려는 사용자 친화성이다).
+    쓰기(가르치기 · 확인)는 관리 화이트리스트(DISCORD_ALLOWED_USER_IDS)에 든 사람만 -- 화이트리스트가 비어
+    있으면 아무도 못 쓴다(누구나 들어올 수 있는 서버에서 사전을 바꾸게 두지 않는다)."""
+    글 = (message.content or "").strip()
+    if not 글:
+        return                                  # 첨부만 · 스티커만 -- WALP 는 글만 읽는다
+    본문 = 글 if (글 == "!walp" or 글.startswith("!walp ")) else "!walp " + 글
+    may_write = bool(ADMIN_ALLOWED_USER_IDS) and message.author.id in ADMIN_ALLOWED_USER_IDS
+    agent_context.current_author.set(str(message.author.id))
+    try:
+        reply = await asyncio.to_thread(_walp_run, 본문, may_write)
+    except Exception as e:                                          # noqa: BLE001
+        print(f"[walp 전용] 실패: {type(e).__name__}: {e}")
+        reply = f"WALP 가 이 말에서 멈췄다({type(e).__name__}). 에이전트로 넘기지 않는다."
+    if not reply:
+        return
+    보낸 = await _길게답하기(message, reply)
+    await asyncio.to_thread(_walp_이어두기, message, 보낸, 본문)
+
+
+# ---------------------------------------------------------------- WALP 센서: 반응 이모지 · 메시지 고침
+# 사용자(2026-09-30): "센서부터 늘려라, 반응 이모지랑 메시지 수정 받게." 전에는 on_message 하나만
+# 걸려 있어 이 둘은 디스코드가 줘도 버려졌다. **센서만이다** -- 행동은 안 바꾸고 사용성 원장에 적는다.
+# raw 이벤트를 쓴다: 봇이 캐시에 없는 옛 메시지(재시작 전 답)에 달린 반응·고침도 온다.
+# 무엇이 WALP 의 것인지는 walp/sensors.py 의 연결표가 가른다 -- 남의 대화는 안 적는다.
+def _walp_이어두기(message, 보낸, 본문) -> None:
+    try:
+        from walp import sensors
+        sensors.이어두기(message.id, [m.id for m in 보낸 if m is not None], str(message.author.id), 본문)
+    except Exception as e:                                          # noqa: BLE001
+        print(f"[walp 센서] 이어두기 실패: {type(e).__name__}: {e}")
+
+
+def _센서채널(channel_id, guild_id) -> bool:
+    if _walp전용(guild_id, channel_id):
+        return True
+    if GUILD_ID and guild_id is not None and guild_id != GUILD_ID:
+        return False
+    return channel_id == ADMIN_CHANNEL_ID or channel_id in main_public.PUBLIC_CHANNEL_IDS
+
+
+async def _walp_반응(payload, 뺐나: bool) -> None:
+    if client.user is not None and payload.user_id == client.user.id:
+        return
+    if not _센서채널(payload.channel_id, payload.guild_id):
+        return
+    try:
+        from walp import sensors
+        await asyncio.to_thread(sensors.반응, payload.message_id, str(payload.user_id), str(payload.emoji), 뺐나)
+    except Exception as e:                                          # noqa: BLE001
+        print(f"[walp 센서] 반응 실패: {type(e).__name__}: {e}")
+
+
+@client.event
+async def on_raw_reaction_add(payload):
+    await _walp_반응(payload, False)
+
+
+@client.event
+async def on_raw_reaction_remove(payload):
+    await _walp_반응(payload, True)
+
+
+@client.event
+async def on_raw_message_edit(payload):
+    data = getattr(payload, "data", None) or {}
+    글 = data.get("content")
+    작성자 = (data.get("author") or {})
+    if 글 is None or 작성자.get("bot"):
+        return                      # 글이 없는 수정(미리보기 붙기)·봇 글은 센서가 아니다
+    if not _센서채널(payload.channel_id, getattr(payload, "guild_id", None)):
+        return
+    try:
+        from walp import sensors
+        await asyncio.to_thread(sensors.고침, payload.message_id, str(작성자.get("id", "")), 글)
+    except Exception as e:                                          # noqa: BLE001
+        print(f"[walp 센서] 고침 실패: {type(e).__name__}: {e}")
+
+
+if __name__ == "__main__":
+    client.run(BOT_TOKEN)

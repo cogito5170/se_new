@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+html,body{margin:0;background:#0e141c;overflow:hidden;font-family:"NanumSquare","NanumGothic",sans-serif}
+#wrap{position:relative;width:1280px;height:720px}
+canvas{display:block}
+#ov{position:absolute;inset:0;pointer-events:none;color:#e8eef5}
+.ov-title{position:absolute;left:36px;top:28px}
+.ov-k{font-size:15px;letter-spacing:.14em;color:#ffd166;font-weight:700}
+.ov-t{font-size:30px;font-weight:800;margin-top:4px}
+.ov-eq{position:absolute;left:36px;top:108px;font-size:24px;font-family:"NanumGothicCoding",monospace;background:rgba(12,18,26,.72);border:1px solid #2c3a4c;padding:6px 12px;border-radius:6px}
+.ov-cap{position:absolute;left:36px;bottom:36px;width:640px;font-size:18px;line-height:1.5;color:#c9d6e3;background:rgba(12,18,26,.72);padding:10px 14px;border-radius:6px;border-left:3px solid #6fa8ff}
+.ov-dg{position:absolute;right:30px;bottom:30px;width:330px;height:187px}
+.ov-src{position:absolute;right:30px;top:24px;font-size:12px;color:#7c8da0}
+.ov-eq:empty{display:none}
+</style></head><body><div id="wrap"><canvas id="c" width="1280" height="720"></canvas><div id="ov"></div></div>
+<script src="__THREE__"></script>
+<script src="__ROOMENV__"></script>
+<script src="atom3d.js"></script>
+<script>
+const GEOM = __GEOM__;
+const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("c"), antialias: true, preserveDrawingBuffer: true});
+renderer.setSize(1280, 720, false); renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.85;
+const A = makeAtomScene(THREE, renderer, GEOM, document.getElementById("ov"));
+window.renderAt = t => { A.render(t); return true; };
+window.DURATION = A.duration;
+A.render(0); window.__ready = true;
+</script></body></html>

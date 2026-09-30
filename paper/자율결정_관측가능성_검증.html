@@ -1,0 +1,587 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Observability-Boundary Verification of a Bare-Metal Decision Executive</title>
+<style>
+@page { size: A4; margin: 18mm 18mm 18mm 20mm;
+  @bottom-center { content: counter(page); font: 8.5pt DejaVu Serif; color:#444; }
+  @top-right { content: "Technical Report — Sensor-Agnostic Autonomy"; font: 7.5pt DejaVu Sans; color:#888; } }
+* { box-sizing: border-box; }
+body { font-family:"DejaVu Serif",Georgia,serif; font-size:10pt; line-height:1.42; color:#111; margin:0; }
+h1.title { font-size:17pt; text-align:center; margin:0 0 6pt; font-family:"DejaVu Sans"; line-height:1.24; }
+.authors { text-align:center; font-size:10.5pt; margin:3pt 0; }
+.aff { text-align:center; font-size:8.2pt; color:#333; font-style:italic; margin-bottom:4pt; }
+.docctl { border:0.8pt solid #94a3b8; background:#f5f7fb; font-size:7.8pt; margin:8pt 6mm 10pt; padding:5pt 9pt; line-height:1.4; }
+.docctl b { font-family:"DejaVu Sans"; }
+h2 { font-size:11.5pt; font-family:"DejaVu Sans"; margin:14pt 0 4pt; padding-bottom:2pt; border-bottom:0.8pt solid #334155; }
+h3 { font-size:10pt; font-family:"DejaVu Sans"; margin:8pt 0 3pt; color:#1e3a8a; }
+h4 { font-size:9.6pt; font-family:"DejaVu Sans"; margin:6pt 0 2pt; color:#334155; font-style:italic; }
+p { margin:0 0 6pt; text-align:justify; }
+.abs { font-size:9.5pt; margin:6pt 6mm 8pt; padding:8pt 12pt; background:#f4f6fb; border-left:3px solid #2563EB; }
+.abs b { font-family:"DejaVu Sans"; }
+.keyw { font-size:9pt; margin:0 6mm 8pt; padding:0 12pt; }
+.keyw b { font-family:"DejaVu Sans"; }
+.nom { font-size:8.7pt; margin:4pt 0 8pt; }
+.nom table { width:100%; border-collapse:collapse; }
+.nom td { border:0; padding:1pt 6pt 1pt 0; vertical-align:top; }
+.nom td.s { font-family:"DejaVu Sans"; white-space:nowrap; width:14%; }
+table.d { border-collapse:collapse; width:100%; font-size:8.2pt; margin:6pt 0; break-inside:avoid; }
+table.d th, table.d td { border:1px solid #cbd5e1; padding:3px 5px; text-align:center; }
+table.d th { background:#e8edf6; font-family:"DejaVu Sans"; }
+table.d td.l, table.d th.l { text-align:left; }
+caption { caption-side:top; text-align:left; font-size:8.4pt; font-family:"DejaVu Sans"; color:#333; margin-bottom:3pt; font-style:italic; }
+.eq { text-align:center; margin:6pt 0; font-size:9.6pt; position:relative; break-inside:avoid; }
+.eq .n { position:absolute; right:2pt; color:#555; font-size:9pt; }
+.mono, code { font-family:"DejaVu Sans Mono"; font-size:8.6pt; }
+.code { font-family:"DejaVu Sans Mono"; font-size:7.9pt; line-height:1.32; background:#f8fafc; border:0.7pt solid #cbd5e1; border-left:3px solid #64748b; padding:6pt 9pt; margin:6pt 0; white-space:pre; overflow-x:hidden; break-inside:avoid; }
+.code .c { color:#6b7280; }
+.fig { background:#f8fafc; border:0.7pt solid #cbd5e1; padding:7pt 10pt; margin:7pt 0; font-family:"DejaVu Sans Mono"; font-size:8pt; line-height:1.34; white-space:pre; break-inside:avoid; }
+.figcap { font-size:8.4pt; font-family:"DejaVu Sans"; color:#333; font-style:italic; margin:2pt 0 8pt; }
+.honest { background:#fff7ed; border-left:3px solid #ea580c; padding:6pt 10pt; margin:7pt 0; font-size:9.2pt; break-inside:avoid; }
+.honest b { font-family:"DejaVu Sans"; color:#9a3412; }
+ul,ol { margin:3pt 0 6pt 20pt; padding:0; } li { margin-bottom:3pt; }
+.small { font-size:8.4pt; color:#333; }
+.tag { display:inline-block; background:#64748b; color:#fff; font-family:"DejaVu Sans"; font-size:6.6pt; padding:0 4px; border-radius:7px; }
+.refs li { margin-bottom:3pt; }
+.toc { font-size:8.8pt; column-count:2; column-gap:9mm; margin:4pt 0 6pt; }
+</style></head><body>
+
+<h1 class="title">Verifying What Sensors Can and Cannot Close: A Statistical Observability-Boundary Study of a Bare-Metal, LLM-Free Autonomous Decision Executive</h1>
+<div class="authors">Yun-gyeong (윤경)</div>
+<div class="aff">Kwangwoon University — sensor-agnostic autonomy · decision core in portable C (no ROS / Linux / GPU) · scored by an independent physics referee</div>
+
+<div class="docctl">
+<b>Document type:</b> Technical Report (independent-V&amp;V study). &nbsp;<b>Prepared by:</b> Kwangwoon University (not a NASA publication; NASA standards are cited as prior art). &nbsp;<b>Distribution:</b> unlimited.<br>
+<b>Subject terms:</b> autonomous decision executive; verification and validation; independent V&amp;V; statistical observability; observational equivalence; cross-modal consistency; fault detection, isolation, and recovery; Kalman filtering; micro-Doppler liveness; search and rescue; bare-metal flight software.<br>
+<b>Fidelity of results:</b> all quantitative results are simulation <i>verification</i> at the measured-terrain level, reported with confidence intervals over hundreds of episodes; operational <i>validation</i> is enumerated as remaining work, not claimed.
+</div>
+
+<div class="abs"><b>Abstract —</b> We treat a bare-metal, LLM-free autonomous search-and-rescue decision executive as an object of
+software Verification and Validation (V&amp;V) rather than as a novel algorithm, and we give the word <i>observability</i> a
+precise statistical meaning: two hidden scenarios are observationally equivalent under an information set when they induce
+the same law over observation sequences, so that no discriminator can separate them; a boundary is the set of scenario
+pairs an onboard sensor suite can and cannot separate. This is a hypothesis-distinguishability notion, distinct from the
+control-theoretic observability matrix, which concerns state reconstruction from a known linear model. The executive
+composes established twentieth-century autonomy structures — subsumption-style arbitration, a blackboard world state, a
+three-layer executive with hierarchical planning, Kalman belief estimation with an innovation-consistency statistic, and
+fault detection, isolation, and recovery — into an operating-system-free C superloop, scored by an independent physics
+referee that holds hidden truth and evaluates any player through observations alone. Over hundreds of episodes with
+confidence intervals we show that temporal persistence, kinematic consistency, and fault management each reject a distinct
+false-signal class, yet leave one shared indistinguishable region: a stationary, kinematically consistent, persistent false
+target. Cross-modal physical consistency closes single-channel clutter without new hardware, at a measured cost to
+single-channel real targets; but a full-signature decoy remains observationally equivalent to a real target under the
+existing channels. We then recast liveness not as a single sensor but as the minimal additional observable set needed to
+make the target and decoy laws statistically distinguishable, and argue this set is environment-dependent: neither motion nor
+thermal contrast is by itself liveness, because wind-driven vegetation and sun-warmed terrain confound them. A
+cardiopulmonary micro-Doppler phase is shown, in the modeled regime, to be a strong candidate observable that separates the
+two laws, while identifying the physically realizable airborne observable that suffices under each environment remains an
+open sensing-design problem. Every result is labeled as simulation verification at a stated fidelity level, with validation
+kept separate. Negative results are kept.</div>
+
+<div class="keyw"><b>Index Terms —</b> autonomous systems, verification and validation, independent V&amp;V, statistical
+observability, observational equivalence, sensor fusion, cross-modal consistency, fault detection isolation and recovery,
+Kalman filtering, micro-Doppler liveness, search and rescue, bare-metal software.</div>
+
+<h2>Nomenclature</h2>
+<div class="nom"><table>
+<tr><td class="s">x, P</td><td>state vector [position, velocity] and its error covariance</td>
+<td class="s">I</td><td>information set (the multi-channel observation sequence)</td></tr>
+<tr><td class="s">F, Q, H, R</td><td>CV transition, process-noise, measurement, and measurement-noise matrices</td>
+<td class="s">H<sub>T</sub>, H<sub>D</sub></td><td>hypotheses: real target vs. decoy</td></tr>
+<tr><td class="s">K, r, S</td><td>Kalman gain, innovation, innovation covariance</td>
+<td class="s">z</td><td>candidate additional physical observable (liveness variable)</td></tr>
+<tr><td class="s">d²</td><td>normalized innovation squared, d² = rᵀS⁻¹r</td>
+<td class="s">D<sub>KL</sub></td><td>Kullback–Leibler divergence between two laws</td></tr>
+<tr><td class="s">γ, N</td><td>NIS gate threshold; temporal confirmation window (steps)</td>
+<td class="s">φ, λ</td><td>RF phase and carrier wavelength (micro-Doppler)</td></tr>
+<tr><td class="s">w<sub>i</sub>, h<sub>i</sub>, c<sub>i</sub></td><td>sensor vote weight, health, evidence (fusion)</td>
+<td class="s">A<sub>r</sub>, f<sub>r</sub></td><td>respiration amplitude and rate; A<sub>h</sub>, f<sub>h</sub> for heartbeat</td></tr>
+<tr><td class="s">U(a), λ, μ, α</td><td>action utility; cost, energy, and NASA-rule weights</td>
+<td class="s">σ, n<sub>modal</sub></td><td>position uncertainty √tr P; count of distinct agreeing channels</td></tr>
+</table></div>
+
+<h2>Contents</h2>
+<div class="toc">
+1. Introduction<br>
+2. Verification and Validation Framework<br>
+3. The Reference World as Independent Referee<br>
+4. Decision Executive Architecture<br>
+5. Verification Methodology<br>
+6. Observability: Definition and Boundary<br>
+7. Cross-Modal Consistency and Observational Equivalence<br>
+8. The Minimal-Observable Problem (Environment-Dependent)<br>
+9. Traceability<br>
+10. Limitations and Negative Results<br>
+11. Concluding Remarks<br>
+Appendix A — Deployed Code Listings<br>
+Appendix B — Sensor Model Parameters<br>
+Appendix C — Learned Sensor-Selector Ablation<br>
+References
+</div>
+
+<h2>1. Introduction</h2>
+<h3>1.1 Motivation</h3>
+<p>A recurring assumption is that autonomous decision-making now requires a large language or foundation model. Historically
+this is false: NASA's Remote Agent flew an autonomous planning-scheduling-and-execution architecture with model-based fault
+protection on Deep Space One in 1999 [출처:조각]. Our premise is that software can structure observations and compose
+predefined decision primitives, and that the interesting question is not <i>which</i> algorithm is used but <i>how far</i> a
+given sensor suite and decision rule can be trusted — answered by verification, and by a precise account of what the sensors
+can and cannot distinguish.</p>
+<h3>1.2 Approach</h3>
+<p>We build a decision executive from the classical autonomy lineage, subject it to an independent physics referee, and ask
+the referee to draw an <i>observability boundary</i> in the statistical sense of Section 6.1: which pairs of hidden scenarios
+the onboard information can separate, and which pairs remain observationally equivalent at any rule setting. The boundary,
+reported with confidence intervals over hundreds of episodes, is the result. Where the boundary shows two hypotheses to be
+observationally equivalent, we treat the required extra channel as a physical variable to be determined by a
+distinguishability criterion, and we provide it.</p>
+<h3>1.3 Contributions</h3>
+<p>All contributions are methodological. <b>C1:</b> an operating-system-free C decision executive rendering the classical
+autonomy lineage as separable, heap-free layers. <b>C2:</b> an independent-V&amp;V harness with a truth-holding physics
+referee, deterministic replay, and fault injection as objective evidence. <b>C3:</b> a <i>statistical</i>
+observability-boundary method — distinguishability of hidden hypotheses under the sensor likelihood — exercised over a
+combined sweep with confidence intervals, showing three defenses share one indistinguishable region. <b>C4:</b> a
+cross-modal-consistency study that casts the full-signature decoy as an <i>observational-equivalence</i> region and
+reproduces the finding inside the ported C executive. <b>C5:</b> a minimal-observable formulation that asks not "which
+liveness sensor" but "which minimal additional observable set makes the target and decoy laws distinguishable," shows this
+set to be environment-dependent (Z<sub>min</sub>(E)), and delivers one strong candidate observable — a cardiopulmonary
+micro-Doppler phase — with governing physics and a measured separability, while framing the physically realizable airborne
+observable as an open sensing-design problem. A fidelity ladder and traceability keep every simulation number from being read
+as an operational claim.</p>
+
+<h2>2. Verification and Validation Framework</h2>
+<h3>2.1 Software V&amp;V and independent V&amp;V</h3>
+<p>NASA software engineering requirements (NPR 7150.2) separate <i>verification</i> ("built right?") from <i>validation</i>
+("the right thing for its environment?"), require both across the life cycle, and mandate bidirectional traceability
+[출처:조각]. The assurance and safety standard (NASA-STD-8739.8B) treats independent V&amp;V as technical, managerial, and
+financial independence, and evaluates off-nominal behavior on objective evidence, not developer claims [출처:조각]. The
+Systems Engineering Handbook places V&amp;V in the life cycle [출처:조각]. We keep verification and validation evidence in
+separate columns throughout.</p>
+<h3>2.2 Models and simulations as verifiable artifacts</h3>
+<p>NASA-STD-7009 requires models and simulations themselves to be verified, validated, and credibility-assessed before
+their outputs support decisions [출처:조각]. A simulation result is therefore verification evidence bounded by model
+fidelity — not operational validation. Flight practice reflects this: Mars 2020 terrain-relative navigation combined
+high-fidelity simulation with field and hardware-in-the-loop testing [출처:조각]; landing hazard-avoidance and
+precise-landing programs combined Monte-Carlo simulation, field tests, and HITL [출처:조각][출처:조각]; reference maps were
+rendered and then checked against real flight imagery [출처:조각]; the core Flight System exemplifies the
+component-plus-executive architecture we mirror [출처:조각].</p>
+<h3>2.3 The fidelity ladder</h3>
+<p>Every result is placed on the ladder of Table 1; this work sits at L2, and nothing here is presented as L3 or above.</p>
+<table class="d"><caption>Table 1. Fidelity ladder. L0–L2 are verification; L3–L5 are validation.</caption>
+<tr><th>Level</th><th class="l">Environment</th><th class="l">Meaning</th><th class="l">This work</th></tr>
+<tr><td>L0</td><td class="l">primitive</td><td class="l">policy debug</td><td class="l">host tests (synthetic obs.)</td></tr>
+<tr><td>L1</td><td class="l">procedural terrain</td><td class="l">Monte Carlo</td><td class="l">synthetic-DEM sweeps</td></tr>
+<tr><td><b>L2</b></td><td class="l"><b>measured DEM + land-cover + physical sensor models</b></td><td class="l"><b>sensor simulation</b></td><td class="l"><b>← here (held-out Jirisan)</b></td></tr>
+<tr><td>L3</td><td class="l">DEM + real imagery + validated lighting</td><td class="l">high-fidelity sim</td><td class="l">not reached</td></tr>
+<tr><td>L4</td><td class="l">real terrain + real sensors</td><td class="l">field validation</td><td class="l">not reached</td></tr>
+<tr><td>L5</td><td class="l">real platform + sensors + software</td><td class="l">system validation</td><td class="l">not reached</td></tr>
+</table>
+
+<h2>3. The Reference World as Independent Referee</h2>
+<h3>3.1 Three roles of one scene</h3>
+<p>Following NASA modeling-and-simulation practice, in which terrain, dynamics, sensors, actuators, and software are closed
+into one loop and onboard software is exercised against hidden truth [출처:조각], the reference world
+<span class="mono">sar/</span> is at once a <b>ground-truth generator</b> (hidden targets, decoys, and liveness on a
+measured DEM with land-cover), a <b>physical sensor simulator</b> (Section 3.2), and a <b>scenario generator</b>. The
+player never sees truth; it receives observations only, and a separate evaluator scores its actions against hidden state.</p>
+<div class="fig">DEM (measured) + land-cover + scene materials
+        │  ground truth: hidden targets · decoys · liveness
+physical sensor models (Planck · Koschmieder · LiDAR · GNSS · Audio · micro-Doppler)
+        │  synthetic observations   (player sees only this)
+sensor-select → fusion → estimator (Kalman) → FDIR → planner → BT → arbiter → safety filter
+        │  action → independent evaluator scores vs hidden truth   ↺</div>
+<div class="figcap">Fig. 1. Referee/player separation — the structural form of independent V&amp;V.</div>
+<h3>3.2 Physical sensor models (Level-2 reference)</h3>
+<p>Each sensor is modeled at the level of its generative physics with representative literature parameters [출처:조각]
+(Appendix B). Optical photoelectrons with shot/read/PRNU noise and Koschmieder fog attenuation
+<span class="mono">τ<sub>vis</sub>=e<sup>−(3.912/V)R</sup></span> (Eq. 1); LWIR Planck radiance over 8–14 µm with an
+atmospheric path and a smaller extinction than the visible band (Eqs. 2–3); LiDAR round-trip extinction with
+time-of-flight range (Eq. 4); a Gauss–Markov IMU (Eq. 5); GNSS position error from dilution and multipath (Eq. 6); and
+acoustic propagation through fog and canopy (Eq. 7).</p>
+<div class="eq"><span class="n">(1)</span>N<sub>e</sub> = ∫ E·QE·(λ/hc) dλ,&nbsp; N<sub>e</sub> ~ Poisson,&nbsp; τ<sub>vis</sub> = exp(−(3.912/V)·R)</div>
+<div class="eq"><span class="n">(2)</span>L<sub>λ</sub>(T) = (2hc²/λ⁵) · 1/(exp(hc/λk<sub>B</sub>T) − 1)</div>
+<div class="eq"><span class="n">(3)</span>L<sub>sensor</sub> = τ·(ε L<sub>λ</sub>(T) + (1−ε) L<sub>λ</sub>(T<sub>amb</sub>)) + (1−τ) L<sub>path</sub>,&nbsp; β<sub>LWIR</sub> = (3.912/V)(0.15 + 0.65 e<sup>−V/150</sup>)</div>
+<div class="eq"><span class="n">(4)</span>P<sub>r</sub> ∝ ρ·exp(−2βR)/R²,&nbsp; R = c·t/2,&nbsp; σ<sub>R</sub> ≈ c·t<sub>pulse</sub>/(2√SNR)</div>
+<div class="eq"><span class="n">(5)</span>a<sub>m</sub> = (1+S<sub>e</sub>)a + b + n,&nbsp; ḃ = −b/τ + w&nbsp;&nbsp;(6)&nbsp; σ<sub>pos</sub> ≈ HDOP·UERE + multipath&nbsp;&nbsp;(7)&nbsp; SPL(r) = SPL<sub>0</sub> − 20 log<sub>10</sub>r − 0.005 r</div>
+<p>The diversity is deliberate: one environmental change breaks each channel differently, so the policy selects by
+information quality rather than pinning a single sensor (Section 4.3).</p>
+
+<h2>4. Decision Executive Architecture</h2>
+<h3>4.1 Superloop and blackboard</h3>
+<p>The executive is a single static blackboard and a heap-free superloop: sensors and health → selection → health-weighted
+fusion with temporal, cross-modal, and liveness gates → estimator → FDIR/supervisor → planner → behavior tree → arbiter →
+final safety filter. No dynamic allocation, no operating system; bounded memory and analyzable timing.</p>
+<h3>4.2 Estimation: constant-velocity Kalman filter and NIS</h3>
+<p>A per-axis two-state CV filter is kept in closed form (F = [[1,1],[0,1]], Q = q·[[¼,½],[½,1]]):</p>
+<div class="eq"><span class="n">(8)</span>x̂⁻ = F x̂,&nbsp; P⁻ = F P Fᵀ + Q&nbsp;&nbsp;(9)&nbsp; r = z − H x̂⁻,&nbsp; S = H P⁻ Hᵀ + R,&nbsp; K = P⁻ Hᵀ S⁻¹,&nbsp; x̂ = x̂⁻ + K r</div>
+<div class="eq"><span class="n">(10)</span>d² = rᵀ S⁻¹ r = r<sub>x</sub>²/(P<sub>x,00</sub>+R) + r<sub>y</sub>²/(P<sub>y,00</sub>+R),&nbsp; d² &gt; 50 ⇒ re-init</div>
+<p>NIS is measured against the prediction as kinematic-consistency evidence; σ = √tr P feeds the arbiter and the covariance
+guard. Code: Listing A.1.</p>
+<h3>4.3 Sensor selection policy (rule-based primary)</h3>
+<p>The <b>primary</b> selector is a rule that chooses, per condition, the sensor maximizing a detection-minus-cost-minus-energy
+objective:</p>
+<div class="eq"><span class="n">(11)</span>U(a | s) = D(a,s) − λ·C(a) − μ·E(a),&nbsp; a* = argmax<sub>a</sub> U(a | s)</div>
+<p>with λ = 0.30, μ = 0.10, and D(a,s) the referee's own condition-wise detection probability (so the label is proactive:
+condition → sensor → future detection, produced before observation). A NASA-S4 variant uses U<sub>i</sub> = ΔP<sub>i</sub> −
+α·cost<sub>i</sub> with α = 0.35 and a 0.05 hysteresis. A learned selective-state-space (Mamba) selector is reported as an
+ablation in Appendix C, not in the main path, so that the observability results do not depend on training choices.</p>
+<h3>4.4 Evidence fusion: soft vote, temporal, cross-modal, liveness</h3>
+<p>Fusion is health-weighted: the strongest present sensor anchors, present sensors within a gate are fused to a
+confidence-weighted centroid, and measurement noise decreases in confidence:</p>
+<div class="eq"><span class="n">(12)</span>anchor = argmax<sub>i:present</sub> w<sub>i</sub> h<sub>i</sub> c<sub>i</sub>,&nbsp; conf = clamp(Σ<sub>i∈gate</sub> w<sub>i</sub> h<sub>i</sub> c<sub>i</sub>, 0, 1)</div>
+<div class="eq"><span class="n">(13)</span>(m<sub>x</sub>, m<sub>y</sub>) = (Σ w<sub>i</sub> h<sub>i</sub> c<sub>i</sub> x<sub>i</sub>, Σ w<sub>i</sub> h<sub>i</sub> c<sub>i</sub> y<sub>i</sub>) / Σ w<sub>i</sub> h<sub>i</sub> c<sub>i</sub>,&nbsp; R = 0.2 + 2.0(1 − conf)</div>
+<p>w = {RGB 1.00, THERMAL 0.70, LIDAR 0.80, SAR 0.50, AUDIO 0.35}. Three gates follow: a kinematic gate drops
+associations with d² &gt; γ; a cross-modal gate accepts by the count of distinct physical channels agreeing, with a
+conditional relaxation for obscuration-robust channels; and a liveness gate rejects candidates lacking a co-located
+vital-sign return:</p>
+<div class="eq"><span class="n">(14)</span>detected = [ n<sub>modal</sub> ≥ N<sub>req</sub> ],&nbsp; N<sub>req</sub> = 1 if (N<sub>cmpc</sub>≥2 ∧ no blocked-channel ∧ some all-weather) else N<sub>cmpc</sub></div>
+<div class="eq"><span class="n">(15)</span>confirmed = [ run(detected ∧ motion_ok) ≥ N ] ∧ [ σ ≤ σ<sub>max</sub> ]</div>
+<p>Code: Listing A.2; the shared cross-modal rule (Listing A.4) is used identically by prototype and experiments to prevent
+rule drift.</p>
+<h3>4.5 FDIR, arbitration, and the safety filter</h3>
+<p>A supervisor performs isolation/recovery over health, collision, power, actuator, and the covariance guard, with a
+priority FSM (Listing A.5). The arbiter admits precondition-satisfying actions and ranks them by
+U(a) = mission(a) − 1.0·collision_risk − 0.3·energy(a) − 0.2·σ, safety dominating utility (Eq. 16, Listing A.3). The final
+safety filter is unconditional (Listing A.6).</p>
+<div class="eq"><span class="n">(16)</span>a* = argmax<sub>a : precond(a)</sub> U(a),&nbsp; U(a) = mission(a) − 1.0·collision_risk − 0.3·energy(a) − 0.2·σ</div>
+<h3>4.6 Portability and the referee bridge</h3>
+<p>The decision core is portable C called from the referee through a foreign-function bridge that passes observations and
+liveness in and returns the chosen action out — so the referee scores the embedded code directly, and the C-port
+re-measurement of Section 7 is a measurement of the deployed rule.</p>
+
+<h2>5. Verification Methodology</h2>
+<p>Two techniques give requirements-based evidence. <b>Replay determinism:</b> a recorded stream replayed through a fresh
+executive reproduces the action sequence exactly. <b>Fault injection:</b> off-nominal conditions are injected and responses
+recorded; an uncaught fault is logged as identified risk, never coverage (Table 2).</p>
+<table class="d"><caption>Table 2. Injected faults and observed responses (off-nominal verification; fw/fault_test.c and the referee harness).</caption>
+<tr><th class="l">Injected fault</th><th class="l">Observed response</th><th>Requirement</th><th>Status</th></tr>
+<tr><td class="l">Recorded scene replay</td><td class="l">identical input yields identical action</td><td>R-FDIR-005</td><td>✓</td></tr>
+<tr><td class="l">Sensor dropout (health ↓)</td><td class="l">isolation; fusion continues; recovery on restore</td><td>R-FDIR-001</td><td>✓</td></tr>
+<tr><td class="l">Covariance explosion</td><td class="l">covariance finite; over-uncertain track not acted upon</td><td>R-FDIR-002</td><td>✓</td></tr>
+<tr><td class="l">Planner state corruption</td><td class="l">recovers to a valid phase</td><td>R-FDIR-003</td><td>✓</td></tr>
+<tr><td class="l">Actuator unavailable</td><td class="l">safe hold; event raised</td><td>R-FDIR-004</td><td>✓</td></tr>
+<tr><td class="l"><b>Stale / stuck / biased sensor</b></td><td class="l"><b>not rejected — mistaken for a real target</b></td><td>GAP-FDIR-001</td><td><b>gap</b></td></tr>
+</table>
+<p>The verification harness and tests are written and run separately from the implementation — an approximation of technical
+IV&amp;V independence.</p>
+
+<h2>6. Observability: Definition and Boundary</h2>
+<h3>6.1 A statistical definition (and what it is not)</h3>
+<p>We define observability as <i>distinguishability of hidden hypotheses under the sensor likelihood</i>. Let a hidden
+scenario s (e.g., a real target H<sub>T</sub> or a decoy H<sub>D</sub>) induce a law P(Y<sub>0:T</sub>|s) over the
+observation sequence. Two scenarios are <b>observationally equivalent</b> under an information set when</p>
+<div class="eq"><span class="n">(17)</span>P(Y<sub>0:T</sub> | s<sub>1</sub>) = P(Y<sub>0:T</sub> | s<sub>2</sub>)&nbsp; ⇒&nbsp; no discriminator exceeds chance;</div>
+<p>if the laws differ on a set of positive measure, a discriminator may exist, its maximal power bounded by the total
+variation (equivalently the KL divergence) between the two laws. An observability boundary is then the partition of scenario
+pairs into distinguishable and observationally-equivalent under a given information set.</p>
+<div class="honest"><b>What this is not.</b> This is not the control-theoretic observability of a linear system, whose
+observability matrix O = [H; HF; HF²; …; HF<sup>n−1</sup>]ᵀ tests whether the state x can be <i>reconstructed</i> from the
+outputs of a known model. Here we test whether two <i>hypotheses</i> can be <i>separated</i> under a nonlinear, stochastic
+sensor likelihood — a detection/hypothesis-testing notion, not state reconstruction. We use "observability" only in this
+statistical sense.</p>
+<p><b>Operationalization (honest).</b> We cannot evaluate P(Y|s) in closed form, so we estimate distinguishability by the
+performance a specific discriminator (the fusion rule) achieves over Monte-Carlo episodes: false-alarm and detection rates,
+with confidence intervals, are empirical lower bounds on distinguishability. If even the best rule we try leaves the
+false-alarm rate at the clutter level, that is evidence — not proof — of near-equivalence P(Y|s<sub>1</sub>) ≈
+P(Y|s<sub>2</sub>); if adding a channel collapses it, that is evidence the joint law becomes distinguishable. The
+information sets I0, I1, I2 of Section 7 are thus a sequence in which the indistinguishable region shrinks.</p>
+<h3>6.2 Three orthogonal defense axes</h3>
+<table class="d"><caption>Table 3. The three defense axes: what each rejects, what each cannot, and its cost.</caption>
+<tr><th class="l">Axis</th><th class="l">Mechanism</th><th class="l">Rejects</th><th class="l">Cannot reject</th><th class="l">Cost</th></tr>
+<tr><td class="l">Temporal (window N)</td><td class="l">same location for N steps</td><td class="l">transient clutter</td><td class="l"><b>clutter persisting ≥ N steps</b></td><td class="l">detection ↓, latency ↑</td></tr>
+<tr><td class="l">Kinematic (NIS)</td><td class="l">innovation d² vs track</td><td class="l">jumping / impossible motion</td><td class="l"><b>stationary false target</b></td><td class="l">false negatives on sharp turns</td></tr>
+<tr><td class="l">FDIR</td><td class="l">health, collision, power, actuator, covariance</td><td class="l">dropout, power, collision, actuator, blow-up</td><td class="l"><b>stale / stuck / biased sensor</b></td><td class="l">—</td></tr>
+</table>
+<h3>6.3 Combined sweep with confidence intervals</h3>
+<p>A single sweep over confirmation window (N), clutter persistence, and target motion places all three boundaries on one
+table. On the held-out Jirisan measured DEM with clutter density 0.20, each cell reports detection rate and mean
+false-alarms per episode with 95% confidence intervals over N = 100 episodes
+(<span class="mono">sar/ivv/fw_vv.py --mode grid</span>).</p>
+<table class="d"><caption>Table 4. Combined sweep, N = 100 episodes/cell. Top line: detection % (95% CI). Bottom line: false alarms/episode (95% CI). Clutter = 0.20.</caption>
+<tr><th class="l">motion · persistence</th><th>N = 1</th><th>N = 2</th><th>N = 3</th></tr>
+<tr><td class="l">static · transient</td><td>4% (1–8)<br>2.47 (2.25–2.69)</td><td><b>16% (10–22)<br>0.65 (0.50–0.80)</b></td><td>4% (1–8)<br>0.16 (0.07–0.25)</td></tr>
+<tr><td class="l">static · persistent</td><td>6% (2–11)<br>3.07 (2.83–3.31)</td><td>10% (6–15)<br><b>2.84 (2.61–3.07)</b></td><td>10% (5–15)<br><b>2.59 (2.36–2.82)</b></td></tr>
+<tr><td class="l">const-vel · transient</td><td>12% (6–17)<br>2.55 (2.33–2.77)</td><td><b>19% (12–26)<br>0.71 (0.55–0.87)</b></td><td>8% (4–13)<br>0.18 (0.09–0.27)</td></tr>
+<tr><td class="l">const-vel · persistent</td><td>8% (4–13)<br>3.02 (2.79–3.25)</td><td>8% (4–12)<br><b>2.85 (2.62–3.08)</b></td><td>12% (6–17)<br><b>2.44 (2.21–2.67)</b></td></tr>
+</table>
+<p>The confidence intervals make the boundaries, not the individual cells, the claim. <i>Across N:</i> from N = 1 to N = 2
+the transient false-alarm rate falls with non-overlapping intervals (static 2.47 [2.25–2.69] → 0.65 [0.50–0.80]; const-vel
+2.55 → 0.71), while detection stays low. <i>Across persistence:</i> once clutter persists, the false-alarm rate stays near
+2.4–3.1 at every N, intervals well above the transient N = 2 rate — the temporal defense is gone. <i>Across motion:</i>
+detection intervals are wide and overlapping, so we claim only the direction (moving targets no easier), not per-cell
+values. The persistent-clutter columns are the boundary: no confirmation window closes them.</p>
+<h3>6.4 The shared indistinguishable region</h3>
+<p>The three axes are complementary in what they close and identical in what they cannot. A stationary, kinematically
+consistent, persistent false signal passes all three, because in time, motion, and health it induces the same observations
+as a real target (Fig. 2) — an observationally-equivalent region in the sense of Eq. (17).</p>
+<div class="fig">      stationary · consistent · persistent false signal
+        ┌───────────────┼───────────────┐
+   time: persists   motion: d² low   FDIR: not a fault
+        └───────────────┼───────────────┘
+        all three defeated — same observations as a real target</div>
+<div class="figcap">Fig. 2. The shared indistinguishable region; a different channel is required.</div>
+
+<h2>7. Cross-Modal Consistency and Observational Equivalence</h2>
+<h3>7.1 Method: widen the information set, hold the sensor count</h3>
+<p>We change fusion from spatial voting to cross-modal consistency, keeping five sensors. Detection is decoupled from
+navigation: one fixed-path observation stream is recorded per scenario and replayed under each information set, applying
+only the claim rule (true replay). We evaluate on held-out Jirisan with N = 200 episodes
+(<span class="mono">sar/ivv/cmpc_vv.py</span>). Information sets: <b>I0</b> spatial (≥ one modality); <b>I1s</b> strict
+CMPC (≥ two distinct channels); <b>I1c</b> CMPC with the conditional relaxation of Eq. (14); <b>I2</b> CMPC-cond plus a
+required liveness channel. Scenarios: A single-modality clutter, B partly-observed real target, C full-signature decoy.</p>
+<h3>7.2 Results with confidence intervals</h3>
+<table class="d"><caption>Table 5. Prototype rule (Python), N = 200 episodes. FA rows: mean false alarms/episode (95% CI) [episodes with ≥1 FA]. Row B: detection % (Wilson 95% CI).</caption>
+<tr><th class="l">Scenario</th><th>I0 spatial</th><th>I1s strict</th><th>I1c cond</th><th>I2 + liveness</th></tr>
+<tr><td class="l">A clutter (FA/ep)</td><td>2.92 (2.76–3.07) [200/200]</td><td><b>0.94 (0.85–1.03) [151/200]</b></td><td>2.02 (1.90–2.15) [199/200]</td><td>0.03 (0.01–0.05) [6/200]</td></tr>
+<tr><td class="l">B real (det %)</td><td>95% (91–97)</td><td><b>16% (12–22)</b></td><td><b>52% (46–59)</b></td><td>47% (40–54)</td></tr>
+<tr><td class="l">C decoy (FA/ep)</td><td>1.71 (1.54–1.88) [200/200]</td><td>1.02 (0.98–1.06) [195/200]</td><td>1.71 (1.54–1.88) [200/200]</td><td>0.07 (0.03–0.12) [13/200]</td></tr>
+</table>
+<table class="d"><caption>Table 6. Deployed C executive (fw/evidence.c) on identical streams, N = 200. C implements the conditional CMPC only.</caption>
+<tr><th class="l">Scenario</th><th>I0 spatial</th><th>I1c cond</th><th>I2 + liveness</th></tr>
+<tr><td class="l">A clutter (FA/ep)</td><td>1.76 (1.68–1.85) [200/200]</td><td>1.07 (0.99–1.15) [172/200]</td><td><b>0.00 [0/200]</b></td></tr>
+<tr><td class="l">B real (det %)</td><td>95% (91–97)</td><td>53% (46–60)</td><td>46% (39–53)</td></tr>
+<tr><td class="l">C decoy (FA/ep)</td><td>0.92 (0.88–0.95) [183/200]</td><td>0.92 (0.88–0.95) [183/200]</td><td><b>0.00 [0/200]</b></td></tr>
+</table>
+<h3>7.3 Reading the boundary</h3>
+<ol>
+<li><b>Single-modality clutter (A) is distinguishable with five sensors.</b> Strict CMPC drops false alarms 2.92 → 0.94
+(intervals do not overlap) — no new sensor.</li>
+<li><b>At a measured cost (B).</b> A real target seen only through SAR under canopy and fog falls 95% → 16% under strict
+CMPC; the conditional relaxation recovers it to <b>52% (46–59)</b> — not the 60% a small early sample suggested, a
+correction the larger N makes visible.</li>
+<li><b>The relaxation reopens a clutter hole (A: 2.02 [1.90–2.15]).</b> Suppressing single-modality clutter and preserving
+single-modality real targets cannot be done together with modal rules alone — a trade.</li>
+<li><b>The full-signature decoy (C) is observationally equivalent under five channels.</b> CMPC does not move it (I0 1.71
+vs I1c 1.71 in the prototype; 0.92 vs 0.92 in C — overlapping intervals). Formally, there is a region where</li>
+</ol>
+<div class="eq"><span class="n">(18)</span>I = {y<sub>0:T</sub><sup>RGB</sup>, y<sub>0:T</sub><sup>LWIR</sup>, y<sub>0:T</sub><sup>LiDAR</sup>, y<sub>0:T</sub><sup>SAR</sup>, y<sub>0:T</sub><sup>Audio</sup>},&nbsp; P(I | H<sub>T</sub>) ≈ P(I | H<sub>D</sub>)</div>
+<p>so no rule on I separates target from decoy. Adding a liveness channel z makes the joint law distinguishable, and the
+false-alarm rate collapses:</p>
+<div class="eq"><span class="n">(19)</span>P(I, z | H<sub>T</sub>) ≠ P(I, z | H<sub>D</sub>)&nbsp; ⇒&nbsp; C decoy: 1.71 → 0.07 [13/200] (prototype), 0.92 → 0.00 [0/200] (C)</div>
+<div class="honest"><b>On the zeros.</b> The C executive gives 0/200 episodes with a decoy false alarm; by the rule of three the
+95% upper bound is ≈ 3/200 ≈ 1.5% of episodes, not "perfect." The prototype does <i>not</i> reach zero — it leaves 0.07
+FA/ep [13/200], because it scores every cluster statelessly while the single-hypothesis C tracker claims distant clutter
+less often. Rule equivalence (host test [14]), directional reproduction, and this structural magnitude difference are three
+separate statements, kept apart.</p>
+
+<h2>8. The Minimal-Observable Problem: What Must Be Added, and Under Which Environment</h2>
+<h3>8.1 The question, reframed</h3>
+<p>Section 7 shows the required channel is a <i>discriminating</i> one, not a redundant locator. Following NASA autonomy-V&amp;V
+practice, which treats sensing, uncertainty, and action as one system rather than seeking a single perfect sensor
+[출처:조각], we do not ask "which liveness sensor to add." We ask: <b>what is the minimal additional observable set that
+makes the target and decoy laws statistically distinguishable, and does that set depend on the environment?</b> The purpose
+of the experiment is not to propose a specific liveness sensor, but to determine whether an additional physical observable is
+<i>required</i> for discrimination — and, if so, which.</p>
+<h3>8.2 Motion is not liveness; thermal is not liveness</h3>
+<p>At a hundred metres, a camera sees motion that may be a walking person or wind-driven vegetation; a thermal channel sees a
+contrast that may be a person or a sun-warmed rock, a vehicle, a roof, or an animal. Hence motion ≠ liveness and thermal ≠
+liveness; stating this as a limitation is a strength. The observed velocity is a sum, so a fixed motion threshold fails once
+wind lifts the vegetation term:</p>
+<div class="eq"><span class="n">(20)</span>v<sub>obs</sub> = v<sub>target</sub> + v<sub>platform</sub> + v<sub>wind</sub> + ε&nbsp; ⇒&nbsp; the discriminating power of any z is conditioned on the environment: P(z | H, E), not P(z | H)</div>
+<p>with E = {wind, illumination, altitude, view angle, vegetation density, terrain}. NASA UAS detect-and-avoid V&amp;V likewise
+models sensor uncertainty and sweeps scenario parameters rather than assuming an ideal sensor [출처:조각].</p>
+<h3>8.3 An observable stack and incremental distinguishability</h3>
+<p>We build observables in layers — <b>L0</b> single-frame (appearance, thermal contrast, shape); <b>L1</b> temporal
+(displacement, velocity, motion persistence, motion periodicity, articulated motion, motion–background independence,
+multi-view consistency) — and add them one at a time, measuring how much each raises the separation of the two laws. With D
+a divergence (KL / Jensen–Shannon) or a likelihood-ratio separation, the minimal sufficient set is the smallest layer at
+which D first exceeds the required separation, and it is a function of the environment:</p>
+<div class="eq"><span class="n">(21)</span>D<sub>k</sub>(E) = D( P(I<sub>0</sub>, z<sub>1:k</sub> | H<sub>T</sub>, E) ‖ P(I<sub>0</sub>, z<sub>1:k</sub> | H<sub>D</sub>, E) ),&nbsp; Z<sub>min</sub>(E) = argmin<sub>Z</sub> |Z| s.t. D<sub>|Z|</sub>(E) ≥ D<sub>req</sub></div>
+<p>The full experimental design is therefore a product, not a single "human vs. tree" contrast:</p>
+<div class="fig">Scenario = Target × Environment × Sensor × Geometry
+  Target      : stationary / walking / partly-occluded human
+  Decoy       : vegetation · thermal rock · animal · moving object · static heat source
+  Environment : no / weak / strong wind · sunlight · shadow · thermal-background variation
+  Geometry    : altitude · view angle · target size · occlusion · range</div>
+<div class="figcap">Fig. 3. The observability experiment as a product design; P(I|H<sub>T</sub>,E) and P(I|H<sub>D</sub>,E) are measured
+per cell. This report populates a slice (Sections 6–7 and 8.5); the full grid is the defined program.</div>
+<h3>8.4 Candidate observables and the confounders</h3>
+<p>No single-frame or purely-kinematic observable is liveness: decoys share motion, thermal contrast, and persistence with a
+real target (Table 8), which is exactly why the three defenses of Section 6 leave a shared region. Structure begins to
+separate the laws only in the temporal and cross-sensor layers, and the strongest single candidate we identify — a
+non-contact, obscurant-penetrating, localizable observable — is an RF micro-Doppler cardiopulmonary phase (FINDER-class
+[출처:조각]).</p>
+<table class="d"><caption>Table 7. Candidate observables against the airborne constraints (non-contact, penetrating obscurants, localizable).</caption>
+<tr><th class="l">observable</th><th>non-contact</th><th>penetrates</th><th>localizable</th><th class="l">note</th></tr>
+<tr><td class="l">appearance / shape (L0)</td><td>yes</td><td>no</td><td>yes</td><td class="l">collapses under occlusion, night, small footprint</td></tr>
+<tr><td class="l">thermal contrast (L0)</td><td>yes</td><td>partial</td><td>yes</td><td class="l">shared by rock/vehicle/animal — not liveness</td></tr>
+<tr><td class="l">motion structure (L1)</td><td>yes</td><td>partial</td><td>yes</td><td class="l">periodicity/articulation/background-independence; confounded by wind</td></tr>
+<tr><td class="l">exhaled CO₂</td><td>yes</td><td>weak</td><td><b>none</b></td><td class="l">diffuses; no bearing → cannot localize</td></tr>
+<tr><td class="l">contact/seismic vibration</td><td><b>no</b></td><td>n/a</td><td>medium</td><td class="l">needs coupling → unfit for an airborne UAV</td></tr>
+<tr><td class="l"><b>RF micro-Doppler (cardiopulmonary)</b></td><td>yes</td><td><b>strong</b></td><td><b>strong</b></td><td class="l">★ non-contact, penetrates rubble/canopy, localizable</td></tr>
+</table>
+<table class="d"><caption>Table 8. Confounder matrix — which observable each source excites. ✓ present · ~ conditional · ? structure-dependent · × absent. Motion, thermal, and persistence are shared, so none alone is liveness.</caption>
+<tr><th class="l">observable</th><th>human</th><th>vegetation</th><th>thermal rock</th><th>animal</th><th>static heat</th></tr>
+<tr><td class="l">motion</td><td>✓</td><td>✓ (wind)</td><td>×</td><td>✓</td><td>×</td></tr>
+<tr><td class="l">thermal contrast</td><td>✓</td><td>~</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td class="l">persistence</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td class="l">motion periodicity</td><td>?</td><td>? (wind)</td><td>×</td><td>?</td><td>×</td></tr>
+<tr><td class="l">articulated motion</td><td>?</td><td>×/?</td><td>×</td><td>?</td><td>×</td></tr>
+<tr><td class="l">micro-Doppler (vital)</td><td>✓</td><td>×</td><td>×</td><td><b>✓</b></td><td>×</td></tr>
+</table>
+<div class="honest"><b>Liveness is not identity.</b> The micro-Doppler vital-sign observable separates <i>live</i> from <i>non-live</i>,
+but an animal is also live (last column) — so it distinguishes a person from vegetation, rock, and heat sources, <b>not</b> a
+person from an animal. Human identification needs a further observable (e.g., gait or articulation structure), which we do
+not claim to resolve.</div>
+<h3>8.5 A measured instance: imaging cannot separate the decoy; adding micro-Doppler can</h3>
+<p>The imaging information set already gives one point of the incremental curve: for the full-signature decoy the best rule
+on I does not move the false-alarm rate (Tables 5–6, row C: I0 ≈ I1c), so D<sub>0</sub> ≈ 0 — near-equivalent laws. Adding the
+micro-Doppler observable raises the separation sharply. Its physics — chest-wall micro-motion read as a radar phase, with the
+band energy of the unwrapped phase in the cardiopulmonary band as the statistic:</p>
+<div class="eq"><span class="n">(22)</span>x(t) = A<sub>r</sub> sin(2πf<sub>r</sub>t) + A<sub>h</sub> sin(2πf<sub>h</sub>t)&nbsp;&nbsp;(23)&nbsp; φ(t) = (4π/λ) x(t)</div>
+<div class="eq"><span class="n">(24)</span>s(t) = e<sup>jφ(t)</sup> + n(t), n ~ CN(0,σ²)&nbsp;&nbsp;(25)&nbsp; z = ∫<sub>f<sub>lo</sub></sub><sup>f<sub>hi</sub></sup> |ℱ{∠s}|² df / ∫ |ℱ{∠s}|² df</div>
+<p>with literature parameters [출처:조각] f<sub>r</sub> ≈ 0.2–0.34 Hz, f<sub>h</sub> ≈ 1.0–1.7 Hz, band [0.15, 2] Hz. A
+non-live decoy excites the five imaging channels but has no cardiopulmonary periodicity, so z stays at the noise floor.
+Modeling z in <span class="mono">sar/liveness_ref.py</span> over N = 400 episodes gives, at a representative post-integration
+SNR of 6 dB, <b>AUC = 0.977</b> and symmetric <b>D<sub>KL</sub> ≈ 16.5 nats</b> (band statistic 0.583 ± 0.175 under
+H<sub>T</sub> vs 0.193 ± 0.054 under H<sub>D</sub>); two independent estimators agree (Table 9).</p>
+<table class="d"><caption>Table 9. Separability of the micro-Doppler observable vs. SNR (N = 400/point) — one environment axis. The separation is the signal, not an easy operating point: near chance at low SNR.</caption>
+<tr><th>post-integration SNR</th><th>0 dB</th><th>3 dB</th><th>6 dB</th><th>12 dB</th></tr>
+<tr><td class="l">ROC-AUC</td><td>0.53</td><td>0.69</td><td><b>0.98</b></td><td>1.00</td></tr>
+<tr><td class="l">D<sub>KL</sub> (sym, nats)</td><td>0.00</td><td>0.28</td><td><b>16.5</b></td><td>147</td></tr>
+</table>
+<div class="honest"><b>Honest operating point.</b> At 0 dB the AUC is 0.53 — chance — so the high separability is not an artifact of an
+easy setting; it emerges only once the phase SNR reaches a few dB. This SNR sweep is one axis of E; the full Z<sub>min</sub>(E)
+over wind, illumination, altitude, view angle, and vegetation is not yet measured.</div>
+<h3>8.6 Result and open problem</h3>
+<p>The result is not a liveness sensor but a boundary and a program. An additional observable is <i>required</i>; a
+cardiopulmonary micro-Doppler phase is a strong candidate in the modeled regime; but <b>there may be no universally
+sufficient liveness parameter</b> — the minimal sufficient set is environment-dependent, z*(E) = f(E), a set
+Z<sub>min</sub>(E). Identifying the physically realizable observable that provides sufficient discrimination from an airborne
+platform, across wind, illumination, altitude, view angle, and vegetation, remains an open sensing-design problem. The
+liveness channel here is a modeled physical variable, not a field-validated sensor, and it resolves live-versus-non-live, not
+human-versus-animal.</p>
+
+<h2>9. Traceability</h2>
+<table class="d"><caption>Table 10. Cross-modal, FDIR, and liveness traceability. ✓ = obtained (verification, L2); ○ = remaining (field validation).</caption>
+<tr><th class="l">ID</th><th class="l">Requirement / item</th><th>Status</th><th class="l">Evidence</th></tr>
+<tr><td class="l">R-CMPC-001</td><td class="l">persistent observation not accepted on a single channel</td><td>✓</td><td class="l">Table 5; test_cmpc</td></tr>
+<tr><td class="l">R-CMPC-002</td><td class="l">obscuration-robust-only real target not discarded (conditional)</td><td>✓</td><td class="l">Table 5 row B</td></tr>
+<tr><td class="l">R-CMPC-003</td><td class="l">full-signature false target not accepted without liveness</td><td>✓</td><td class="l">Tables 5–6 row C</td></tr>
+<tr><td class="l">R-LIVE-001</td><td class="l">a candidate observable separates live H<sub>T</sub> from non-live H<sub>D</sub> (modeled regime)</td><td>✓</td><td class="l">Table 9; sar/liveness_ref.py</td></tr>
+<tr><td class="l">R-LIVE-002</td><td class="l">minimal sufficient observable set Z<sub>min</sub>(E) across environments</td><td>○</td><td class="l">§8.3, §8.6 (open program)</td></tr>
+<tr><td class="l">FW-CMPC-001</td><td class="l">flight/embedded port (C), rule preserved</td><td>✓</td><td class="l">fw/evidence.c; host_test.c [14]</td></tr>
+<tr><td class="l">R-FDIR-001…005</td><td class="l">isolation / guard / recovery / safe-hold / determinism</td><td>✓</td><td class="l">Table 2; fw/fault_test.c</td></tr>
+<tr><td class="l"><b>GAP-FDIR-001</b></td><td class="l">stale / stuck / biased sensor not rejected</td><td><b>risk</b></td><td class="l">Table 2; §6.4</td></tr>
+<tr><td class="l">V-FIELD-*</td><td class="l">target / high-fidelity / field validation; z₅ realizability &amp; minimality</td><td>○</td><td class="l">— (companion plan; §8.5)</td></tr>
+</table>
+
+<h2>10. Limitations and Negative Results</h2>
+<ul>
+<li><b>Simulation only.</b> Every number is L2 verification; sensor, decoy, and liveness models are representative physics,
+not validated against real sensors.</li>
+<li><b>The gap is real.</b> The stationary-consistent-persistent region is unresolved by time, motion, or fault management;
+liveness is required and is modeled, not field-validated.</li>
+<li><b>The false-alarm floor was once an artifact.</b> A clutter-free early configuration reported zero false alarms — a
+property of the scene, not the policy; adding clutter exposed the temporal limit of Table 4.</li>
+<li><b>The conditional relaxation is a trade, not a fix,</b> and the larger sample corrected its recovered detection from an
+early 60% to 52% (46–59).</li>
+<li><b>Zeros are bounded, not perfect.</b> A 0/200 cell has a rule-of-three 95% upper bound near 1.5% of episodes; the
+prototype liveness column is not zero (0.07 [13/200]).</li>
+<li><b>The learned selector is an ablation,</b> moved to Appendix C so the observability results do not rest on training
+choices; its earlier feedback feature caused an RGB-lock-in covariate shift, corrected by a condition-only, proactive label.</li>
+<li><b>Single hypothesis.</b> Detection is capped and multi-target scenes under-served — a measured design choice that also
+explains the lower C false-alarm magnitudes.</li>
+<li><b>Motion and thermal are not liveness.</b> Wind-driven vegetation and sun-warmed terrain confound them; the required
+observable is environment-conditioned, P(z|H,E), and no single universal liveness parameter is claimed.</li>
+<li><b>Only a slice of the design was run.</b> The Target × Environment × Sensor × Geometry grid (Fig. 3) is measured only in
+part; the environment-dependent minimal set Z<sub>min</sub>(E) and the physical realizability of any airborne liveness
+observable are open (§8.6), and the micro-Doppler channel resolves live-vs-non-live, not human-vs-animal.</li>
+</ul>
+
+<h2>11. Concluding Remarks</h2>
+<p>Giving "observability" a statistical meaning turns an engineering story into a testable one: temporal persistence,
+kinematic consistency, and fault management each separate a distinct false-signal class, but leave one
+observationally-equivalent region; cross-modal consistency separates single-channel clutter without new hardware, at a
+measured cost; and a full-signature decoy stays observationally equivalent under the five imaging channels until a
+discriminating observable is added. We do not stop at "add a liveness sensor": we pose the minimal-observable problem, show
+that motion and thermal are not liveness and that the sufficient observable set is environment-dependent (Z<sub>min</sub>(E)),
+and offer one strong candidate — a cardiopulmonary micro-Doppler phase — with governing physics and a measured separability
+that honestly collapses at low SNR and that resolves live-vs-non-live rather than identity. Which physically realizable
+airborne observable suffices under each environment is left as an explicit open sensing-design problem. Every result is
+simulation verification at a stated fidelity level, with confidence intervals and with validation kept separate and
+explicitly not yet done.</p>
+
+<h2>Appendix A — Deployed Code Listings</h2>
+<p class="small">Excerpts from the deployed C decision core and the shared cross-modal rule; comments abbreviated, logic verbatim.</p>
+<h4>Listing A.1 — CV Kalman update and NIS (fw/estimator.c)</h4>
+<div class="code">float fw_kf_update(KalmanCV *kf, float zx, float zy, float r){
+    if(!kf->init){ axis_init(...); kf->init=true; return 0.0f; }
+    float rx=zx-kf->xp, ry=zy-kf->yp;                 <span class="c">/* NIS vs prediction */</span>
+    float d2 = rx*rx/(kf->Px[0][0]+r) + ry*ry/(kf->Py[0][0]+r); kf->nis=d2;
+    if(d2 > KF_REINIT_D2){ axis_init(...); return d2; }  <span class="c">/* lost/new target */</span>
+    axis_update(&kf->xp,&kf->xv,kf->Px,zx,r); axis_update(&kf->yp,&kf->yv,kf->Py,zy,r);
+    return d2; }</div>
+<h4>Listing A.2 — Health-weighted fusion: CMPC, liveness, temporal, guard (fw/evidence.c)</h4>
+<div class="code">float conf = clampf(num,0,1); bool detected = (conf >= th);   <span class="c">/* CMPC off: soft vote */</span>
+float d2 = fw_kf_update(&bb->kf, xw/wsum, yw/wsum, 0.2f+2.0f*(1.0f-conf));
+if(bb->cfg.nis_gate>0 && d2>bb->cfg.nis_gate) motion_ok=false;   <span class="c">/* kinematic gate */</span>
+if(bb->cfg.cmpc_min>0){ int n_modal=0; for(i=0;i&lt;FW_N_SENSOR;i++) n_modal+=in_gate[i];
+    int required=bb->cfg.cmpc_min;
+    if(cmpc_min&gt;=2 &amp;&amp; !any_blocked &amp;&amp; any_allw) required=1;   <span class="c">/* conditional relax */</span>
+    detected = (n_modal &gt;= required); }
+if(bb->cfg.require_live &amp;&amp; !(bb->live.present &amp;&amp; dist2(live,m)&lt;=FW_GATE2)) detected=false;
+if(detected &amp;&amp; motion_ok) bb->belief.confirm_run++; else bb->belief.confirm_run=0;
+bb->belief.confirmed = (bb->belief.confirm_run&gt;=need) &amp;&amp; (bb->belief.sigma&lt;=FW_SIGMA_MAX);</div>
+<h4>Listing A.3 — Arbiter utility (fw/arbiter.c) &nbsp;·&nbsp; A.4 — cross-modal rule (policies.py)</h4>
+<div class="code">float fw_utility(bb,a){ return mission(a) - 1.0f*collision - 0.3f*energy(a) - 0.2f*sigma; }
+def cmpc_confirm(obs,cmpc_min=2,require_live=False,gate=2.5,conditional=True):
+    for cl in clusters:
+        mods=set(per); required=cmpc_min
+        if conditional and cmpc_min&gt;=2 and mods.isdisjoint(BLOCKED) and mods&amp;ALLWEATHER: required=1
+        if len(mods)&lt;required: continue
+        if require_live and not any(near(live,cl)): continue        <span class="c"># liveness gate</span>
+        out.append((wx,wy,min(1.0,len(mods)/3.0)))</div>
+<h4>Listing A.5 — FDIR FSM (fw/safety.c) &nbsp;·&nbsp; A.6 — safety filter</h4>
+<div class="code">if(collision&gt;=HARD||batt&lt;EMERG) safety=EMERGENCY; else if(batt&lt;RETURN) safety=RETURN;
+else if(!imu_valid||!gps_valid||dead&gt;=2) safety=DEGRADED; else safety=NORMAL;
+Action fw_safety_filter(bb,proposed){ if(!actuator_ok) return NONE; if(collision&gt;=HARD) return AVOID;
+    if(batt&lt;EMERG) return EMERGENCY; if(batt&lt;RETURN) return RETURN; if(!imu_valid) return RELOCALIZE;
+    if((proposed==APPROACH||proposed==INSPECT)&amp;&amp;collision&gt;=0.5f) return SEARCH; return proposed; }</div>
+<h4>Listing A.7 — Liveness variable z₅ (sar/liveness_ref.py)</h4>
+<div class="code">def microdoppler_baseband(t, x, fc_hz, snr_db, rng):
+    lam = C_LIGHT/fc_hz; phi = (4*pi/lam)*x                <span class="c"># φ=(4π/λ)x</span>
+    return exp(1j*phi) + CN(0, 10**(-snr_db/10))
+def band_energy_stat(s, fs, f_lo=0.15, f_hi=2.0):
+    phi = unwrap(angle(s)); P = |rfft(phi-mean)|**2
+    return P[f_lo:f_hi].sum() / P.sum()                    <span class="c"># z = cardiopulmonary band ratio</span></div>
+
+<h2>Appendix B — Sensor Model Parameters</h2>
+<table class="d"><caption>Table B.1. Representative parameters of the Level-2 sensor reference models [출처:조각]. Not field-validated.</caption>
+<tr><th class="l">Sensor</th><th class="l">Reference class</th><th class="l">Governing relation</th><th class="l">Key parameters</th></tr>
+<tr><td class="l">RGB</td><td class="l">ISETCam</td><td class="l">Nₑ=∫E·QE·λ/hc; τ<sub>vis</sub>=e<sup>−(3.912/V)R</sup></td><td class="l">full-well 10000 e⁻, read 2 e⁻, PRNU 0.01</td></tr>
+<tr><td class="l">Thermal LWIR</td><td class="l">DIRSIG+MODTRAN</td><td class="l">Planck Eq.(2); L<sub>sensor</sub> Eq.(3)</td><td class="l">8–14 µm, NETD 0.05 K, ε 0.95</td></tr>
+<tr><td class="l">LiDAR</td><td class="l">DIRSIG waveform</td><td class="l">P<sub>r</sub>∝ρe<sup>−2βR</sup>/R²; R=ct/2</td><td class="l">pulse 5 ns, tx 10⁹ photons, det-eff 0.4</td></tr>
+<tr><td class="l">IMU</td><td class="l">IEEE Allan variance</td><td class="l">a<sub>m</sub>=(1+S)a+b+n; ḃ=−b/τ+w</td><td class="l">ARW 0.02, bias-instab 0.01, τ 100 s</td></tr>
+<tr><td class="l">GNSS</td><td class="l">ESA receiver</td><td class="l">σ≈HDOP·UERE+multipath</td><td class="l">UERE 3 m; multipath 8/20 m urban/canyon</td></tr>
+<tr><td class="l">Audio</td><td class="l">image-source RIR</td><td class="l">SPL(r)=SPL₀−20log₁₀r−0.005r</td><td class="l">c 343 m/s, 4 mics, 0.3 m spacing</td></tr>
+<tr><td class="l"><b>Liveness (z₅)</b></td><td class="l">micro-Doppler (FINDER-class)</td><td class="l">φ=(4π/λ)x; Eqs.(21–24)</td><td class="l">f<sub>r</sub> 0.2–0.34 Hz, f<sub>h</sub> 1.0–1.7 Hz, fc 3 GHz</td></tr>
+</table>
+
+<h2>Appendix C — Learned Sensor-Selector Ablation</h2>
+<p class="small">A selective-state-space (Mamba) selector reads the observation context ([visibility, IMU-ok, GNSS-uncertain])
+and chooses the sensor to trust. It is an <i>ablation</i>, not the reported system: the observability results of Sections 6–8
+use the rule-based selector of Eq. (11) so they do not depend on training set, hyperparameters, model size, or leakage. The
+one reportable negative result: an earlier feature that fed the previous choice back induced a self-reinforcing covariate
+shift (an RGB→RGB lock-in); it was removed and the training label made proactive and condition-based (condition → sensor →
+future detection). A full learned-vs-rule comparison — generalization, inference cost, and baselines — is deferred; nothing
+in Sections 6–8 depends on it.</p>
+
+<h2>References</h2>
+<ol class="refs small">
+<li>NASA, "NPR 7150.2, NASA Software Engineering Requirements" (verification/validation, model V&amp;V, bidirectional traceability). <span class="tag">[출처:조각]</span></li>
+<li>NASA, "NASA-STD-8739.8B, Software Assurance and Software Safety Standard" (independent V&amp;V; off-nominal/fault evidence). <span class="tag">[출처:조각]</span></li>
+<li>NASA, "NASA/SP-2016-6105, Systems Engineering Handbook" (V&amp;V in the life cycle). <span class="tag">[출처:조각]</span></li>
+<li>NASA, "NASA-STD-7009, Standard for Models and Simulations" (model/sim verification, validation, credibility). <span class="tag">[출처:조각]</span></li>
+<li>NASA Goddard, "core Flight System (cFS/cFE)" (component + executive flight-software architecture). <span class="tag">[출처:조각]</span></li>
+<li>NASA, "Remote Agent autonomous executive, Deep Space One," 1999. <span class="tag">[출처:조각]</span></li>
+<li>NASA, autonomy planning/scheduling/execution with FDIR (autoNGC / DSM), TechPort. <span class="tag">[출처:조각]</span></li>
+<li>NASA, "Terrain Relative Navigation, Mars 2020." <span class="tag">[출처:조각]</span></li>
+<li>NASA JPL, "ALHAT — Autonomous Landing and Hazard Avoidance Technology." <span class="tag">[출처:조각]</span></li>
+<li>NASA, "SPLICE — Safe and Precise Landing Integrated Capabilities Evolution." <span class="tag">[출처:조각]</span></li>
+<li>NASA, "Building Maps for Terrain Relative Navigation Using Blender," NTRS, 2021. <span class="tag">[출처:조각]</span></li>
+<li>NASA JPL, "FINDER — microwave detection of breathing and heartbeat for disaster victims." <span class="tag">[출처:조각]</span></li>
+<li>R. A. Brooks, "A robust layered control system for a mobile robot," <i>IEEE J. Robot. Autom.</i>, 1986. <span class="tag">[출처:조각]</span></li>
+<li>E. Gat, "On three-layer architectures," in <i>Artificial Intelligence and Mobile Robots</i>, 1998. <span class="tag">[출처:조각]</span></li>
+<li>M. Colledanchise and P. Ögren, <i>Behavior Trees in Robotics and AI: An Introduction</i>, 2018. <span class="tag">[출처:조각]</span></li>
+<li>R. E. Kalman, "A new approach to linear filtering and prediction problems," <i>J. Basic Eng.</i>, 1960. <span class="tag">[출처:조각]</span></li>
+<li>L. P. Kaelbling, M. L. Littman, and A. R. Cassandra, "Planning and acting in partially observable stochastic domains," <i>Artif. Intell.</i>, 1998. <span class="tag">[출처:조각]</span></li>
+</ol>
+
+</body></html>

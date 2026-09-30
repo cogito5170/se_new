@@ -1,0 +1,5 @@
+{
+    "iters": 8000,
+    "noise_scale": 0.03,
+    "use_perturbation": true
+}

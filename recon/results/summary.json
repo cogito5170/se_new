@@ -1,0 +1,1578 @@
+{
+ "date": "2026-09-29",
+ "note": "가상 시험장 시뮬레이션 출력 (실측 아님). 재현: python3 -m recon.make 시뮬 전부 · 분석",
+ "scenarios": {
+  "T01": {
+   "title": "TEST-01 평지 주행",
+   "what": "평평한 운동장, 벽 2개",
+   "how": "정상 탐사: J 최대 후보로 이동, 커버리지 92% 또는 후보 소진 시 귀환",
+   "kpi": {
+    "t": 150.0,
+    "coverage": 0.8696,
+    "aoi_cov": null,
+    "rmse_m": 0.0431,
+    "edge_rmse_m": 0.1788,
+    "ate_m": 0.038,
+    "info_kbit": 383.5,
+    "energy_Wh": 1.93,
+    "dist_m": 39.6,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 1,
+    "RETURN": 2
+   },
+   "events": [
+    {
+     "t": 133.8,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "T02": {
+   "title": "TEST-02 요철 지형",
+   "what": "±12 cm 요철과 바위 10개",
+   "how": "지형 위험(기울기·계단)을 비용에 넣어 우회, 불확실한 셀은 재방문",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.793,
+    "aoi_cov": null,
+    "rmse_m": 0.0455,
+    "edge_rmse_m": 0.0704,
+    "ate_m": 0.022,
+    "info_kbit": 355.8,
+    "energy_Wh": 2.24,
+    "dist_m": 45.5,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 6,
+    "AVOID": 3,
+    "RETURN": 2
+   },
+   "events": [
+    {
+     "t": 142.7,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 145.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 165.7,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "T03": {
+   "title": "TEST-03 장애물 회피",
+   "what": "바위 7개 + 담 2개 사이 슬라럼",
+   "how": "전방 통로 위험 >0.6 → AVOID(후진 0.4 m+벌점+재계획), >0.92 → SAFE_STOP",
+   "kpi": {
+    "t": 150.0,
+    "coverage": 0.7766,
+    "aoi_cov": null,
+    "rmse_m": 0.0416,
+    "edge_rmse_m": 0.087,
+    "ate_m": 0.024,
+    "info_kbit": 352.9,
+    "energy_Wh": 1.79,
+    "dist_m": 46.7,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 1
+   },
+   "events": []
+  },
+  "T04": {
+   "title": "TEST-04 무른 지반",
+   "what": "모래(슬립 0.25, 요 효율 0.6)",
+   "how": "엔코더↔LIO 속도 차로 슬립 추정 → Q 팽창·감속, 슬립 >0.45 이면 회피",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.8189,
+    "aoi_cov": null,
+    "rmse_m": 0.0425,
+    "edge_rmse_m": 0.0781,
+    "ate_m": 0.052,
+    "info_kbit": 370.6,
+    "energy_Wh": 2.15,
+    "dist_m": 47.5,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 3
+   },
+   "events": [
+    {
+     "t": 159.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 162.8,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 165.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "T05": {
+   "title": "TEST-05 바퀴 슬립 지도 왜곡 비교",
+   "what": "진흙(슬립 0.35) — 필터 4종이 같은 원시데이터로 지도를 만든다",
+   "how": "F1 엔코더 · F2 +자이로 · F3 EKF+LIO · F4 제안(편향 상태+슬립 적응 Q+게이트)의 자세·지도 오차 비교",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.8091,
+    "aoi_cov": null,
+    "rmse_m": 0.042,
+    "edge_rmse_m": 0.3192,
+    "ate_m": 0.077,
+    "info_kbit": 371.8,
+    "energy_Wh": 2.01,
+    "dist_m": 44.2,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 3
+   },
+   "events": [
+    {
+     "t": 86.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 95.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 122.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "T06": {
+   "title": "TEST-06 미지 환경 탐사",
+   "what": "벽·언덕·도랑이 섞인 미지 구역",
+   "how": "정보이득−에너지−시간−위험 J 로 프런티어 선택, 도랑은 음장애로 회피",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.8233,
+    "aoi_cov": null,
+    "rmse_m": 0.0642,
+    "edge_rmse_m": 0.1004,
+    "ate_m": 0.026,
+    "info_kbit": 382.3,
+    "energy_Wh": 2.86,
+    "dist_m": 73.4,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 2,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 135.1,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 137.6,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "T07": {
+   "title": "TEST-07 반복 관측",
+   "what": "낮은 담 뒤 가려진 구역",
+   "how": "관심구역(담 뒤 x 10-16 m)은 σ ≤ 2 cm 요구 — 한 번 본 뒤에도 남은 불확실도를 REVISIT·OBSERVE(정지 스캔 4 s)로 줄인다",
+   "kpi": {
+    "t": 220.0,
+    "coverage": 0.8795,
+    "aoi_cov": 0.9644,
+    "rmse_m": 0.0411,
+    "edge_rmse_m": 0.0961,
+    "ate_m": 0.024,
+    "info_kbit": 397.9,
+    "energy_Wh": 2.71,
+    "dist_m": 63.9,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 3
+   },
+   "events": [
+    {
+     "t": 203.9,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 217.1,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 219.8,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "T08": {
+   "title": "TEST-08 센서 열화(먼지)",
+   "what": "40 s 부터 LiDAR 잡음 4배·점 35% 손실·허공 반사",
+   "how": "되돌림 비율·허공 점으로 건강 산출 → DEGRADED(속도 ½)·측정분산 3배 → 회복 시 정상",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.7038,
+    "aoi_cov": null,
+    "rmse_m": 0.0436,
+    "edge_rmse_m": 0.0572,
+    "ate_m": 0.028,
+    "info_kbit": 325.7,
+    "energy_Wh": 1.94,
+    "dist_m": 38.0,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 5,
+    "AVOID": 8,
+    "RETURN": 2,
+    "SAFE_STOP": 3
+   },
+   "events": [
+    {
+     "t": 40.3,
+     "kind": "degrade",
+     "msg": "LiDAR 건강 0.77: 2 m 안쪽 점 폐기(먼지 필터), 측정분산 ×9, 속도 ½"
+    },
+    {
+     "t": 42.1,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 64.0,
+     "kind": "recover",
+     "msg": "정지 3 s 지속(정적 장애물) -> 전방 벌점·재계획"
+    },
+    {
+     "t": 67.0,
+     "kind": "recover",
+     "msg": "정지 교착 6 s -> 뒤가 비었는지 보고 0.5 m 후진 탈출"
+    },
+    {
+     "t": 73.0,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 84.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 88.0,
+     "kind": "recover",
+     "msg": "정지 3 s 지속(정적 장애물) -> 전방 벌점·재계획"
+    },
+    {
+     "t": 91.0,
+     "kind": "recover",
+     "msg": "정지 교착 6 s -> 뒤가 비었는지 보고 0.5 m 후진 탈출"
+    }
+   ]
+  },
+  "F01": {
+   "title": "고장: LiDAR 끊김",
+   "what": "60-80 s 이더넷 끊김 (프레임 없음)",
+   "how": "detect: 0.3 s 무프레임 → 건강 0 · isolate: 지도 갱신 중지 · degrade: 빵부스러기 길로 저속 귀환 · recover: 프레임 복귀 시 탐사 재개",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.7616,
+    "aoi_cov": null,
+    "rmse_m": 0.0631,
+    "edge_rmse_m": 0.1199,
+    "ate_m": 0.032,
+    "info_kbit": 345.5,
+    "energy_Wh": 2.12,
+    "dist_m": 50.7,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 3,
+    "RETURN": 1,
+    "AVOID": 2
+   },
+   "events": [
+    {
+     "t": 60.3,
+     "kind": "detect",
+     "msg": "fw 이벤트 SENSOR_FAIL ['LIDAR']"
+    },
+    {
+     "t": 60.3,
+     "kind": "detect",
+     "msg": "LIDAR 건강 1.00 -> 0.00"
+    },
+    {
+     "t": 60.3,
+     "kind": "degrade",
+     "msg": "LiDAR 없음 -> 지나온 길(빵부스러기)로 저속 귀환"
+    },
+    {
+     "t": 80.1,
+     "kind": "detect",
+     "msg": "fw 이벤트 SENSOR_RECOVER []"
+    },
+    {
+     "t": 80.1,
+     "kind": "recover",
+     "msg": "LIDAR 건강 회복 1.00"
+    },
+    {
+     "t": 178.4,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "F02": {
+   "title": "고장: IMU 드리프트",
+   "what": "50 s 부터 자이로 편향 0.03°/s² 로 증가",
+   "how": "detect: EKF 편향 상태 >0.6°/s · isolate: 자이로 배제 → 엔코더 요율 · degrade: DEGRADED · recover: LIO 로 요 보정 유지",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.7982,
+    "aoi_cov": null,
+    "rmse_m": 0.0491,
+    "edge_rmse_m": 0.0836,
+    "ate_m": 0.023,
+    "info_kbit": 359.0,
+    "energy_Wh": 2.2,
+    "dist_m": 46.6,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 7,
+    "AVOID": 5,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 73.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 142.9,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 145.7,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 163.4,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 164.5,
+     "kind": "isolate",
+     "msg": "IMU 자이로 편향 0.60°/s -> 자이로 배제, 엔코더 요율로 전환"
+    },
+    {
+     "t": 164.5,
+     "kind": "detect",
+     "msg": "IMU 건강 1.00 -> 0.30"
+    },
+    {
+     "t": 166.0,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "F03": {
+   "title": "고장: 엔코더 고장",
+   "what": "40 s 에 좌전륜 엔코더 정지",
+   "how": "detect: 짝 바퀴 대비 <20% 1 s · isolate: 짝 바퀴로 대체(주행기록·PID 되먹임) · degrade: 속도 ½ · 계속",
+   "kpi": {
+    "t": 160.0,
+    "coverage": 0.7789,
+    "aoi_cov": null,
+    "rmse_m": 0.0397,
+    "edge_rmse_m": 0.0936,
+    "ate_m": 0.028,
+    "info_kbit": 351.5,
+    "energy_Wh": 1.52,
+    "dist_m": 33.5,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 3,
+    "AVOID": 3
+   },
+   "events": [
+    {
+     "t": 41.1,
+     "kind": "isolate",
+     "msg": "엔코더 FL 정지(짝 바퀴 162 tick/0.1s) -> 짝 바퀴로 대체"
+    },
+    {
+     "t": 41.1,
+     "kind": "detect",
+     "msg": "ENC 건강 1.00 -> 0.30"
+    },
+    {
+     "t": 98.8,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 109.1,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "F04": {
+   "title": "고장: 심한 슬립/빠짐",
+   "what": "진흙에서 헛돎",
+   "how": "detect: 엔코더 움직임·LIO 정지 → 슬립 >0.45 · AVOID 후진 · 진흙 구역 벌점 · 재계획",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.7701,
+    "aoi_cov": null,
+    "rmse_m": 0.0412,
+    "edge_rmse_m": 0.3503,
+    "ate_m": 0.073,
+    "info_kbit": 354.6,
+    "energy_Wh": 2.05,
+    "dist_m": 41.7,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 3
+   },
+   "events": [
+    {
+     "t": 85.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 94.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 127.5,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "F05": {
+   "title": "고장: 카메라 고장",
+   "what": "50 s 카메라 프레임 없음",
+   "how": "detect: 프레임 시각 · isolate: 영상 채널 배제 · degrade: 지도·정책은 LiDAR 로 계속, 실시간 영상 대신 지도 표시",
+   "kpi": {
+    "t": 150.0,
+    "coverage": 0.7627,
+    "aoi_cov": null,
+    "rmse_m": 0.0438,
+    "edge_rmse_m": 0.0614,
+    "ate_m": 0.026,
+    "info_kbit": 344.3,
+    "energy_Wh": 1.47,
+    "dist_m": 33.0,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 3,
+    "AVOID": 2
+   },
+   "events": [
+    {
+     "t": 50.1,
+     "kind": "detect",
+     "msg": "fw 이벤트 SENSOR_FAIL ['CAM']"
+    },
+    {
+     "t": 50.1,
+     "kind": "detect",
+     "msg": "CAM 건강 1.00 -> 0.00"
+    },
+    {
+     "t": 88.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 115.1,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "F06": {
+   "title": "고장: GNSS 상실(수관)",
+   "what": "확장 센서 GNSS. 수관 아래에서 RTK 고정 상실",
+   "how": "detect: 고정 없음 · isolate: GNSS 갱신 중단 · degrade: LIO+엔코더+IMU 로 계속 · recover: 밖에서 재고정·게이트 통과 후 보정",
+   "kpi": {
+    "t": 200.0,
+    "coverage": 0.8279,
+    "aoi_cov": null,
+    "rmse_m": 0.034,
+    "edge_rmse_m": 0.0908,
+    "ate_m": 0.021,
+    "info_kbit": 379.7,
+    "energy_Wh": 2.04,
+    "dist_m": 41.0,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 2,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 29.2,
+     "kind": "detect",
+     "msg": "fw 이벤트 SENSOR_FAIL ['GNSS']"
+    },
+    {
+     "t": 29.2,
+     "kind": "detect",
+     "msg": "GNSS 건강 1.00 -> 0.00"
+    },
+    {
+     "t": 160.8,
+     "kind": "detect",
+     "msg": "fw 이벤트 SENSOR_RECOVER []"
+    },
+    {
+     "t": 160.8,
+     "kind": "recover",
+     "msg": "GNSS 건강 회복 1.00"
+    }
+   ]
+  },
+  "F07": {
+   "title": "고장: 통신 지연/끊김",
+   "what": "x>15 m 20 kbps·6 s 지연, 120-160 s 완전 두절",
+   "how": "degrade: 정보밀도 높은 지도 타일만 전송(영상 중단) · 30 s 두절 → RETURN(통신 복귀 지점) · 자율 루프는 온보드라 계속",
+   "kpi": {
+    "t": 200.0,
+    "coverage": 0.8283,
+    "aoi_cov": null,
+    "rmse_m": 0.0378,
+    "edge_rmse_m": 0.086,
+    "ate_m": 0.03,
+    "info_kbit": 383.8,
+    "energy_Wh": 2.26,
+    "dist_m": 57.7,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 2,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 136.6,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 148.9,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "F08": {
+   "title": "고장: 저장 공간 한계",
+   "what": "저장 용량 0.45 GB 로 축소(원시 5.3 MB/s)",
+   "how": "85% → DEGRADED(원시 점 로그 중단, 압축 지도만) · 98% → RETURN",
+   "kpi": {
+    "t": 160.0,
+    "coverage": 0.6101,
+    "aoi_cov": null,
+    "rmse_m": 0.0475,
+    "edge_rmse_m": 0.0685,
+    "ate_m": 0.03,
+    "info_kbit": 274.1,
+    "energy_Wh": 1.55,
+    "dist_m": 34.5,
+    "collisions": 0,
+    "done": "기지 귀환 완료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 1,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 110.8,
+     "kind": "stop",
+     "msg": "기지 도착 — 임무 종료"
+    }
+   ]
+  },
+  "F09": {
+   "title": "고장: 배터리 부족",
+   "what": "가용 배터리 9.5 %로 출발",
+   "how": "귀환 필요 에너지(경로 Dijkstra×1.5)+8% 여유 아래로 → RETURN · 5% → EMERGENCY",
+   "kpi": {
+    "t": 300.0,
+    "coverage": 0.5857,
+    "aoi_cov": null,
+    "rmse_m": 0.0773,
+    "edge_rmse_m": 0.1357,
+    "ate_m": 0.019,
+    "info_kbit": 260.4,
+    "energy_Wh": 2.6,
+    "dist_m": 41.8,
+    "collisions": 0,
+    "done": "기지 귀환 완료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 1,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 133.9,
+     "kind": "stop",
+     "msg": "기지 도착 — 임무 종료"
+    }
+   ]
+  },
+  "B01": {
+   "title": "기준선: 고정 웨이포인트",
+   "what": "잔디깎이 경로 4 m 간격",
+   "how": "순서대로 방문, 막힌 점은 건너뜀",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.553,
+    "aoi_cov": 0.0045,
+    "rmse_m": 0.0521,
+    "edge_rmse_m": 0.1513,
+    "ate_m": 0.026,
+    "info_kbit": 255.1,
+    "energy_Wh": 2.55,
+    "dist_m": 73.6,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 5,
+    "AVOID": 4
+   },
+   "events": [
+    {
+     "t": 136.8,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 150.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 165.8,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 174.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "B02": {
+   "title": "기준선: 무작위",
+   "what": "도달 가능한 무작위 목표",
+   "how": "도착하면 새 무작위 목표",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.7854,
+    "aoi_cov": 0.7871,
+    "rmse_m": 0.0519,
+    "edge_rmse_m": 0.0963,
+    "ate_m": 0.026,
+    "info_kbit": 361.3,
+    "energy_Wh": 2.9,
+    "dist_m": 72.9,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 1
+   },
+   "events": []
+  },
+  "B03": {
+   "title": "기준선: 프런티어(Yamauchi)",
+   "what": "가장 가까운 프런티어",
+   "how": "경로 비용 최소 프런티어로",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.6383,
+    "aoi_cov": 0.0096,
+    "rmse_m": 0.0563,
+    "edge_rmse_m": 0.1842,
+    "ate_m": 0.027,
+    "info_kbit": 288.1,
+    "energy_Wh": 3.17,
+    "dist_m": 52.9,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "RETURN": 1,
+    "EXPLORE": 5,
+    "AVOID": 4
+   },
+   "events": [
+    {
+     "t": 156.1,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 169.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 178.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 187.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "B04": {
+   "title": "제안: 정보이득 J + fw 정책",
+   "what": "J = IG − λE·E − λT·T − λR·R",
+   "how": "탐사·재방문·정지관측을 효용으로 중재, 안전층 동일",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.8487,
+    "aoi_cov": 0.736,
+    "rmse_m": 0.0556,
+    "edge_rmse_m": 0.1046,
+    "ate_m": 0.029,
+    "info_kbit": 383.8,
+    "energy_Wh": 2.76,
+    "dist_m": 60.1,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 6,
+    "AVOID": 9,
+    "SAFE_STOP": 4
+   },
+   "events": [
+    {
+     "t": 76.0,
+     "kind": "recover",
+     "msg": "정지 3 s 지속(정적 장애물) -> 전방 벌점·재계획"
+    },
+    {
+     "t": 79.0,
+     "kind": "recover",
+     "msg": "정지 교착 6 s -> 뒤가 비었는지 보고 0.5 m 후진 탈출"
+    },
+    {
+     "t": 83.4,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 135.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 162.8,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 172.6,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 181.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "P01": {
+   "title": "정책: 고불확실 재방문",
+   "what": "담 뒤 σ 큰 셀",
+   "how": "관심구역 σ≤2 cm 를 처음 지날 때 먼지(25-70 s)로 LiDAR 가 열화 → 남은 σ 를 회복 후 REVISIT·OBSERVE 로 줄인다",
+   "kpi": {
+    "t": 240.0,
+    "coverage": 0.8673,
+    "aoi_cov": 0.9821,
+    "rmse_m": 0.0386,
+    "edge_rmse_m": 0.0692,
+    "ate_m": 0.023,
+    "info_kbit": 397.6,
+    "energy_Wh": 2.65,
+    "dist_m": 60.3,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 4,
+    "SAFE_STOP": 1
+   },
+   "events": [
+    {
+     "t": 25.3,
+     "kind": "degrade",
+     "msg": "LiDAR 건강 0.77: 2 m 안쪽 점 폐기(먼지 필터), 측정분산 ×9, 속도 ½"
+    },
+    {
+     "t": 27.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 63.0,
+     "kind": "recover",
+     "msg": "정지 3 s 지속(정적 장애물) -> 전방 벌점·재계획"
+    },
+    {
+     "t": 66.0,
+     "kind": "recover",
+     "msg": "정지 교착 6 s -> 뒤가 비었는지 보고 0.5 m 후진 탈출"
+    },
+    {
+     "t": 69.5,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 70.4,
+     "kind": "recover",
+     "msg": "LiDAR 건강 0.91 회복 -> 먼지 필터 해제"
+    },
+    {
+     "t": 75.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "P02": {
+   "title": "정책: 비용 대비 정보 — 먼 곳 포기",
+   "what": "구석의 작은 미지 구역",
+   "how": "IG 보다 에너지·시간 비용이 크면 J≤0 → 가지 않고 귀환",
+   "kpi": {
+    "t": 200.0,
+    "coverage": 0.8236,
+    "aoi_cov": null,
+    "rmse_m": 0.0225,
+    "edge_rmse_m": 0.315,
+    "ate_m": 0.088,
+    "info_kbit": 386.5,
+    "energy_Wh": 2.52,
+    "dist_m": 54.5,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 4,
+    "AVOID": 2,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 146.8,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 149.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "P03": {
+   "title": "정책: 급경사 위험",
+   "what": "31° 언덕",
+   "how": "지도 기울기 >25° = 치명 비용 · 올라탄 경우 tilt>0.8 → AVOID, ≥1 → SAFE_STOP",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.8369,
+    "aoi_cov": null,
+    "rmse_m": 0.0357,
+    "edge_rmse_m": 0.1237,
+    "ate_m": 0.027,
+    "info_kbit": 384.8,
+    "energy_Wh": 2.17,
+    "dist_m": 55.4,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 3,
+    "AVOID": 1,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 125.5,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "P04": {
+   "title": "정책: 음장애(도랑)",
+   "what": "폭 0.9 m·깊이 0.5 m 도랑",
+   "how": "지도에서 바닥보다 12 cm 낮은 셀 → 위험 0.95 → 다리 쪽으로 재계획",
+   "kpi": {
+    "t": 200.0,
+    "coverage": 0.8049,
+    "aoi_cov": null,
+    "rmse_m": 0.044,
+    "edge_rmse_m": 0.0937,
+    "ate_m": 0.023,
+    "info_kbit": 363.4,
+    "energy_Wh": 2.57,
+    "dist_m": 52.3,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 7,
+    "AVOID": 6,
+    "RETURN": 3
+   },
+   "events": [
+    {
+     "t": 149.9,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 152.9,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 155.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 167.4,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "P05": {
+   "title": "정책: 동적 장애물",
+   "what": "사람 2명이 왕복",
+   "how": "전방 점 높이 → 위험 >0.92 SAFE_STOP, 지나가면 재개. 지도 변화 감지로 흔적 제거",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.8258,
+    "aoi_cov": null,
+    "rmse_m": 0.1045,
+    "edge_rmse_m": 0.0999,
+    "ate_m": 0.029,
+    "info_kbit": 374.7,
+    "energy_Wh": 2.24,
+    "dist_m": 49.0,
+    "collisions": 1,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 3,
+    "RELOCALIZE": 1,
+    "AVOID": 3,
+    "RETURN": 1
+   },
+   "events": [
+    {
+     "t": 43.5,
+     "kind": "physics",
+     "msg": "참 충돌/걸림 발생"
+    },
+    {
+     "t": 47.3,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 172.3,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 175.0,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "P06": {
+   "title": "정책: 좁은 통로",
+   "what": "1.2 m 틈 (0.9 m 에선 통과 못 함)",
+   "how": "몸체 반폭 팽창 후 통과 가능한 경로만 · 통로 안 감속",
+   "kpi": {
+    "t": 180.0,
+    "coverage": 0.7718,
+    "aoi_cov": null,
+    "rmse_m": 0.0409,
+    "edge_rmse_m": 0.075,
+    "ate_m": 0.03,
+    "info_kbit": 347.2,
+    "energy_Wh": 2.28,
+    "dist_m": 46.6,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 8,
+    "AVOID": 7
+   },
+   "events": [
+    {
+     "t": 139.3,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 142.1,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 151.9,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 158.4,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 161.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 177.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 179.7,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  },
+  "P07": {
+   "title": "정책: 막다른 길 복구",
+   "what": "U 자 함정",
+   "how": "프런티어 소멸 → J 재계산으로 되돌아 나옴 · 전방 막힘 AVOID",
+   "kpi": {
+    "t": 200.0,
+    "coverage": 0.8407,
+    "aoi_cov": null,
+    "rmse_m": 0.0524,
+    "edge_rmse_m": 0.0521,
+    "ate_m": 0.021,
+    "info_kbit": 375.4,
+    "energy_Wh": 2.46,
+    "dist_m": 54.9,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 5,
+    "AVOID": 5,
+    "RETURN": 2
+   },
+   "events": [
+    {
+     "t": 169.5,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 172.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 181.2,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    }
+   ]
+  },
+  "P08": {
+   "title": "정책: 비상 정지(E-stop)",
+   "what": "70 s 에 원격 킬 스위치",
+   "how": "릴레이가 모터 전원 차단(하드웨어) → actuator_ok=0 → EMERGENCY · 로그는 계속",
+   "kpi": {
+    "t": 120.0,
+    "coverage": 0.6429,
+    "aoi_cov": null,
+    "rmse_m": 0.0418,
+    "edge_rmse_m": 0.0526,
+    "ate_m": 0.022,
+    "info_kbit": 283.6,
+    "energy_Wh": 1.12,
+    "dist_m": 22.7,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 1,
+    "EMERGENCY": 1
+   },
+   "events": [
+    {
+     "t": 70.1,
+     "kind": "detect",
+     "msg": "fw 이벤트 ACTUATOR_FAIL []"
+    }
+   ]
+  },
+  "P09": {
+   "title": "종합 데모 임무",
+   "what": "미지 구역 + 모래 + 사람 + 도랑",
+   "how": "탐사→관측→재방문→회피→귀환 전 과정 (관심구역 σ≤2 cm)",
+   "kpi": {
+    "t": 300.0,
+    "coverage": 0.834,
+    "aoi_cov": 0.228,
+    "rmse_m": 0.0626,
+    "edge_rmse_m": 0.1194,
+    "ate_m": 0.031,
+    "info_kbit": 378.4,
+    "energy_Wh": 3.41,
+    "dist_m": 77.0,
+    "collisions": 0,
+    "done": "시간 종료",
+    "crashed": null,
+    "revisit_share": 0.0
+   },
+   "actions": {
+    "EXPLORE": 8,
+    "AVOID": 17,
+    "RETURN": 11
+   },
+   "events": [
+    {
+     "t": 135.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 145.6,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 160.2,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 173.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 185.6,
+     "kind": "recover",
+     "msg": "후진 0.4 m 완료(risk) -> 전방 구역에 벌점, 재계획"
+    },
+    {
+     "t": 188.4,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    },
+    {
+     "t": 201.9,
+     "kind": "recover",
+     "msg": "후진 막힘 6 s -> 후진 중단"
+    },
+    {
+     "t": 201.9,
+     "kind": "recover",
+     "msg": "슬립 후진 완료 -> 반경 1.6 m 를 무른 지반으로 표시(비용↑), 재계획"
+    }
+   ]
+  }
+ },
+ "baselines_mc": {
+  "seeds": 5,
+  "t_s": 240,
+  "stats_mean_sd": {
+   "fixed": {
+    "coverage": [
+     0.5475,
+     0.0073
+    ],
+    "aoi_cov": [
+     0.0029,
+     0.0023
+    ],
+    "dist_m": [
+     72.28,
+     1.3585
+    ],
+    "energy_Wh": [
+     2.55,
+     0.0329
+    ],
+    "info_per_Wh": [
+     99.764,
+     2.0653
+    ],
+    "collisions": [
+     0,
+     0.0
+    ]
+   },
+   "random": {
+    "coverage": [
+     0.7669,
+     0.0597
+    ],
+    "aoi_cov": [
+     0.6221,
+     0.2382
+    ],
+    "dist_m": [
+     72.62,
+     1.9009
+    ],
+    "energy_Wh": [
+     2.88,
+     0.0583
+    ],
+    "info_per_Wh": [
+     122.83,
+     10.842
+    ],
+    "collisions": [
+     0,
+     0.0
+    ]
+   },
+   "frontier": {
+    "coverage": [
+     0.6812,
+     0.0346
+    ],
+    "aoi_cov": [
+     0.3021,
+     0.3094
+    ],
+    "dist_m": [
+     52.6,
+     4.2769
+    ],
+    "energy_Wh": [
+     3.092,
+     0.0906
+    ],
+    "info_per_Wh": [
+     99.81,
+     6.6203
+    ],
+    "collisions": [
+     0,
+     0.0
+    ]
+   },
+   "proposed": {
+    "coverage": [
+     0.8076,
+     0.0244
+    ],
+    "aoi_cov": [
+     0.7687,
+     0.0492
+    ],
+    "dist_m": [
+     58.82,
+     1.8851
+    ],
+    "energy_Wh": [
+     2.728,
+     0.0417
+    ],
+    "info_per_Wh": [
+     132.61,
+     3.6045
+    ],
+    "collisions": [
+     0,
+     0.0
+    ]
+   }
+  }
+ },
+ "filters_slip_mud": {
+  "seeds": 3,
+  "mean": {
+   "proposed": {
+    "final_err_m": 0.0203,
+    "yaw_err_deg": 0.02,
+    "map_rmse_m": 0.0431,
+    "ghost_cells": 309.3333
+   },
+   "odom": {
+    "final_err_m": 14.6343,
+    "yaw_err_deg": 28.1333,
+    "map_rmse_m": 0.1433,
+    "ghost_cells": 1694.6667
+   },
+   "odom_gyro": {
+    "final_err_m": 8.6237,
+    "yaw_err_deg": 3.5367,
+    "map_rmse_m": 0.1251,
+    "ghost_cells": 1079.3333
+   },
+   "ekf_lio": {
+    "final_err_m": 0.0747,
+    "yaw_err_deg": 0.0733,
+    "map_rmse_m": 0.0775,
+    "ghost_cells": 657
+   }
+  }
+ },
+ "gap_sweep": [
+  {
+   "gap": 0.8,
+   "seed": 0,
+   "passed": false,
+   "t_pass": null,
+   "coverage": 0.4045,
+   "collisions": 0
+  },
+  {
+   "gap": 0.8,
+   "seed": 1,
+   "passed": false,
+   "t_pass": null,
+   "coverage": 0.3673,
+   "collisions": 0
+  },
+  {
+   "gap": 0.9,
+   "seed": 0,
+   "passed": false,
+   "t_pass": null,
+   "coverage": 0.3456,
+   "collisions": 0
+  },
+  {
+   "gap": 0.9,
+   "seed": 1,
+   "passed": false,
+   "t_pass": null,
+   "coverage": 0.3877,
+   "collisions": 0
+  },
+  {
+   "gap": 1.0,
+   "seed": 0,
+   "passed": true,
+   "t_pass": 37.5,
+   "coverage": 0.8059,
+   "collisions": 0
+  },
+  {
+   "gap": 1.0,
+   "seed": 1,
+   "passed": true,
+   "t_pass": 38.64,
+   "coverage": 0.8056,
+   "collisions": 0
+  },
+  {
+   "gap": 1.1,
+   "seed": 0,
+   "passed": true,
+   "t_pass": 35.64,
+   "coverage": 0.7317,
+   "collisions": 0
+  },
+  {
+   "gap": 1.1,
+   "seed": 1,
+   "passed": true,
+   "t_pass": 33.02,
+   "coverage": 0.7151,
+   "collisions": 0
+  },
+  {
+   "gap": 1.2,
+   "seed": 0,
+   "passed": true,
+   "t_pass": 37.14,
+   "coverage": 0.7718,
+   "collisions": 0
+  },
+  {
+   "gap": 1.2,
+   "seed": 1,
+   "passed": true,
+   "t_pass": 33.02,
+   "coverage": 0.7477,
+   "collisions": 0
+  }
+ ],
+ "kernel": {
+  "text_bytes_kernel_plus_profile": 9323,
+  "agent_ram_bytes": 2400,
+  "host_tests": "21/21"
+ },
+ "bom_usd": {
+  "min": 2231.26,
+  "typical": 2516.92,
+  "min_without_gnss": 1904.36,
+  "typical_without_gnss": 2147.02,
+  "excludes": [
+   "fuses+holders",
+   "mushroom E-stop + contactor",
+   "2020 extrusion + deck",
+   "6 mm hub adapters",
+   "15-22 pin CSI cable",
+   "wiring/connectors/charger",
+   "shipping/tax"
+  ],
+  "note": "priced items only; all prices are search-snippet level [조각], not read on vendor page"
+ },
+ "artifact": "https://claude.ai/artifact/EG4TPc2F95ehwEeHo7MpnX"
+}

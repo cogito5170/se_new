@@ -1,0 +1,805 @@
+"""
+쿼터에 견디는 LLM 호출기 -- orchestration의 모든 LLM 호출(플래너 등)이 공유한다.
+
+문제 (실측, VM 로그): Gemini 무료 티어 쿼터는 (프로젝트, 모델) 단위 일일 한도라, 고정 모델
+하나로 호출하면 곧 429 RESOURCE_EXHAUSTED 로 죽는다. 게다가 모델은 단종/개명(404, 400
+"only supports Interactions API")되고 과부하(503)도 난다. 단일 ChatGoogleGenerativeAI
+호출(improve_agent 초기판이 그랬다)은 이 순간 하나만 막혀도 전체가 멈춘다.
+
+해결: 모든 LLM 호출을 (키 x 모델) 후보 풀로 돌린다. 이 저장소가 Discord 에이전트용으로 이미
+쓰는 quota_tracker 를 그대로 재사용한다 --
+  - 429(쿼터 소진): record_exhausted 로 오늘자 소진 표시 후 다음 후보.
+  - 404/403(단종/유료전용): mark_dead 로 영구 제외(자정에도 안 풀림).
+  - 503/500(일시 장애): 다음 후보(영구 제외 안 함).
+  - 성공: record_success + 그 후보를 pin -> 다음 호출도 그걸 먼저.
+이로써 "Gemini API 자동 변경"이 자동으로, 매 orchestration 호출마다 처리된다.
+
+의존: quota_tracker(경량, 이 저장소) 만 필수. 실제 Gemini 클라이언트/모델 목록 조회는 지연
+임포트하고, llm_factory 를 주입할 수 있어(테스트에서 목 주입) 폴백 로직만 따로 검증 가능하다.
+에러 분류기는 bot_tools 와 같은 규칙(문자열 매칭)을 여기서도 갖는다 -- orchestrator 가
+langchain 없이도 임포트되도록 자체 정의한다(규칙이 바뀌면 bot_tools 와 함께 갱신).
+"""
+from __future__ import annotations
+
+import hashlib
+import concurrent.futures as cf
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # quota_tracker 임포트용
+# **자기 폴더도 넣는다.** 아래에서 `from gemini_http import Client` 를 최상위 이름으로
+# 부르는데, 그것이 되는 것은 `orchestrator/` 가 경로에 있을 때뿐이다. quota_show.py 처럼
+# 그 폴더를 직접 넣고 부르는 쪽은 되고, `from orchestrator import llm_pool` 로 부르는
+# 쪽은 ModuleNotFoundError 로 죽었다 -- pool_probe.py 와 mathdrift/spread.py 가 그랬다
+# (실측 2026-09-07, VM: "풀을 못 세웠다: No module named 'gemini_http'").
+# 부르는 쪽마다 경로를 손보게 하지 않고 여기서 한 번 맞춘다.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import quota_tracker  # noqa: E402
+
+FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash-lite"]
+
+# **pro 계열은 후보에서 뺀다.** 무료 티어에서 pro 의 분당 한도는 flash 계열의 몇 분의 일이라,
+# 후보에 끼워 두면 거의 매번 429 만 받아 오면서 그 키의 벌점만 올린다 -- 답을 주지도 않고
+# 다음 시도를 늦추기만 하는 후보다(실측 로그: pro-latest / 3.1-pro-preview 가 매 바퀴 429).
+# 산문 품질은 화자 프롬프트가 정하지 모델 등급이 정하지 않는다. 되살리려면
+# GEMINI_ALLOW_PRO=1 을 준다.
+# **명부(roster).** 런을 시작할 때 탐침을 한 바퀴 돌려 "지금 답하는 것" 만 적어 두고,
+# 그 뒤로는 그 목록만 쓴다. 일일 잔량은 남았는데 분당 한도에 걸리는 모델이 후보에 섞여
+# 있으면, 매 호출마다 그것을 한 번씩 두드려 보고 429 를 받은 뒤에야 성한 것으로 넘어간다 --
+# 호출마다 그 왕복을 다시 무는 것이다. 시작할 때 한 번만 걸러내면 그 값을 런 내내 아낀다.
+# scripts/pool_probe.py --roster <경로> 가 이 파일을 쓴다.
+ROSTER = os.environ.get("GEMINI_ROSTER", "")
+# 명부는 **낡는다.** 소진은 자정에 풀리고 모델 목록도 바뀐다. 오래된 명부는 "어제 답한 것"
+# 이지 "지금 답하는 것" 이 아니므로, 지나면 무시하고 전 후보로 돈다.
+ROSTER_AGE = float(os.environ.get("GEMINI_ROSTER_AGE", "43200"))   # 12시간
+# 2026-09-25: 기본값을 `pro|gemma|omni` 로 넓힌다 -- 위 실측("omni-* 가 전부 429")과
+# 사용자 로그(gemma-4-31b-it RPM)를 따라 두 경로(여기 · rpmgate)의 거름망을 같게 맞춘다.
+SKIP_MODEL = re.compile(os.environ.get("GEMINI_SKIP_MODEL", r"pro|gemma|omni"), re.I)
+ALLOW_PRO = os.environ.get("GEMINI_ALLOW_PRO", "") not in ("", "0", "false")
+
+# 후보 하나에 얼마나 버틸 것인가. bot_tools 가 실측으로 얻은 값과 같은 규칙을 여기서도 갖는다
+# (langchain 없이도 임포트되게 값만 복제한다 -- 규칙이 바뀌면 bot_tools 와 함께 갱신).
+# langchain 기본값(max_retries=6, timeout 없음)을 그대로 쓰면 실패하는 후보 하나가 지수 backoff
+# 로 30~50초를 먹고, timeout 이 없어 응답이 안 오는 요청은 영원히 매달린다. 후보 풀 자체가
+# 재시도 전략이므로 한 후보 안에서 오래 버틸 이유가 없다.
+MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "2"))
+TIMEOUT = float(os.environ.get("GEMINI_TIMEOUT", "60"))
+# **큰 모델은 더 기다린다.** gemma-4-26b 같은 것은 긴 프롬프트에 60초로는 모자라 504
+# DEADLINE_EXCEEDED 만 준다(실측). 그러면 자기 차례를 쓰고 답은 안 주므로, 안 쓰느니만
+# 못한 후보가 된다. 느린 것은 느린 만큼 기다려 주고, 그래도 안 되면 전적(_odds)이 알아서
+# 뒤로 민다 -- 이름으로 자르지 않는다.
+SLOW_MODEL = re.compile(os.environ.get("GEMINI_SLOW_MODEL", r"gemma|\d\d+b"), re.I)
+SLOW_TIMEOUT = float(os.environ.get("GEMINI_SLOW_TIMEOUT", "150"))
+# 풀은 (키 x 실사용 모델) 이라 모델 목록 조회 결과에 따라 수십~백 개가 될 수 있다. 전부 순회하면
+# 최악의 경우 시간 단위로 매달리므로, 시도 후보 수에 상한을 둔다(최악 대기 = 상한 x TIMEOUT).
+MAX_CANDIDATES = int(os.environ.get("GEMINI_MAX_CANDIDATES", "12"))
+# **500/503 을 거듭 내는 후보는 잠깐 뺀다.**
+#
+# 실측 2026-09-07 VM: gemma 계열이 500 INTERNAL 을 내기 시작했는데, '일시장애' 갈래는
+# 쿨다운도 벌점도 안 걸었다. 그래서 바퀴마다 같은 여섯(모델 2 x 키 3)을 다시 두드렸고,
+# 추출은 prefer="gemma" 라 그 여섯이 **매번 맨 앞**이었다. 후보 12개 x 간격 8초 =
+# 한 바퀴 40초, 3바퀴에 2분, call_json 이 3번 재시도하니 **추출 한 번에 6분**이다.
+# 멈춘 것처럼 보이지만 멈춘 것이 아니라 그만큼 느린 것이다.
+#
+# 한 번은 봐준다 -- 진짜 깜빡임일 수 있다. **잇달아 두 번이면 그 모델이 지금 아프다.**
+TRANSIENT_COOLDOWN = float(os.environ.get("GEMINI_SICK_COOLDOWN", "120"))
+TRANSIENT_TRIES = int(os.environ.get("GEMINI_SICK_TRIES", "2"))
+
+# **RPM 은 기다리면 풀린다.** 후보를 전부 두드렸는데 실패 사유가 전부 분당 한도(429/RPM)나
+# 일시 장애(503)뿐이면, 그것은 "이 키로는 못 한다" 가 아니라 "지금은 못 한다" 다. 예전에는
+# 거기서 예외를 던졌고, 야간 런은 그 한 번으로 블록을 통째로 잃었다(실측: 1~3화와 4~5화가
+# 2분 간격으로 같은 이유로 죽었다). 쿨다운이 풀릴 때까지 기다렸다 다시 돈다.
+RPM_ROUNDS = int(os.environ.get("GEMINI_RPM_ROUNDS", "3"))       # 총 시도 바퀴 수
+RPM_MAX_WAIT = float(os.environ.get("GEMINI_RPM_MAX_WAIT", "75"))  # 한 바퀴 최대 대기(초)
+
+# **같은 후보를 연달아 때리지 않는다.** 이것이 "잔여량은 남았는데 429" 의 진짜 원인이었다.
+#
+# 무료 티어 RPM 은 (프로젝트, 모델) 당 분당 몇 회다. 그런데 이 파이프라인은 씬 하나에
+# 디렉터·추출기·배우 넷·화자를 몇 초 안에 연달아 부른다. 성공한 후보를 pin 해서 매번 그것을
+# 먼저 두드리면 **그 하나가 몇 초 만에 자기 RPM 을 다 쓴다.** pin 은 일일 소진을 피하려고
+# 만든 것인데 RPM 에는 정반대로 작동했다.
+#
+# 그래서 최근에 쓴 후보는 뒤로 민다. 키 2개 x 모델 N 개를 **번갈아** 쓰면 유효 RPM 이 그만큼
+# 곱해진다 -- 후보가 여덟이고 간격이 6초면 초당 하나씩 쏴도 아무도 자기 한도에 닿지 않는다.
+# **한 번에 여러 후보에게 동시에 던진다.** 먼저 답하는 것을 쓴다.
+#
+# 구글 문서 기준으로 RPM 은 **모델별**로 따로 걸린다(무료: 2.5 Pro 5 · Flash 10 ·
+# Flash-Lite 15). 그러니 서로 다른 모델은 각자의 통을 쓰고, 동시에 던져도 서로의 한도를
+# 깎지 않는다. 직렬로 하나씩 두드리며 사이사이 기다리면 그 통들을 놀리는 것이다
+# (실측 2026-09-05: 후보 12개 × 간격 8초 × 3바퀴 = 최악 7.3분).
+FANOUT = int(os.environ.get("GEMINI_FANOUT", "3"))
+MIN_GAP = float(os.environ.get("GEMINI_MIN_GAP", "8"))   # 같은 통을 다시 쓰기까지(초)
+# 429 를 맞은 키는 이만큼 더 쉰다. 한도가 키에 걸리므로 형제 모델도 같이 쉬어야 한다.
+KEY_PENALTY = float(os.environ.get("GEMINI_KEY_PENALTY", "30"))
+# 이만큼 안에 다시 해보라는 429 는 분당 한도로 본다. 하루치라면 이렇게 짧게 부를 리 없다.
+RPM_HINT = float(os.environ.get("GEMINI_RPM_HINT", "180"))
+# **한 번에 받을 수 있는 만큼 받는다.** 여태 이것을 안 걸어서 모델 기본값으로 돌았고,
+# 한 덩어리를 1,400자로 받고 있었다 -- 호출 한 번의 8분의 1만 쓴 것이다. 같은 원고를
+# 쓰는 데 호출이 여덟 배 든다는 뜻이다. 호출 수가 병목이면 한 번에 크게 받는 것이 답이다.
+MAX_OUT = int(os.environ.get("GEMINI_MAX_OUTPUT", "8192"))
+
+# 이 프로세스가 각 후보를 마지막으로 부른 시각. 파일에 안 남긴다 -- RPM 은 60초짜리라
+# 프로세스 수명보다 짧고, 파일 잠금 비용을 매 호출마다 물 이유가 없다.
+_LAST_USED: dict = {}
+# **키 단위로도 잰다.** 분당 한도는 키(프로젝트)에 걸리지 모델마다 따로 걸리지 않는다.
+# 그런데 후보는 `키:모델` 이라, 한 키에 모델이 넷이면 넷이 각자 "6초 지났으니 괜찮다" 고
+# 판단해 같은 키를 잇달아 두드린다 -- 그러면 간격을 지킨 셈인데도 429 가 온다
+# (실측 2026-09-05: 서로 다른 키가 연달아 RPM 으로 떨어졌다).
+_LAST_KEY: dict = {}
+# 일시장애 장부. **파일에 안 남긴다** -- 500 은 쿼터 사실이 아니다. quota_state.json 에
+# 적으면 "분당 한도로 쉬는 중" 으로 읽히고, 그건 거짓말이다. 프로세스 안에서만 산다.
+_SICK: dict = {}        # 라벨 -> 잇달아 몇 번 일시장애였나
+_SICK_UNTIL: dict = {}  # 라벨 -> 이때까지 뺀다
+# 후보별 응답 시간(성공했을 때). **이름으로 짐작하지 말고 재서 쓴다.**
+#
+# 실측 2026-09-05(탐침): 같은 "flash" 인데 gemini-flash-lite-latest 는 1.0초,
+# gemini-3.5-flash 는 12.7초였다. 열세 배다. 이름 기반 등급(_model_rank)은 세대가
+# 바뀔 때마다 낡는데, 걸린 시간은 안 낡는다.
+_LAT: dict = {}
+# **실패도 잰다.** 지연 시간에는 "이름으로 짐작하지 말고 재서 쓴다" 를 적용해 놓고, 실패에는
+# 안 썼다. 그래서 매 바퀴 429 만 뱉는 후보가 "최근에 안 썼으니까" 로 계속 앞자리에 돌아왔다
+# (실측: omni / preview 계열이 바퀴마다 같은 자리를 차지했다). 답을 준 적 있는 후보를
+# 앞에 둔다 -- 이름이 아니라 전적으로.
+_WIN: dict = {}
+_FAIL: dict = {}
+
+
+# 같은 알림을 되풀이 안 하려고 마지막에 한 말을 들고 있는다. {풀: (말, 언제)}
+_SAID: dict = {}
+
+
+def _odds(label) -> float:
+    """이 후보가 최근에 답을 준 비율. 안 재본 것은 낙관한다(1.0) -- 중간값으로 두면
+    한 번 이긴 후보만 계속 쓰고 나머지는 영원히 안 재본다."""
+    w, f = _WIN.get(label, 0), _FAIL.get(label, 0)
+    return 1.0 if w + f == 0 else w / (w + f)
+LAT_MEMORY = 0.7          # 새 측정을 이만큼 반영한다(나머지는 옛값)
+
+
+def _lat(label: str) -> float:
+    """이 후보의 응답 시간 추정.
+
+    **안 재본 것은 0으로 둔다 -- 낙관한다.** 중간값으로 두면 한 번 이긴 후보가 계속
+    앞에 서고 나머지는 영원히 안 재본 채로 남는다(실측: 0.4초짜리가 계속 뽑히는 동안
+    0.05초짜리는 한 번도 안 불렸다). 모르는 것을 먼저 재보는 편이 낫다 -- 어차피 묶음으로
+    던지니 느린 후보가 섞여도 손해가 없고, 몇 번이면 전부 재진다.
+    """
+    return _LAT.get(label, 0.0)
+
+
+def _retry_delay(e) -> float:
+    """429 응답에 실린 retryDelay(초). 구글이 직접 알려 주는 값이라 추측보다 낫다."""
+    m = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+(?:\.\d+)?)s", str(e))
+    return float(m.group(1)) if m else 0.0
+
+
+def _key_of(label: str) -> str:
+    """`키:모델` 에서 키만. 한도가 걸리는 단위다."""
+    return label.split(":", 1)[0] if ":" in label else label
+
+
+def _since_key(label: str) -> float:
+    """이 **키**를 마지막으로 쓴 뒤 흐른 시간."""
+    t = _LAST_KEY.get(_key_of(label))
+    return 1e9 if t is None else time.time() - t
+
+
+def _since_used(label: str) -> float:
+    """마지막으로 쓴 지 몇 초 지났나. 한 번도 안 썼으면 아주 큰 값."""
+    t = _LAST_USED.get(label)
+    return 1e9 if t is None else time.time() - t
+
+
+def _is_quota(e) -> bool:
+    t = str(e)
+    return "RESOURCE_EXHAUSTED" in t or "429" in t
+
+
+def _is_rpm(e) -> bool:
+    """429 중에서도 **1분이면 풀리는** 분당 한도인가.
+
+    bot_tools.is_rpm_quota_error 와 같은 판정을 여기로 가져왔다. 봇 경로는 이미 구분하고
+    있었는데 이 풀은 아니어서, 모든 429 를 자정까지 소진으로 확정하고 있었다.
+    quota_tracker 가 그러지 말라고 적어둔 바로 그 실수다:
+
+        "둘을 합쳐 놓으면 ... 1분이면 풀릴 키를 하루 종일 봉인하게 된다"
+
+    야간 런에서 이게 치명적이다. 후보가 넷뿐인데 몇 초 안에 여러 번 호출하다 RPM 에 걸리면
+    멀쩡한 조합이 차례로 봉인되고, 몇 분 만에 풀이 비어 남은 밤이 통째로 날아간다.
+
+    판별 실패면 False -- 일일 소진을 분당으로 잘못 보면 1분마다 죽은 조합을 다시 두드린다.
+    모르는 것은 보수적으로 일일 소진 취급하는 쪽이 안전하다(bot_tools 와 같은 판단)."""
+    t = str(e)
+    if not _is_quota(e):
+        return False
+    if "PerMinute" in t or "per minute" in t.lower():
+        return True
+    # **구글이 알려 준 대기 시간으로도 가른다.** 분당 한도에는 retryDelay 가 수십 초로
+    # 실려 온다 -- 하루치라면 자정까지 기다리라고 할 것을 30초만 기다리라고 할 리가 없다.
+    # 이름만 보다가, 이름이 안 실려 온 429 를 전부 일일 소진으로 확정하고 있었다(실측:
+    # flash 계열 16개가 그렇게 봉인돼 후보가 6개로 줄었다). 대기 시간은 이름보다 정직하다.
+    back = _retry_delay(e)
+    return 0 < back <= RPM_HINT
+
+
+def _is_permanent(e) -> bool:
+    t = str(e)
+    return any(m in t for m in ("PERMISSION_DENIED", "403", "FAILED_PRECONDITION",
+                                "NOT_FOUND", "404", "billing", "not supported", "not found"))
+
+
+def _model_rank(model: str):
+    """후보 순서. **분당 한도(RPM)에 강한 것부터 간다.**
+
+    예전에는 pro 를 맨 앞에 뒀다(fam 0). 품질 순서였는데, 무료 티어에서 그 순서는 정확히
+    거꾸로다 -- pro 와 preview 계열은 RPM 이 가장 빡빡해서 몇 호출 만에 429 를 낸다.
+    2026-09-04 VM 실측 로그가 그것이다: 12개 후보를 순서대로 두드렸는데 pro-latest,
+    3.1-pro-preview, 3.1-pro-preview-customtools, omni-* 가 전부 429 [RPM/60초] 였고,
+    **상한 12개를 그것들로 다 써버려 flash 계열에 닿지도 못한 채** 블록이 통째로 예외로
+    끝났다. 429 를 맞은 pro 는 품질이 0 이다. 안 도는 모델은 좋은 모델이 아니다.
+
+    그래서 flash-lite -> flash -> pro -> gemma 순으로 뒤집는다. 그리고 preview 는 어느
+    계열이든 뒤로 민다(쿼터가 실험적이고 예고 없이 바뀐다). 품질이 중요한 자리(디렉터)는
+    이제 Claude 가 맡으므로, 이 풀은 **양이 많은 배우·화자·추출기**를 감당하는 것이
+    본업이다 -- 거기서는 도는 것이 곧 품질이다."""
+    n = model.lower()
+    if "gemma" in n:
+        fam = 3
+    elif "flash-lite" in n:
+        fam = 0
+    elif "flash" in n:
+        fam = 1
+    elif "pro" in n:
+        fam = 2
+    else:
+        fam = 4
+    # preview/experimental 은 같은 계열 안에서 맨 뒤로. customtools 같은 변종도 여기 걸린다.
+    exp = 1 if any(w in n for w in ("preview", "exp", "customtools")) else 0
+    return (fam, exp)
+
+
+def _key_id(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()[:8]
+
+
+# **어느 클라이언트로 부를 것인가.** 기본은 직접 부르기(gemini_http) 다.
+# langchain 은 이 파일에서 세 줄만 쓰였고, 그마저 재시도 기본값을 꺼야 했다 --
+# 후보 풀 자체가 재시도 전략이라 한 후보 안에서 오래 버틸 이유가 없다.
+# 되돌리려면 GEMINI_CLIENT=langchain.
+CLIENT = os.environ.get("GEMINI_CLIENT", "direct").strip().lower()
+
+
+def _langchain_factory(model: str, key: str):
+    """예전 경로. max_retries/timeout 을 모르는 버전에서도 뜨도록 TypeError 면 물러선다."""
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    secs = SLOW_TIMEOUT if SLOW_MODEL.search(model) else TIMEOUT
+    try:
+        return ChatGoogleGenerativeAI(model=model, google_api_key=key,
+                                      max_retries=MAX_RETRIES, timeout=secs,
+                                      max_output_tokens=MAX_OUT)
+    except TypeError:
+        return ChatGoogleGenerativeAI(model=model, google_api_key=key)
+
+
+def _default_factory(model: str, key: str):
+    """(모델, 키) 하나를 부를 것. 풀이 쓰는 것은 `.invoke(prompt)` 하나뿐이다."""
+    if CLIENT == "langchain":
+        return _langchain_factory(model, key)
+    # **두 길로 들어온다. 둘 다 서야 한다.**
+    #
+    #   · scripts/pool_probe.py  -- 뿌리를 sys.path 에 넣고 `from orchestrator import llm_pool`
+    #   · novel/drive.py         -- orchestrator/ 를 sys.path 에 넣고 `import llm_pool`
+    #
+    # 앞의 길에서는 `from gemini_http import ...` 가 없고(그 디렉토리가 sys.path 에
+    # 없다), 뒤의 길에서는 `from orchestrator.gemini_http import ...` 가 없다 --
+    # orchestrator/ 안에 orchestrator.py 가 있어서 `import orchestrator` 가 꾸러미가
+    # 아니라 그 **파일**을 집는다. 그래서 어느 한쪽으로 못 정한다.
+    #
+    # 실측 2026-09-07 VM: `from gemini_http import Client` 하나만 두었더니
+    # `drift.sh start` 가 첫 탐침에서 ModuleNotFoundError 로 죽었다. 검사는 통과했는데,
+    # 검사 파일이 sys.path 에 orchestrator/ 를 **손으로 넣어 두어서** 그랬다 --
+    # 검사가 진짜 호출자와 다른 문으로 들어오면 이런 것을 못 잡는다.
+    try:
+        from gemini_http import Client
+    except ImportError:
+        from orchestrator.gemini_http import Client
+    secs = SLOW_TIMEOUT if SLOW_MODEL.search(model) else TIMEOUT
+    return Client(model=model, key=key, timeout=secs,
+                  max_output_tokens=MAX_OUT, attempts=MAX_RETRIES)
+
+
+def _default_models(key: str):
+    try:
+        from bot_tools import list_available_models
+        return list_available_models(key) or FALLBACK_MODELS
+    except Exception:
+        return FALLBACK_MODELS
+
+
+def _dotenv_paths() -> tuple:
+    """어디서 .env 를 찾는가. **순서가 곧 우선순위다** -- 앞엣것이 이긴다
+    (override=False 라 먼저 올라간 값이 남는다).
+
+    함수로 뺀 이유: 검사에서 한 자리만 보게 하려고. 저장소 루트에 진짜 .env 가 있는
+    기계에서는 그것이 먼저 올라가서, 임시 디렉토리의 .env 를 읽는지 볼 수가 없었다
+    -- 키를 제대로 넣은 사람만 검사가 깨졌다."""
+    return (Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env")
+
+
+def _load_dotenv_once() -> None:
+    """저장소 루트의 .env 를 환경에 올린다. **이미 있는 환경변수는 덮지 않는다.**
+
+    왜 필요한가(실측): 키는 .env 에 있고, Discord 봇은 systemd 유닛의
+    `EnvironmentFile=/home/ubuntu/SE/.env` 로 그것을 받는다. 그런데 SSH 셸에서
+    `python3 ...` 로 직접 돌리면 .env 가 안 실려서 후보 풀이 비고,
+    "RuntimeError: 빈 후보 풀" 만 보인다 -- 키가 없는 것처럼 보이지만 실은 있다.
+
+    서비스로 돌 때와 손으로 돌 때가 달라지는 것이 함정의 정체이므로, 여기서 한 번
+    맞춰준다. override 하지 않으므로 systemd 로 이미 들어온 값이 우선이다."""
+    for cand in _dotenv_paths():
+        if not cand.is_file():
+            continue
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(cand, override=False)
+        except ImportError:
+            # python-dotenv 가 없어도 돌아야 한다. 이 경로가 조용히 물러나면
+            # "키가 없는 것처럼 보이지만 실은 있다"는 함정이 그대로 남는다.
+            for line in cand.read_text(encoding="utf-8", errors="replace").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip().strip("'\"")
+                if k and k not in os.environ:          # 기존 환경변수를 덮지 않는다
+                    os.environ[k] = v
+        return
+
+
+def _roster() -> set:
+    """명부에 적힌 라벨. 파일이 없거나 깨졌으면 빈 집합 -- 그때는 거르지 않는다."""
+    if not ROSTER:
+        return set()
+    try:
+        import json
+        d = json.loads(Path(ROSTER).read_text(encoding="utf-8"))
+        if time.time() - float(d.get("at", 0)) > ROSTER_AGE:
+            return set()
+        return {r["label"] for r in d.get("live", []) if r.get("label")}
+    except Exception:
+        return set()
+
+
+def api_keys() -> list:
+    """`(이름, 키)` 목록. **여기 한 벌만 둔다.**
+
+    **키는 몇 개든 받는다.** 한도는 프로젝트에 걸리므로 서로 다른 프로젝트의 키를 더하는
+    것이 유일하게 한도를 늘리는 길이다(같은 프로젝트에서 키만 여러 개 만들면 한도는
+    그대로다 -- 구글 문서 기준). FALLBACK2, FALLBACK3 ... 으로 이어 붙이면 자동으로 잡힌다.
+
+    **`.env` 도 여기서 읽는다.** systemd 서비스는 EnvironmentFile 로 .env 를 받지만
+    SSH 셸은 그렇지 않다 -- 이 저장소가 한 번 데인 자리다. 이 함수를 안 거치고 os.environ
+    만 보는 코드는 SSH 에서 키가 하나도 없거나 첫 키만 있는 것처럼 본다(실측: law/ocr.py
+    가 그랬다. 예비 키 둘이 놀고 있는데 쿼터에 막혔다고 멈췄다).
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        _load_dotenv_once()
+    names = ["GEMINI_API_KEY", "GEMINI_API_KEY_FALLBACK"]
+    names += [f"GEMINI_API_KEY_FALLBACK{i}" for i in range(2, 9)]
+    seen, out = set(), []
+    for nm in names:
+        v = (os.environ.get(nm) or "").strip()
+        if v and v not in seen:              # 같은 키를 두 번 넣으면 한도가 는 것처럼
+            seen.add(v)                      # 보이지만 실제로는 같은 통을 두 번 쓴다
+            out.append((nm, v))
+    # **이름을 못 맞혔다고 '키가 없다' 고 하지 않는다.** 실측 2026-09-11: 키는 .env 에
+    # 있었는데 위 아홉 이름 중 하나가 아니어서 풀이 비었고, 에이전트는 사람에게
+    # "주어진 정보가 틀렸다(이용자 측) -- 키를 발급받아 넣어라" 고 답했다. **있는 것을
+    # 없다고 하고 그 탓을 사람에게 돌린 것이다.** 이름이 아니라 **값의 꼴**로 찾는다.
+    for nm, v in _키꼴로찾기():
+        if v not in seen:
+            seen.add(v)
+            out.append((nm, v))
+    return out
+
+
+# 구글 AI 스튜디오 키의 꼴. 이름이 무엇이든 값이 이렇게 생겼으면 키다.
+_키꼴 = re.compile(r"^AIza[0-9A-Za-z_\-]{30,45}$")
+
+
+def _키꼴로찾기() -> list:
+    """환경변수와 .env 를 통틀어 **값이 키처럼 생긴 것**을 모은다. `(이름, 키)`.
+
+    이름 목록에 기대지 않으므로 `GOOGLE_API_KEY` 든 `MY_GEMINI` 든 잡힌다. 값의 꼴이
+    또렷해서(`AIza` + 35자) 엉뚱한 것을 키로 오인할 일은 거의 없다."""
+    out = []
+    for k, v in os.environ.items():
+        v = (v or "").strip()
+        if _키꼴.fullmatch(v):
+            out.append((k, v))
+    for env in _dotenv_paths():
+        try:
+            글 = Path(env).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in 글.splitlines():
+            s_ = line.strip()
+            if s_.startswith("export "):
+                s_ = s_[7:].strip()
+            if not s_ or s_.startswith("#") or "=" not in s_:
+                continue
+            k, v = s_.split("=", 1)
+            v = v.strip().strip("'\"")
+            if _키꼴.fullmatch(v):
+                out.append((k.strip(), v))
+    seen, uniq = set(), []
+    for k, v in out:
+        if v not in seen:
+            seen.add(v)
+            uniq.append((k, v))
+    return uniq
+
+
+def 키찾은꼴(repo=None) -> str:
+    """왜 풀이 비었는지 **사람이 고칠 수 있게** 말한다. 값은 절대 안 비친다."""
+    ks = api_keys()
+    if ks:
+        return f"키 {len(ks)}개: {', '.join(n for n, _ in ks)}"
+    본 = []
+    for env in _dotenv_paths():
+        try:
+            글 = Path(env).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        본 += [ln.strip().split("=", 1)[0].replace("export ", "").strip()
+               for ln in 글.splitlines() if "=" in ln and not ln.strip().startswith("#")]
+    if 본:
+        return ("키를 못 찾았다. .env 에 이름은 있다: " + ", ".join(본[:12])
+                + "\n  값이 `AIza…` 꼴인 줄이 하나도 없다 -- 이름이 아니라 **값**을 확인하라")
+    return "키를 못 찾았다. .env 도 환경변수도 비었다"
+
+
+def build_pool(keys=None, models=None, llm_factory=_default_factory, model_lister=_default_models):
+    """(label, llm) 후보 목록. keys 기본 = 환경변수 두 키. models 기본 = 키별 실사용 모델 조회."""
+    if keys is None:
+        keys = [v for _, v in api_keys()]
+    pool = []
+    for key in keys:
+        if not key:
+            continue
+        kid = _key_id(key)
+        kmodels = models or model_lister(key)
+        for m in kmodels:
+            if not ALLOW_PRO and SKIP_MODEL.search(m):
+                continue
+            pool.append((f"key-{kid}:{m}", llm_factory(m, key)))
+    keep = _roster()
+    if keep:
+        named = [c for c in pool if c[0] in keep]
+        # **명부가 키를 통째로 떨어뜨리면 그 키만 되살린다.** 명부는 런 시작 때 탐침
+        # 한 바퀴로 만든다. 그 순간 어느 키가 분당 한도에 걸렸으면 그 키의 조합이
+        # 하나도 안 적히고, 12시간 동안 그 키를 안 쓴다 -- 한도가 프로젝트(키)마다
+        # 걸리므로 그건 처리량의 1/3 을 그냥 버리는 것이다(실측: 키 셋 중 하나가
+        # 반나절 놀았다). 탐침 한 번의 실패로 키 하나를 반나절 죽이지 않는다.
+        if named:
+            all_keys = {c[0].split(":", 1)[0] for c in pool}
+            live_keys = {c[0].split(":", 1)[0] for c in named}
+            missing = all_keys - live_keys
+            if missing:
+                named += [c for c in pool if c[0].split(":", 1)[0] in missing]
+            return named
+    if not pool and keys:          # 전부 걸러졌으면 거르지 않는다 -- 빈 풀보다는 낫다
+        for key in keys:
+            kid = _key_id(key)
+            for m in (models or model_lister(key)):
+                pool.append((f"key-{kid}:{m}", llm_factory(m, key)))
+    return pool
+
+
+def _extract_text(resp) -> str:
+    content = getattr(resp, "content", resp)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(p.get("text", "") for p in content if isinstance(p, dict))
+    return str(content)
+
+
+_QUOTA_ID = re.compile(r"['\"]?quota(?:Id|Metric)['\"]?\s*:\s*['\"]([^'\"]+)")
+
+
+def _quota_name(e) -> str:
+    """구글이 429 본문에 적어 보낸 **한도 이름**. 그것이 분당인지 하루치인지 여기 적혀 있다
+    (예: GenerateRequestsPerMinutePerProjectPerModel). 예전에는 'PerMinute' 포함 여부만
+    보고 이름은 버렸다 -- 그래서 '일일소진' 이 진짜 하루치인지, 이름을 못 알아본 분당
+    한도인지 구분할 수가 없었다. 추측을 로그에 남기면 그 추측을 사실로 읽게 된다."""
+    m = _QUOTA_ID.search(str(e))
+    return m.group(1) if m else ""
+
+
+def _note_failure(label: str, e, verbose: bool) -> str:
+    """실패 하나를 갈래대로 기록하고 갈래 이름을 돌려준다."""
+    if _is_rpm(e):
+        quota_tracker.record_rpm_cooldown(label)
+        # **구글이 알려 준 만큼 쉰다.** 429 응답에 retryDelay 가 실려 오면 그것이 추측보다
+        # 정확하다. 없으면 KEY_PENALTY 로 물러난다. 한도는 키에 걸리므로 형제 모델도 같이.
+        back = _retry_delay(e) or KEY_PENALTY
+        _LAST_KEY[_key_of(label)] = time.time() + back - MIN_GAP
+        kind = "RPM/60초"
+    elif _is_quota(e):
+        quota_tracker.record_exhausted(label)
+        name = _quota_name(e)
+        # 이름이 아예 안 실려 온 429 는 하루치라고 단정할 근거가 없다. 그래도 소진으로
+        # 다루는 것은 보수적 선택이고(1분짜리로 잘못 보면 죽은 조합을 1분마다 다시
+        # 두드린다), 대신 **모른다는 것을 로그에 적는다**.
+        kind = f"일일소진/{name}" if name else "일일소진?(한도 이름 없음)"
+    elif _is_permanent(e):
+        quota_tracker.mark_dead(label, str(e)[:200])
+        kind = "영구배제"
+    else:
+        _SICK[label] = _SICK.get(label, 0) + 1
+        kind = f"일시장애{'' if _SICK[label] < 2 else f' x{_SICK[label]}'}"
+        if _SICK[label] >= TRANSIENT_TRIES:
+            _SICK_UNTIL[label] = time.time() + TRANSIENT_COOLDOWN
+            kind += f" -- {TRANSIENT_COOLDOWN:.0f}초 뺀다"
+    if verbose:
+        print(f"[llm_pool] {label} 실패 [{kind}]: {str(e)[:120]}",
+              file=sys.stderr, flush=True)
+    return kind
+
+
+def call(pool, prompt: str, pool_id: str = "orchestrator", max_candidates: int = None,
+         verbose: bool = True, prefer: str = "", images=None) -> tuple[str, str]:
+    """후보를 쿼터/장애 견디며 순회. (응답텍스트, 성공한 label) 반환. 전부 실패면 예외.
+
+    max_candidates 로 시도 수를 제한한다(기본 MAX_CANDIDATES). 상한이 없으면 죽은 키로 돌릴 때
+    수십 개 후보 x 타임아웃만큼 말없이 매달린다 -- CLI 에서는 "답이 안 나온다"로만 보인다.
+    verbose 면 실패한 후보를 stderr 에 한 줄씩 남긴다(어디서 막혔는지 보이게)."""
+    live = [c for c in pool if not quota_tracker.is_dead(c[0])] or pool
+    # **prefer 는 앞으로 당기기만 한다, 걸러내지 않는다.** 걸러내면 그 계열이 전부 막혔을
+    # 때 호출이 통째로 죽는다. 여기서 원하는 것은 "먼저 두드려라" 이지 "이것만 써라" 가
+    # 아니다 -- 뒤에 평소 후보가 그대로 줄 서 있어야 한다.
+    _want = re.compile(prefer, re.I) if prefer else None
+
+    def sort_key(c):
+        label = c[0]
+        model = label.split(":", 1)[1] if ":" in label else label
+        rem = quota_tracker.remaining(label)
+        # **방금 쓴 후보는 뒤로.** 이것이 첫 번째 정렬 키다 -- 모델 등급보다 앞선다.
+        # 좋은 모델이라도 3초 전에 썼으면 지금 두드려봐야 429 만 받는다.
+        # 키 간격이 먼저다 -- 모델을 바꿔 봐야 같은 키면 같은 한도를 쓴다.
+        # 그 다음은 **재본 응답 시간**이다. 이름 등급은 재본 적 없는 후보의 기본값으로만
+        # 쓴다 -- 한 번이라도 재봤으면 그 숫자가 이름보다 정확하다.
+        return (_since_key(label) < MIN_GAP, _since_used(label) < MIN_GAP,
+                rem <= 0, not _want.search(label) if _want else False,
+                -round(_odds(label), 1), round(_lat(label), 1),
+                _model_rank(model), -rem)
+
+    limit = MAX_CANDIDATES if max_candidates is None else max_candidates
+    last_error, tried, skipped = None, 0, 0
+
+    # **바퀴를 돈다.** 한 바퀴가 전부 RPM/일시장애로 끝났으면 그것은 "이 키로는 못 한다" 가
+    # 아니라 "지금은 못 한다" 다. 쿨다운이 풀릴 만큼 기다렸다 다시 돈다.
+    for rnd in range(1, max(1, RPM_ROUNDS) + 1):
+        # **잔량이 없는 후보는 아예 빼고 시도한다.** 예전에는 sort_key 로 뒤에 밀어두기만
+        # 해서 여전히 순회 대상이었다 -- 소진된 조합 하나마다 왕복 한 번과 429 대기를 물고,
+        # 상한(MAX_CANDIDATES)까지 그것으로 채우면 **멀쩡한 후보에 닿지도 못한다**.
+        #
+        # remaining() 은 일일 소진과 RPM 쿨다운을 모두 0 으로 돌려주므로 이 한 줄이 둘 다
+        # 건너뛴다. 바퀴를 다시 돌 때는 쿨다운이 풀려 잔량이 돌아와 있다.
+        #
+        # 전부 0 이면 그때는 거르지 않는다 -- 추정이 틀렸을 수 있고(카운터는 휴리스틱이다),
+        # 아무것도 시도하지 않고 실패하는 것보다 한 번 두드려보는 편이 낫다.
+        # **아픈 것도 같이 뺀다.** 잔량은 멀쩡한데 500 만 내는 후보가 있다.
+        # 전부 아프면 거르지 않는다 -- 아무것도 시도 안 하는 것보다 두드려 보는 편이 낫다
+        # (잔량 0 일 때와 같은 원칙이다).
+        _now = time.time()
+        fresh = [c for c in live
+                 if quota_tracker.remaining(c[0]) > 0
+                 and _SICK_UNTIL.get(c[0], 0.0) <= _now]
+        if not fresh:
+            fresh = [c for c in live if quota_tracker.remaining(c[0]) > 0]
+        if verbose and len(fresh) < len(live):
+            # **둘을 갈라 찍는다.** 예전에는 둘 다 "잔량 없음" 이었다. 하나는 자정까지고
+            # 하나는 60초짜리인데 같은 말로 찍으니, 60초를 하루로 읽게 된다(실측: 일일
+            # 한도가 멀쩡한 것을 눈으로 보고도 로그만 보면 소진으로 읽혔다).
+            cool = sum(1 for c in live if c not in fresh
+                       and quota_tracker.is_rpm_cooling(c[0]))
+            # **제 이름으로 센다.** 500 을 '분당 한도' 나 '오늘 치 소진' 에 섞어 찍으면
+            # 로그를 읽는 사람이 쿼터 문제로 오해한다 -- 그건 고칠 데가 다른 문제다.
+            sick = sum(1 for c in live if c not in fresh
+                       and not quota_tracker.is_rpm_cooling(c[0])
+                       and _SICK_UNTIL.get(c[0], 0.0) > _now)
+            gone = len(live) - len(fresh) - cool - sick
+            what = []
+            if sick:
+                what.append(f"500/503 을 거듭 낸 {sick}개"
+                            f"({TRANSIENT_COOLDOWN:.0f}초 뒤 돌아온다)")
+            if cool:
+                what.append(f"분당 한도로 쉬는 중 {cool}개(60초면 풀린다)")
+            if gone:
+                # **누가 소진됐는지 적는다.** 개수만 찍으면 "정말 하루치가 다 됐나" 를
+                # 확인할 방법이 없다 -- 콘솔에서 본 잔량과 대조하려면 이름이 있어야 한다.
+                who = [c[0].split(":", 1)[-1] for c in live
+                       if c not in fresh and not quota_tracker.is_rpm_cooling(c[0])]
+                tag = ", ".join(sorted(set(who))[:4])
+                what.append(f"오늘 치 소진 {gone}개(자정에 풀린다: {tag}"
+                            f"{' ...' if len(set(who)) > 4 else ''})")
+            # **같은 말을 되풀이하지 않는다.** 이 줄은 호출마다 찍히는데, 잔량은
+            # 자정까지 안 돌아온다 -- 한 화를 쓰는 동안 같은 문장이 수백 번 흘러
+            # 정작 봐야 할 줄을 덮는다. 내용이 달라지거나 5분이 지나야 다시 찍는다.
+            msg = (f"[llm_pool] {' · '.join(what)} -- 건너뛴다 "
+                   f"(남은 후보 {len(fresh)}개)")
+            was, when = _SAID.get(pool_id, ("", 0.0))
+            if msg != was or time.time() - when > 300:
+                _SAID[pool_id] = (msg, time.time())
+                print(msg, file=sys.stderr, flush=True)
+        ranked = sorted(fresh or live, key=sort_key)
+        # pin 은 **간격을 지킬 때만** 앞으로 당긴다. 방금 쓴 것을 또 앞에 두면 그 하나가
+        # 자기 RPM 을 다 쓰고, 나머지 후보는 놀면서 런이 죽는다.
+        pinned = quota_tracker.get_pinned(pool_id)
+        # **선호가 있으면 핀이 그것을 못 이긴다.** pin 은 "지난번에 이게 됐다" 는
+        # 기억이고 prefer 는 "이번엔 이걸 써라" 는 지시다. 기억이 지시를 덮으면 안 된다.
+        #
+        # 실제로 덮고 있었다(실측 2026-09-07). 추출은 prefer="gemma" 로 보낸다 --
+        # gemma 는 계열이 달라 자기 분당 한도를 따로 갖고, 그래서 산문이 쓰는 flash
+        # 통을 안 건드린다. 그런데 pool_id 가 같으면 flash 에 걸린 핀이 앞으로 당겨져
+        # 추출까지 flash 로 갔다. 비어 있는 통을 놀리면서 붐비는 통을 더 쓴 것이다.
+        # 검사가 적어 둔 "gemma 실측 사용량 1~2건" 이 그 증상이다.
+        if pinned and _want and not _want.search(pinned):
+            pinned = ""
+        if pinned and _since_used(pinned) >= MIN_GAP:
+            ranked = ([c for c in ranked if c[0] == pinned]
+                      + [c for c in ranked if c[0] != pinned])
+        skipped = max(0, len(ranked) - limit)
+
+        # 후보 전부가 방금 쓴 것들이면 두드려봐야 429 다. 가장 오래된 것이 간격을 채울
+        # 만큼만 기다린다 -- 몇 초다. 이 몇 초가 바퀴 하나를 통째로 살린다.
+        if ranked:
+            oldest = max(min(_since_used(c[0]), _since_key(c[0]))
+                         for c in ranked[:limit])
+            if oldest < MIN_GAP:
+                nap = MIN_GAP - oldest
+                if verbose:
+                    print(f"[llm_pool] 후보가 전부 {oldest:.1f}초 전에 쓰였다 -- "
+                          f"{nap:.1f}초 쉰다 (RPM 회피)", file=sys.stderr, flush=True)
+                time.sleep(nap)
+
+        only_transient = True          # 이 바퀴가 전부 "기다리면 풀리는" 실패였는가
+        queue = list(ranked[:limit])
+        # **처음엔 하나만 던진다.** 동시 발사는 같은 프롬프트를 복제해서 던지고 제일 빨리
+        # 온 것만 쓴다 -- 첫 후보가 어차피 성공할 상황에서는 쿼터를 배로 태우고 나머지는
+        # 버리는 것이다. 속도를 사려고 쿼터를 파는 셈인데, 쿼터가 병목이면 정확히 거꾸로
+        # 작동한다(실측: 키 둘의 모든 모델이 동시에 429). 그래서 폭은 1 에서 시작해
+        # **실패할 때만** 넓힌다. 잘 도는 런은 호출 한 번, 막힌 런만 여러 발이다.
+        width = 1
+
+        # **묶음으로 동시에 던진다.** RPM 은 모델별로 따로 걸리므로 서로 다른 통에 던지는
+        # 것은 서로의 한도를 안 깎는다. 직렬로 하나씩 두드리며 사이사이 기다리면 그 통들을
+        # 놀리는 것이고, 그것이 후보 12개에 7분이 걸리던 이유였다.
+        while queue:
+            queue.sort(key=sort_key)
+            # **한 묶음에 같은 키를 두 번 넣지 않는다.** 한도는 모델이 아니라 키
+            # (프로젝트)에 걸린다. 예전에는 키:모델 단위로만 걸러서, 동시에 던진 셋이
+            # 전부 같은 키인 일이 흔했다 -- 같은 통을 세 번 때리니 셋이 같이 429 를 받고,
+            # 같이 벌점을 물고, 37 초를 자고, 다시 같은 짓을 했다(실측: 그렇게 10분).
+            # 키로 거르면 묶음 하나가 서로 다른 프로젝트 셋을 쓴다.
+            batch, seen_keys, held = [], set(), []
+            while queue and len(batch) < max(1, min(width, FANOUT)):
+                cand = queue.pop(0)
+                k = _key_of(cand[0])
+                if k in seen_keys:
+                    held.append(cand)            # 이번 묶음엔 안 쓴다, 버리지도 않는다
+                    continue
+                seen_keys.add(k)
+                batch.append(cand)
+            queue = held + queue
+            if not batch:
+                break
+
+            # 이 묶음에서 제일 빨리 준비되는 만큼만 **한 번** 쉰다. 후보마다 쉬지 않는다.
+            # 제일 빨리 준비되는 만큼만 쉬고, 그때까지도 아직 안 풀린 것은 이번 묶음에서
+            # 뺀다. 안 그러면 벌점 먹은 키가 묶음에 얹혀 그대로 또 429 를 받는다.
+            nap = min(max(0.0, MIN_GAP - _since_key(lb)) for lb, _ in batch)
+            if nap > 0:
+                if verbose:
+                    print(f"[llm_pool] {nap:.1f}초 쉬고 {len(batch)}개를 동시에 던진다",
+                          file=sys.stderr, flush=True)
+                time.sleep(nap)
+            # **거르기는 쉬든 안 쉬든 한다.** 2026-09-07 까지 이 세 줄이 `if nap > 0` 안에
+            # 있었다 -- 그런데 nap 은 묶음에서 **제일 빨리 준비되는** 후보의 값이다. 한
+            # 후보가 이미 준비돼 있으면 nap 은 0 이고, 그러면 거르기를 통째로 건너뛰어
+            # **방금 429 를 맞은 키가 그 묶음에 그대로 얹혀 나간다**.
+            #
+            # 실측: key-A 가 429 를 맞아 벌점을 물었는데, 다음 묶음이 [key-B(준비됨),
+            # key-A:형제모델] 로 짜였다. key-B 덕에 nap=0 이 되어 key-A 를 곧바로 다시
+            # 두드렸다 -- 확실히 429 가 될 왕복 하나를 태우고, 벌점을 한 번 더 늘린다.
+            # 쿼터가 병목일 때 정확히 하면 안 되는 짓이다.
+            ready = [c for c in batch if _since_key(c[0]) >= MIN_GAP]
+            if ready and len(ready) < len(batch):
+                queue = [c for c in batch if c not in ready] + queue
+                batch = ready
+
+            now = time.time()
+            for lb, _ in batch:
+                _LAST_USED[lb] = now
+                _LAST_KEY[_key_of(lb)] = now
+            tried += len(batch)
+
+            # **with 을 안 쓴다.** 블록을 나갈 때 shutdown(wait=True) 가 걸려서, 먼저 답한
+            # 것을 쓰고도 제일 느린 후보를 끝까지 기다리게 된다(실측: 0.1초에 받아 놓고
+            # 1.2초를 버렸다). 남은 것은 버리고 간다 -- 어차피 안 쓸 답이다.
+            pool_x = cf.ThreadPoolExecutor(max_workers=len(batch))
+            # **그림은 줄 때만 넘긴다.** 안 그러면 `invoke(prompt)` 만 아는 가짜 LLM
+            # (검사가 넣는 것)이 인자 하나 더 받고 터진다. 여기 한 벌에 그림을 태워야
+            # 쿼터 추적·RPM 쿨다운·모델 순위를 그대로 쓴다 -- 부르는 쪽이 제 반복문을
+            # 따로 짜면 그 층을 통째로 버리는 것이다(실측: law/ocr.py 가 그랬다).
+            futs = {pool_x.submit(
+                        lambda l=llm: _extract_text(
+                            l.invoke(prompt, images=images) if images
+                            else l.invoke(prompt))): lb
+                    for lb, llm in batch}
+            won = None
+            try:
+                for fut in cf.as_completed(futs):
+                    label = futs[fut]
+                    try:
+                        text = fut.result()
+                    except Exception as e:
+                        last_error = e
+                        kind = _note_failure(label, e, verbose)
+                        _FAIL[label] = _FAIL.get(label, 0) + 1
+                        if kind in ("일일소진", "영구배제"):
+                            only_transient = False
+                        continue
+                    quota_tracker.record_success(label)
+                    _SICK.pop(label, None)
+                    _SICK_UNTIL.pop(label, None)
+                    quota_tracker.set_pinned(pool_id, label)
+                    _WIN[label] = _WIN.get(label, 0) + 1
+                    took = time.time() - now
+                    _LAT[label] = (LAT_MEMORY * took
+                                   + (1 - LAT_MEMORY) * _LAT.get(label, took))
+                    won = (text, label)
+                    break
+            finally:
+                pool_x.shutdown(wait=False, cancel_futures=True)
+            if won:
+                return won
+            width = min(max(1, FANOUT), width + 1)   # 막혔다 -- 다음 묶음은 넓게
+
+        if rnd >= max(1, RPM_ROUNDS) or not only_transient:
+            break
+        # 가장 빨리 풀리는 쿨다운까지만 기다린다. 하나라도 살아나면 다음 바퀴가 성공한다.
+        waits = [quota_tracker.rpm_cooldown_remaining(c[0]) for c in live]
+        waits = [w for w in waits if w > 0]
+        wait = min(min(waits) + 2, RPM_MAX_WAIT) if waits else 10.0
+        if verbose:
+            print(f"[llm_pool] 한 바퀴가 전부 RPM/일시장애다 -- {wait:.0f}초 기다렸다 "
+                  f"다시 돈다 ({rnd}/{RPM_ROUNDS}바퀴)", file=sys.stderr, flush=True)
+        time.sleep(wait)
+
+    if last_error:
+        raise RuntimeError(
+            f"후보 {tried}개를 모두 실패했다"
+            f"{f' (상한 {limit} 때문에 {skipped}개는 시도 안 함)' if skipped else ''}. "
+            f"마지막 오류: {type(last_error).__name__}: {last_error}") from last_error
+    # **없다고 말하기 전에 무엇을 봤는지 말한다.** 실측 2026-09-11: 키는 .env 에 있었는데
+    # 이름이 아홉 개 중 하나가 아니어서 "키가 없다" 고 했고, 에이전트는 그것을 사람 탓으로
+    # 돌렸다("주어진 정보가 틀렸다(이용자 측) -- 발급받아 넣어라"). 이제는 값의 꼴로도
+    # 찾고, 그래도 없으면 **.env 에 어떤 이름들이 있는지**까지 적어 준다(값은 안 비친다).
+    raise RuntimeError(
+        "빈 후보 풀 -- 쓸 수 있는 제미나이 키를 못 찾았다.\n"
+        f"  {키찾은꼴()}\n"
+        "  이름은 아무것이나 된다 -- 값이 `AIza…` 꼴이면 환경변수든 .env 든 잡는다.\n"
+        "  systemd 서비스는 EnvironmentFile 로 .env 를 받지만 SSH 셸은 그렇지 않다.\n"
+        "  즉시:  set -a; source ~/SE/.env; set +a")
+
+
+def ask(pool, prompt: str, pool_id: str = "edu_translate", **kwargs):
+    """`llm_pool.call` 의 얇은 별칭 (edu/번역 등 구형 호출 호환)."""
+    text, label = call(pool, prompt, pool_id=pool_id, **kwargs)
+    return text

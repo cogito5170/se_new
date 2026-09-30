@@ -1,0 +1,390 @@
+"""eval/wire -- **배선 점검.** 기관들이 말로만 이어져 있는지, 실제로 이어져 있는지 본다.
+
+검사(tests/)는 각 기관을 따로 붙든다. 여기서 보는 것은 다르다: **진짜 저장소에서,
+진짜 데이터로, 끝에서 끝까지 한 바퀴가 도는가.** 단위 검사가 전부 초록인데 배선이
+끊겨 있는 상태가 이 저장소의 단골 실패다(드러나는 꼴은 늘 "봇이 그것을 모른다" 다).
+
+두 부분이다.
+
+  읽기 점검 -- 진짜 저장소에서 그대로 돈다. 임포트 · 고정 명령 8갈래 · 각 기관의
+              진입점 · 원장의 줄 수. 아무것도 안 고친다.
+  한 바퀴  -- **격리 판(sandbox)에서** 쓰기 흐름까지 돈다: 새 노트 하나를 넣고
+              간추리기 -> 판정 -> 요지문까지 이어지는가, 목표가 승인 없이 안 집히는가.
+              저장소를 안 더럽히므로 운영 중에도 돌릴 수 있다(sandbox 가 그 보증이다).
+
+판정은 끝값 관례 그대로: `0` 이어짐 · `3` **못돌림**(재료·키가 없어 안 잰 것 -- 초록이
+아니다) · 그 외 **끊김**. 못돌림을 초록으로 뭉개지 않는 것이 이 파일의 요점이다.
+
+쓰기:
+    python3 eval/wire.py            # 읽기 점검 + 한 바퀴
+    python3 eval/wire.py --읽기만    # 격리 판을 안 깐다 (빠르다)
+끝값: 0 끊김 없음 · 1 끊긴 것 있음 · 3 못돌림만 있고 끊김은 없음
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+
+import ledgerroot  # noqa: E402   # **뿌리를 넣고 나서** -- 위에 두면 스크립트로 죽는다
+
+# (이름, argv, 기대끝값들, 무엇을 보는가)
+읽기점검 = [
+    ("임포트:dispatch", ["python3", "-c", "import dispatch; print(len(dispatch.명령들))"],
+     (0,), "봇이 고정 명령 배선을 들여올 수 있는가"),
+    ("임포트:bot_tools", ["python3", "-c", "import bot_tools; print('ok')"],
+     (0,), "봇 도구(run_shell·run_experiment)가 임포트되는가"),
+    ("기관:sandbox", ["python3", "sandbox/run.py", "--", "true"],
+     (0,), "격리 판이 실제로 깔리는가"),
+    ("기관:graph조회", ["python3", "graph/ask.py", "--말", "메모리"],
+     (0, 3), "깃발 색인이 답하는가"),
+    ("기관:graph판정", ["python3", "graph/link.py", "--보기"],
+     (0, 3), "다섯 꼴 간선이 적혀 있는가"),
+    ("기관:audit", ["python3", "audit/run.py", "--초", "30"],
+     (0, 1), "변경 감사가 도는가 (1 은 검사 실패 -- 배선은 이어짐)"),
+    ("기관:eval답", ["python3", "eval/answers.py"],
+     (0,), "답 회귀가 지금 트리에서 통과하는가"),
+    ("기관:router", ["python3", "router/check.py"],
+     (0, 1, 3), "경로 심판이 도는가"),
+    ("기관:intent", ["python3", "intent/store.py", "--목록"],
+     (0,), "목표 원장을 읽는가"),
+    ("기관:evolve", ["python3", "gatekeeper.py"],
+     (0,), "게이트 전부가 통과하는가 (승격 경로의 바탕)"),
+    ("기관:toolgate", ["python3", "toolgate.py", "rm -rf gates/"],
+     (1,), "도구 게이트가 게이트 삭제를 **차단**하는가 (끝값 1 이 옳다)"),
+    ("기관:eval과제", ["python3", "eval/tasks.py", "--목록"],
+     (0,), "절대 기준 과제가 읽히는가 (호출 0회)"),
+    ("기관:harvest", ["python3", "dig/harvest.py", "--틈만"],
+     (0, 3), "수집기가 자의 틈을 읽는가 (망 없음 · 3 은 틈 없음)"),
+    ("기관:mailer", ["python3", "mailer.py", "--필요"],
+     (0, 3), "메일 수단이 있는가 (3 은 없음 -- 딱 그것만 묻는다)"),
+    # **`--저장소` 로 임시 자리를 준다.** 안 주면 점검이 돌 때마다 추적되는
+    # `codify/ledger.jsonl` 에 줄이 하나씩 쌓인다(실측 2026-09-15). 도는지만 보면 된다.
+    ("기관:codify", ["python3", "codify/run.py", "--원문", "x", "--저장소", "{임시}"],
+     (3,), "codify 가 도는가 (--원문 만 주고 모델 없음 -- 끝값 3)"),
+    ("기관:secaudit", ["python3", "secaudit/run.py", "--json"],
+     (0, 1, 3), "보안 자가점검이 도는가 (0 높음없음 · 1 높음 · 3 전부 못잼)"),
+    ("기관:repair", ["python3", "repair/run.py", "--명령", "true", "--증상", "배선"],
+     (0, 3), "고치기 루프가 도는가 (0 이미 해결 · 3 판 못 깜 -- 모델 호출 0회)"),
+    ("기관:research", ["python3", "research/run.py", "--목표", "x", "--분해만"],
+     (0,), "연구가 목표를 추상 질의로 푸는가 (분해만 -- 수집·쓰기 없음, 모델 없으면 기계 일반화)"),
+    ("기관:plan", ["python3", "plan/store.py", "--상태"],
+     (0,), "계획판 상태를 읽는가 (켜짐/꺼짐 -- 쓰기 없음)"),
+    ("기관:commit_guard", ["python3", "commit_guard.py", "--배선"],
+     (0,), "커밋 문지기(게이트·검사·CI)가 임포트되는가 (--배선 -- 망·쓰기 없음)"),
+    ("기관:diagnose", ["python3", "-m", "diagnose", "--글",
+                      '  File "improve/run.py", line 410, in 사용자개선\nModuleNotFoundError: No module named \'plan\''],
+     (0, 1), "증상에서 증거를 캐는가 (모델 없음 -- 0 가설 있음 · 1 없음)"),
+    ("기관:investigate", ["python3", "-m", "investigate.run", "--배선"],
+     (0,), "긴 호흡 루프가 diagnose·repair 원장·판정에 배선돼 있는가 (두뇌 안 부름)"),
+    ("기관:impact", ["python3", "impact.py", "--파일", "relay.py"],
+     (0,), "영향 분석이 도는가 (누가 부르는가·어느 입구에 닿는가 -- 읽기만)"),
+    ("기관:plan", ["python3", "plan/store.py", "--상태"],
+     (0,), "계획판 상태를 읽는가 (리허설 여부까지 -- 쓰기 없음)"),
+    ("기관:improve", ["python3", "improve/run.py", "--틈만"],
+     (0,), "자가개선이 틈을 세는가 (모델·sandbox 안 씀 -- 읽기만)"),
+    # **얕은 점검이 깊은 길을 못 봤다**(실측: --틈만 은 plan 을 안 지나 ModuleNotFoundError 를 놓쳤다).
+    # 진입점·깃발을 **세어 찾는다**(목록을 손으로 안 적는다). 끝값 1 이면 위험이 있다.
+    ("기관:진입점", ["python3", "entrypoints.py", "--위험만"],
+     (0,), "진입점에 늦은 임포트 위험이 없는가 (코드가 세어 찾는다)"),
+    ("기관:improve임포트", ["python3", "improve/run.py", "--임포트"],
+     (0,), "자가개선의 깊은 임포트(plan·rehearsal)가 스크립트로도 서는가"),
+    ("기관:delegate", ["python3", "delegate/run.py", "--범위", "graph/*.py", "--쪼개기만"],
+     (0,), "위임의 쪼개기가 도는가 (호출 0회)"),
+]
+
+# 고정 명령: 이것을 치면 에이전트로 안 떨어지고 봇이 받아야 한다.
+#
+# **2026-09-14 다섯을 내렸다.** `!실험`·`!감사`·`!목표`·`!진화`·`!위임` -- 각 기관 원장에
+# 줄이 한 개도 없어서 `dispatch.명령들` 에서 뺐다(모듈은 그대로 있다). 그러면 그 말은
+# 에이전트로 떨어지는 것이 **맞는 동작**이다. 이 목록이 진실의 자리이므로 같이 고친다.
+#
+# **여기를 손으로 적어 두는 것이 이 목록의 약점이다.** 그래서 dispatch 를 따라가게 한다 --
+# 명령을 싣거나 내릴 때 이 줄을 잊어도 어긋나지 않는다(실측 2026-09-15: 잊어서
+# `test_acceptance.py` 가 빨개진 채로 main 에 갔다).
+def _고정명령들():
+    import dispatch
+    return tuple(m.PREFIX for m in dispatch.명령들 if getattr(m, "PREFIX", ""))
+
+
+try:
+    고정명령들 = _고정명령들()
+except Exception:                                                 # noqa: BLE001
+    # dispatch 를 못 들이는 데서도 이 모듈은 읽혀야 한다. 그때는 빈 목록이고,
+    # `명령점검` 이 dispatch 임포트 실패를 따로 '끊김' 으로 낸다.
+    고정명령들 = ()
+
+원장들 = ("graph/ledger.jsonl", "graph/edges.jsonl", "eval/ledger.jsonl",
+        "router/ledger.jsonl", "intent/ledger.jsonl")
+
+한바퀴 = r"""
+set -u
+printf '%s\n' '---' "topic: '배선 카나리'" '---' '' \
+  '배선점검 카나리입니다. 촉매카나리 수율 77% 라고 적어 둔다.' \
+  > public_agent_memory/20260911-000000_배선_카나리.md
+echo "== 간추리기 =="
+python3 graph/night.py | head -3
+echo "원장카나리=$(grep -c 배선_카나리 graph/ledger.jsonl || echo 0)"
+echo "== 판정 =="
+python3 graph/link.py --출처 public_agent_memory/20260911-000000_배선_카나리.md | head -5
+echo "간선카나리=$(grep -c 배선_카나리 graph/edges.jsonl || echo 0)"
+echo "== 조회 =="
+python3 graph/ask.py --말 촉매카나리 | head -3
+echo "== 요지문 =="
+python3 graph/digest.py
+echo "요지노드=$(grep -o '노드 [0-9]*개' graph/digest.md | head -1)"
+echo "== 목표: 승인 없이 안 집히는가 =="
+ID=$(python3 intent/store.py --제안 '배선 카나리 목표' --판정 'test -f 카나리증거.txt' \
+     | grep -o '\[[0-9a-f-]*\]' | tr -d '[]')
+echo "제안id=$ID"
+python3 intent/store.py --다음 > /dev/null 2>&1 && echo "승인전집힘=그렇다(문제)" || echo "승인전집힘=아니다(옳다)"
+python3 intent/store.py --승인 "$ID" | head -1
+python3 intent/store.py --다음 | head -2
+echo "== 끝은 명령이 정한다 =="
+python3 intent/store.py --끝 "$ID" > /dev/null 2>&1 && echo "증거없이끝남=그렇다(문제)" || echo "증거없이끝남=아니다(옳다)"
+echo 있다 > 카나리증거.txt
+python3 intent/store.py --끝 "$ID" | head -1
+echo "== 요지문에 승인 목표가 얹히는가 =="
+python3 intent/store.py --제안 '승인된 카나리 목표' | grep -o '\[[0-9a-f-]*\]' | tr -d '[]' > /tmp/id2
+python3 intent/store.py --승인 "$(cat /tmp/id2)" > /dev/null
+python3 graph/digest.py > /dev/null
+echo "요지승인목표=$(grep -c '승인된 카나리 목표' graph/digest.md || echo 0)"
+"""
+
+
+def 가르기(끝값: int, 기대: tuple, 꼬리: str = "") -> str:
+    """'안 잰 것' 을 '끊긴 것' 으로 뭉개지 않는다.
+
+    실측(이 파일을 처음 돌린 자리): 이 컨테이너에는 langchain 이 없어 bot_tools 임포트가
+    exit 1 을 낸다 -- VM 에는 깔려 있으므로 그것은 **배선이 끊긴 것이 아니라 여기서 못 잰
+    것**이다. 이 저장소는 이미 그 갈래를 알고 있다(scripts/tests.sh 의 '건너뜀',
+    eval/run.py 의 못돌림표지). 판정표를 두 벌 두지 않고 그것을 그대로 쓴다."""
+    if 끝값 in 기대:
+        return "이어짐"
+    from eval.run import 못돌림표지
+    if 끝값 == 3 or any(m in (꼬리 or "") for m in 못돌림표지):
+        return "못돌림"
+    return "끊김"
+
+
+# **되돌이를 끊는다** (실측 2026-09-15). `eval/acceptance.py` 나 `eval/wire.py` 를 고친
+# 판에서 이 점검을 돌리면 **끝없이 불어난다**:
+#
+#     eval/acceptance.py --(아래 기관:audit)--> audit/run.py
+#       --(바뀐 파일에 걸린 검사)--> tests/test_acceptance.py --> eval/acceptance.py --> ...
+#
+# 실제로 났다. 고아 프로세스가 10벌 넘게 살아 있었고, 각 대마다 `기관:codify` 가
+# `codify/ledger.jsonl` 에 줄을 하나씩 더했다(그래서 추적되는 원장이 더러워졌다).
+# 고리가 잠기는 것은 **acceptance 를 고쳤을 때**뿐인데, 그때가 바로 이 점검을 돌릴 때다.
+#
+# **끊는 자리는 바깥 고리다.** 감사가 제 안에서 인수 검사를 또 돌리는 것은 어차피 틀렸다 --
+# 30초짜리 감사 안에서 2분짜리 끝단 검사를 돌릴 일이 아니다. 그래서 감사 밑에서 불렸으면
+# `기관:audit` 한 점만 건너뛴다. **통과로 세지 않고 '못돌림' 으로 적는다** -- 안 돌린 것을
+# 초록으로 세면 그것이 이 저장소가 말하는 검사하지 않은 초록불이다.
+안에서돈다 = "SE_IN_AUDIT"
+
+
+def 읽기(repo=None) -> "list[dict]":
+    repo = Path(repo or REPO)
+    감사안 = bool(os.environ.get(안에서돈다))
+    # **점검이 추적되는 원장에 안 쓰게 한다** (실측 2026-09-15: 한 바퀴에 다섯 원장에
+    # 스물두 줄이 쌓였다 -- codify 1 · eval답 4 · improve 4 · router 10 · secaudit 4).
+    # 점검은 "도는가" 만 보면 되고, 도는 것을 보려고 판정의 역사를 더럽힐 이유가 없다.
+    # `{임시}` 를 쓰는 점검은 깃발로 받고, 나머지는 `SE_LEDGER_ROOT` 로 옮긴다.
+    임시 = tempfile.mkdtemp(prefix="wire-")
+    out = []
+    for 이름, argv, 기대, 무엇 in 읽기점검:
+        argv = [a.replace("{임시}", 임시) for a in argv]
+        if 감사안 and 이름 == "기관:audit":
+            out.append({"이름": 이름, "판정": "못돌림", "끝값": -1, "무엇": 무엇,
+                        "꼬리": "감사 안에서 불렸다 -- 되돌이를 끊으려고 건너뛴다"})
+            continue
+        try:
+            # **자식에게 표를 내려보낸다.** 감사가 띄운 검사가 다시 감사를 부르지 않게.
+            환 = dict(os.environ)
+            환[ledgerroot.환경이름] = 임시
+            if 이름 == "기관:audit":
+                환[안에서돈다] = "1"
+            p = subprocess.run(argv, cwd=str(repo), capture_output=True, text=True,
+                               errors="replace", timeout=300, env=환)
+            끝값, 꼬리 = p.returncode, ((p.stdout or "") + (p.stderr or "")).strip()
+        except subprocess.TimeoutExpired:
+            끝값, 꼬리 = 124, "시간 초과"
+        except OSError as e:
+            끝값, 꼬리 = 127, f"{type(e).__name__}"
+        out.append({"이름": 이름, "판정": 가르기(끝값, 기대, 꼬리), "끝값": 끝값, "무엇": 무엇,
+                    "꼬리": "" if 끝값 in 기대 else "\n".join(꼬리.splitlines()[-3:])})
+    shutil.rmtree(임시, ignore_errors=True)
+    return out
+
+
+# 읽기점검 목록 자체는 손으로 적는다 -- 어떤 깃발을 어떤 끝값으로 기대하는지는 코드가
+# 지어낼 수 없다. **그러나 목록이 빠졌다는 사실은 셀 수 있다.** 그것이 이 저장소가 앓은
+# 병이었다: `improve/run.py` 는 읽기점검에 있었지만 `--틈만` 만 밟아서, plan 을 쓰는 깊은
+# 길이 죽어 있는 줄 몰랐다. 새 진입점이 아예 목록에 없으면 그조차 없다.
+# 봇이 이름을 대고 부르는 파일들. 여기에 적힌 진입점이 곧 **사용자가 밟을 수 있는 길**이다.
+_봇의입 = ("discord_bot_server.py", "dispatch.py", "bot_tools.py", "main_public.py")
+
+
+def 봇이부르는진입점(repo=None) -> "list[dict]":
+    """봇이 **이름을 대고 부르는** 꾸러미 진입점. 목록이 아니라 봇의 소스에서 센다."""
+    repo = Path(repo or REPO)
+    try:
+        import entrypoints as E
+    except ImportError:
+        return []
+    글 = ""
+    for f in _봇의입:
+        p = repo / f
+        if p.is_file():
+            글 += p.read_text(encoding="utf-8", errors="replace")
+    return [e for e in E.진입점들(repo) if e["꾸러미"] and (e["파일"] in 글 or e["모듈"] in 글)]
+
+
+def 안걸린진입점(repo=None) -> "list[dict]":
+    """봇이 부르는데 **읽기점검이 한 번도 안 밟는** 진입점.
+
+    사용자가 밟을 수 있는 길인데 아무도 안 밟아 본 것이므로, 거기서 깨지면 사용자가
+    오류 메시지를 본다 -- 이 저장소가 실제로 앓은 병이다(`improve/run.py` 는 목록에
+    있었지만 `--틈만` 만 밟아서, plan 을 쓰는 깊은 길이 죽은 줄 몰랐다).
+
+    빨간불로 치지 않는다. 다만 **조용히 빠지지는 않게** 적는다 -- 목록에 적는 것을
+    잊었다는 사실은 목록이 아니라 셈으로 드러나야 한다.
+    (첫 판은 꾸러미를 안 가려 113개를 적었다. **늘 우는 경보는 아무도 안 듣는다.**)"""
+    밟은 = " ".join(" ".join(argv) for _, argv, _, _ in 읽기점검)
+    return [{"파일": e["파일"], "깃발": e["깃발"][:6]}
+            for e in 봇이부르는진입점(repo)
+            if e["파일"] not in 밟은 and e["모듈"] not in 밟은]
+
+
+def 명령점검(repo=None) -> dict:
+    """고정 명령이 전부 들리는가 + 자연어는 에이전트로 떨어지는가."""
+    try:
+        import dispatch
+    except Exception as e:
+        return {"판정": "끊김", "말": f"dispatch 를 못 들인다: {type(e).__name__}: {e}"}
+    안들림 = [c for c in 고정명령들 if dispatch.run(c, None, True) is None]
+    샌말 = [m for m in ("오늘 날씨 어때", "소설 한 편 써줘", "!기억력이 나빠졌어")
+           if dispatch.run(m, None, True) is not None]
+    if 안들림 or 샌말:
+        return {"판정": "끊김",
+                "말": (f"안 들리는 고정 명령 {안들림}" if 안들림 else "")
+                      + (f" / 에이전트로 가야 하는데 삼킨 말 {샌말}" if 샌말 else "")}
+    return {"판정": "이어짐",
+            "말": f"고정 명령 {len(고정명령들)}갈래가 다 들리고, 자연어 3개는 에이전트로 떨어진다"}
+
+
+def 원장점검(repo=None) -> "list[dict]":
+    repo = Path(repo or REPO)
+    out = []
+    for rel in 원장들:
+        p = repo / rel
+        if not p.is_file():
+            out.append({"이름": rel, "판정": "못돌림", "말": "아직 없다 -- 한 번도 안 돌았다"})
+            continue
+        줄 = sum(1 for x in p.read_text(encoding="utf-8").splitlines() if x.strip())
+        깨진 = 0
+        for x in p.read_text(encoding="utf-8").splitlines():
+            if x.strip():
+                try:
+                    json.loads(x)
+                except ValueError:
+                    깨진 += 1
+        out.append({"이름": rel, "판정": "끊김" if 깨진 else ("이어짐" if 줄 else "못돌림"),
+                    "말": f"{줄}줄" + (f" · **깨진 줄 {깨진}개**" if 깨진 else "")})
+    return out
+
+
+def 한바퀴돌기(repo=None) -> dict:
+    """격리 판에서 쓰기 흐름까지. 저장소를 안 더럽힌다."""
+    from sandbox import run as 격리
+    r = 격리.실행(["bash", "-lc", 한바퀴], repo=repo, 초=600, 메모리MB=4096)
+    if not r["돌았나"]:
+        return {"판정": "못돌림", "말": r["메모"] or r["stderr"][:200], "출력": ""}
+    출력 = (r["stdout"] or "") + (r["stderr"] or "")
+    # 흐름이 실제로 이어졌는지를 **출력의 표지로** 판정한다. 말이 아니라 수다.
+    표지 = {
+        "색인에 새 노드": "원장카나리=1" in 출력,
+        "간선 판정 적힘": any(f"간선카나리={n}" in 출력 for n in ("4", "3", "2", "1")),
+        "깃발로 되찾힘": "배선_카나리" in 출력.split("== 조회 ==")[-1].split("== 요지문")[0],
+        "요지문 다시 지어짐": "요지노드=" in 출력 and "노드" in 출력,
+        "승인 전에는 안 집힌다": "승인전집힘=아니다(옳다)" in 출력,
+        "증거 없이는 안 끝난다": "증거없이끝남=아니다(옳다)" in 출력,
+        "증거 생기면 끝난다": "끝남:" in 출력,
+        "승인 목표가 요지문에": "요지승인목표=1" in 출력,
+    }
+    끊김 = [k for k, v in 표지.items() if not v]
+    return {"판정": "끊김" if 끊김 else "이어짐", "표지": 표지, "끊김": 끊김,
+            "말": f"{len(표지) - len(끊김)}/{len(표지)} 이어짐" + (f" · 끊김 {끊김}" if 끊김 else ""),
+            "출력": 출력}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="배선 점검 -- 끝에서 끝까지 이어져 있는가")
+    ap.add_argument("--읽기만", action="store_true")
+    ap.add_argument("--출력", action="store_true", help="한 바퀴의 원문 출력까지 찍는다")
+    args = ap.parse_args()
+
+    끊김, 못 = 0, 0
+    print("== 읽기 점검 (진짜 저장소, 아무것도 안 고친다) ==")
+    for r in 읽기():
+        표 = {"이어짐": "OK  ", "못돌림": "못돌림", "끊김": "끊김"}[r["판정"]]
+        print(f"  {표} {r['이름']:<18} 끝값 {r['끝값']:<4} {r['무엇']}")
+        if r["꼬리"]:
+            print("\n".join(f"       {x}" for x in r["꼬리"].splitlines()))
+        끊김 += r["판정"] == "끊김"
+        못 += r["판정"] == "못돌림"
+
+    안걸림 = 안걸린진입점()
+    if 안걸림:
+        print(f"\n== 봇이 부르는데 읽기점검이 안 밟는 진입점 {len(안걸림)}개 (빨간불은 아니다) ==")
+        for x in 안걸림:
+            print(f"  못돌림 {x['파일']:<28} {' '.join(x['깃발']) or '(깃발 없음)'}")
+        못 += len(안걸림)
+
+    print("\n== 명령의 길 ==")
+    c = 명령점검()
+    print(f"  {'OK  ' if c['판정'] == '이어짐' else '끊김'} {c['말']}")
+    끊김 += c["판정"] == "끊김"
+
+    print("\n== 원장 ==")
+    for r in 원장점검():
+        표 = {"이어짐": "OK  ", "못돌림": "못돌림", "끊김": "끊김"}[r["판정"]]
+        print(f"  {표} {r['이름']:<24} {r['말']}")
+        끊김 += r["판정"] == "끊김"
+        못 += r["판정"] == "못돌림"
+
+    if not args.읽기만:
+        print("\n== 한 바퀴 (격리 판 -- 저장소는 안 더럽힌다) ==")
+        w = 한바퀴돌기()
+        if w["판정"] == "못돌림":
+            print(f"  못돌림 {w['말']}")
+            못 += 1
+        else:
+            for k, v in w["표지"].items():
+                print(f"  {'OK  ' if v else '끊김'} {k}")
+            끊김 += len(w.get("끊김", []))
+        if args.출력 and w.get("출력"):
+            print("\n--- 한 바퀴 원문 ---")
+            print(w["출력"])
+
+    print(f"\n끊김 {끊김}개 · 못돌림 {못}개")
+    if 못 and not 끊김:
+        print("(못돌림은 초록이 아니다 -- 재료·키가 없어 **안 잰 것**이다)")
+    if 끊김:
+        return 1
+    return 3 if 못 else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

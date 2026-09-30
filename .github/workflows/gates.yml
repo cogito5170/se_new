@@ -1,0 +1,135 @@
+# 커밋 경로 강제 검사를 VM 밖으로 확장한다.
+#
+# 왜 필요한가: gatekeeper 는 지금까지 Oracle VM 의 discord_bot_server.git_sync() 한 곳에서만
+# 돌았다. 즉 봇이 스스로 커밋할 때만 검사를 받았고, 개발 세션·웹 UI·다른 머신에서 push 하면
+# 게이트 전부를 우회해 main 에 들어갔다. 그리고 main 에 들어간 코드는 deploy-oracle.yml 이
+# 그대로 서버에 밀어넣는다. 게이트를 아무리 세게 만들어도 게이트가 걸리지 않는 문이 열려
+# 있으면 그 문으로 들어온 코드가 서버까지 간다.
+#
+# 이 워크플로가 그 문을 닫는다. 실패를 병합 차단으로까지 만들려면 GitHub 저장소 설정에서
+# Branch protection > Require status checks 에 이 잡을 추가해야 한다(코드로는 못 한다).
+name: 게이트 (gatekeeper + 사고 회귀 증명)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: gates-${{ github.ref }}
+  # **main 에서는 취소하지 않는다.** 취소는 판정이 아니라 침묵이고, 침묵은 결론 난
+  # 옛 빨강을 되살린다(ci_watch 가 뒤로 걸어간다). 실측 2026-09-20: 머지를 잇달아
+  # 하는 동안 main 의 gates 가 #1744·#1747·#1751·#1754·#1770·#1773 여섯 번 연속
+  # 취소됐고, 그 사이 main 은 **한 번도 결론이 안 났다.** 가지에서는 그대로 취소한다
+  # -- 거기서는 최신 푸시만 보면 된다.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # 두 갈래로 나눈 이유 (실측 2026-09-20):
+  #
+  # 한 job 에 다 넣었더니 **20분 job 제한에 걸려 취소**됐다 -- `scripts/tests.sh` 만
+  # 18.8분이다(#1754: 게이트 11초 통과, 검사 전체 1130초에서 잘림). 취소는 판정이
+  # 아니므로 ci_watch 는 결론 난 마지막 실행을 찾아 뒤로 갔고, 그것이 **이미 고쳐진
+  # 옛 커밋의 빨강**이었다. 그래서 봇이 그 빨강으로 무기한 막혔다.
+  #
+  # 게이트는 1분 안에 끝난다. 그것을 느린 검사와 한 통에 묶어 둘 이유가 없다 --
+  # 나누면 게이트의 판정이 검사 전체와 무관하게 결론 난다.
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 기본값(1)이면 사고 커밋 트리를 꺼낼 수 없어 회귀 증명이 전부 SKIP 된다.
+          # 아래 SE_REQUIRE_FULL_HISTORY=1 이 그 SKIP 을 실패로 만들어 이 설정을 강제한다.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 의존성이 실제로 깔렸는지 확인
+        # 이 단계가 없으면 설치가 반쯤 실패해도 G012(실제 임포트)와 G009(심판 행동 검증)가
+        # "서드파티 없음"으로 조용히 SKIP 되고 CI 만 초록으로 뜬다. 검사하지 않은 초록불은
+        # 검사한 빨간불보다 나쁘다 -- G008 이 코드에서 막는 vacuous verify 를 CI 가 저지르는
+        # 꼴이다. 그래서 먼저 임포트해보고, 안 되면 여기서 멈춘다.
+        run: python3 -c "import langchain_core, langchain_google_genai, langgraph, discord, numpy, sympy, requests, dotenv"
+
+      - name: 게이트 전체 실행
+        run: python3 gatekeeper.py
+
+      - name: 사고 회귀 증명 (게이트가 실제 사고를 잡는가)
+        env:
+          SE_REQUIRE_FULL_HISTORY: "1"
+        run: python3 tests/test_gates_on_incidents.py
+
+      - name: G004 적용 범위 (파이썬 오탐 없음 · 셸에서는 그대로)
+        run: python3 tests/test_g004_scope.py
+
+  tests:
+    runs-on: ubuntu-latest
+    # 검사 전체가 19분 남짓이고 계속 는다. 45분을 준다 -- **제한에 걸려 취소되면
+    # 판정이 아니라 침묵이 되고, 침묵은 옛 빨강을 되살린다.**
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 의존성이 실제로 깔렸는지 확인
+        run: python3 -c "import langchain_core, langchain_google_genai, langgraph, discord, numpy, sympy, requests, dotenv"
+
+      - name: EDA 도구 설치 (없으면 검사가 '못 잼' 으로 빨개진다)
+        # 실측 2026-09-20 CI 로그: test_hls_flow · test_ldpcpipe(3) · test_ldpcrtl(4)
+        # · test_manual(2) · test_proto(2) · test_pnr(1) 이 전부
+        # "도구가 없다 -- '통과' 가 아니라 '못 잼' 이다" 로 빨갰다.
+        # **검사가 옳다** -- 못 잰 것을 통과로 세지 않는 것이 이 저장소의 규율이다.
+        # 그러니 고칠 곳은 검사가 아니라 **도구를 깔지 않는 여기**다.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+              build-essential iverilog yosys verilator ngspice nextpnr-ice40 \
+            || sudo apt-get install -y --no-install-recommends \
+              build-essential iverilog yosys verilator ngspice
+          for t in g++ iverilog vvp yosys verilator ngspice; do
+            command -v $t >/dev/null && echo "  있다 $t" || echo "  **없다** $t"
+          done
+
+      - name: 테스트 전부 (목록은 scripts/tests.sh 한 군데에만 있다)
+        # **로컬과 같은 것을 돌린다.** 전에는 여기에 파일 이름을 손으로 나열했고,
+        # 새 테스트를 만들면 넣는 것을 잊었다 -- 로컬은 초록인데 CI 만 빨갛거나,
+        # 더 나쁘게는 CI 만 초록인 일이 생긴다.
+        env:
+          # 의존성이 없어 건너뛰는 것을 CI 에서는 실패로 만든다.
+          SE_REQUIRE_DEPS: "1"
+          # **원장을 임시 자리에 쓰게 한다.** 실측 2026-09-20: 검사 한 바퀴가
+          # eval·improve·router·secaudit 원장 넷을 더럽혀서, 검사가 다 통과해도
+          # `scripts/tests.sh` 가 "검사가 추적되는 파일을 건드렸다" 로 빨개졌다.
+          # 검사는 재는 것이지 남기는 것이 아니다(CLAUDE.md) -- 깃발은 파일 하나에만
+          # 닿고 환경 변수라야 손자까지 내려간다.
+          SE_LEDGER_ROOT: ${{ runner.temp }}/ledgers
+        run: scripts/tests.sh
+
+      - name: 오케스트레이터 계획 수리 테스트
+        run: python3 tests/test_planner_repair.py
+
+      - name: orchestrator 도구 테스트 (경로 탈출 + 백그라운드 런 실측)
+        run: python3 tests/test_orchestrator_tool.py
+
+      - name: 압축 심판 테스트 (부정행위 코덱을 실제로 실격시키는가)
+        run: |
+          python3 compression/weights.py synthetic
+          python3 compression/activations.py synthetic
+          python3 tests/test_compression_judge.py
