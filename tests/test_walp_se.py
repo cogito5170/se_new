@@ -214,7 +214,7 @@ def main() -> int:
     ok(usability.누구("12345") != _h.sha256(b"walp:12345").hexdigest()[:12], "호출자 해시에 소금이 쳐져 있다")
     salt = os.path.join(tmp, ".salt")
     ok(os.path.exists(salt) and (os.stat(salt).st_mode & 0o077) == 0, "소금 파일은 원장 옆에 0600 으로")
-    ok("도구 9" in open(os.path.join(REPO, "walp", "MCP.md"), encoding="utf-8").read(), "MCP.md 도구 수가 실제(9)와 같다")
+    ok("도구 9" in open(os.path.join(REPO, "walp", "docs", "MCP.md"), encoding="utf-8").read(), "MCP.md 도구 수가 실제(9)와 같다")
 
     print("[4e] 게스트 차단이 !walp 도구 로 새지 않는다(실측 2026-09-29: 막힌 게스트가 read_file 결과를 받았다)")
     import agent_context

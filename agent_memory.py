@@ -1,6 +1,6 @@
 """
-공개 채널 에이전트의 장기 기억 -- repo의 public_agent_memory/ 폴더에 마크다운 노트로 쌓고
-git commit + push까지 한다. LangGraph의 MemorySaver는 인메모리라 프로세스가 재시작되면
+공개 채널 에이전트의 장기 기억 -- repo의 public_agent_memory/ 폴더에 마크다운 노트로 쌓는다.
+**git 에는 남기지 않는다**(2026-09-30 -- 남의 대화가 공개 저장소에 남던 길을 닫았다; .gitignore). LangGraph의 MemorySaver는 인메모리라 프로세스가 재시작되면
 (= 배포할 때마다) 전부 날아가는데, 여기에 쓴 건 git에 남으므로 재시작을 넘어 축적된다.
 
 가중치를 바꾸는 진짜 학습은 아니다 -- 모델은 그대로고, 대신 다음 질문 때 관련 노트를
@@ -119,7 +119,11 @@ def save_memory(topic: str, content: str, author_id: str = "unknown") -> str:
         f"{content}\n"
     )
     path.write_text(body, encoding="utf-8")
-    result = _commit_and_push(f"public-agent memory: {topic[:60]}")
+    # **git 에 남기지 않는다(2026-09-30).** 기억 노트에는 공개 채널 사람들의 말이 담긴다 --
+    # 저장소(공개일 수 있다)에 커밋·push 하면 남의 대화가 인터넷에 남는다. 노트는 이 기계의
+    # public_agent_memory/ 에만 쌓이고(.gitignore), 재시작을 넘어 그대로 남는다. 옛 _commit_and_push 는
+    # 쓰지 않는다(지우지 않은 것은 되돌릴 때 보라고).
+    result = "저장 완료(이 기계에만 — git 에 남기지 않음)"
     print(f"[agent-memory] saved {path.name} by {author_id} -> {result}")
     return f"'{topic}' 저장됨. {result}"
 

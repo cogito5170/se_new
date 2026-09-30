@@ -1,193 +1,62 @@
 # SE — 자기수정 에이전트 저장소
 
-Discord로 지시를 받아 스스로 코드를 고치고, 고친 결과를 강제 게이트로 검사한 뒤에만
-커밋하는 에이전트 시스템. 한 원칙 위에 여러 오케스트레이션이 얹혀 있다 -- **생성자와 심판을
-분리하고 심판은 LLM 이 아니다.** 소설(`novel/`)·법(`law/`)·수식(`mathdrift/`)·문제 생성
-(`mathgen/`)·압축(`compression/`)·행렬곱(`mathmetics/matrix_exponent/`)이 전부 그 원칙의 변주다.
+Discord 로 지시를 받아 스스로 코드를 고치고, 고친 결과를 **강제 게이트**로 검사한 뒤에만 커밋하는 에이전트.
+모든 오케스트레이션이 한 원칙 위에 있다 — **생성자와 심판을 분리하고, 심판은 LLM 이 아니다.**
 
-## 1. Discord 에이전트 (봇 본체)
+## 한눈에
 
-Oracle VM에서 systemd로 상시 구동. admin 채널(화이트리스트)과 public 채널(무제한) 둘 다
-Gemini + LangGraph ReAct 에이전트가 처리하고, 둘 다 `run_shell`로 저장소를 직접 고칠 수 있다.
+| 부분 | 무엇 | 자세히 |
+|---|---|---|
+| Discord 에이전트 | Oracle VM 에서 상시 구동. admin 채널(화이트리스트)과 공개 채널을 Gemini + LangGraph 가 처리 | 아래 §1 |
+| 게이트 | 커밋 직전 `gatekeeper.py` + `gates/` 가 규칙을 실행 경로에서 강제 | 아래 §2 |
+| WALP | LLM·사전학습 가중치·GPU 없이 대화로 규칙과 행동을 기르는 작은 로봇 두뇌 | [`walp/README.md`](walp/README.md) |
+| 소설 | 씨앗 → 세계 → 조립 → 집필 → 기계 관문. DRIFT(자유 연속 집필, `/drift`) · MATHDRIFT(수식 파생, `/mathdrift`) | [`novel/README.md`](novel/README.md) · [`novel/DRIFT.md`](novel/DRIFT.md) · [`mathdrift/README.md`](mathdrift/README.md) |
+| 법 | 인용한 조문이 실재하는가를 사실로 판정하는 관문(생성기는 아직 없다) | [`law/README.md`](law/README.md) |
+| 오케스트레이터 | 계획 → 컴포넌트 + 검증 코드 → 실패하면 계획 수리 | [`orchestrator/README.md`](orchestrator/README.md) |
+| 행렬곱 자가개선 | 3×3 행렬곱 스킴을 CP-ALS 로 탐색, 심판은 정확 검산 | `mathmetics/matrix_exponent/` |
+| 그 밖 | 자기소개서 관문(`jaso/`) · 적분 문제 생성(`mathgen/`) · 압축 코덱(`compression/`) · 삼진 NPU(`npu/`) | 각 폴더의 README |
+
+## 1. Discord 에이전트
 
 | 파일 | 역할 |
 |---|---|
-| `discord_bot_server.py` | 이벤트 라우팅, admin 에이전트, `git_sync`(게이트 → 커밋 → push → 원격 반영 확인) |
-| `main_public.py` | 공개 채널 에이전트 정의 |
-| `bot_tools.py` | 공유 도구(`run_shell`/`search_memory`/`save_memory`/`write_public_answer`) + (키×모델) 폴백 풀 |
-| `orchestrator_tool.py` | admin 채널 도구가 orchestrator 런을 백그라운드로 띄우고/보고/재개/중지 |
-| `quota_tracker.py` | 일일 소진·RPM 쿨다운·영구 dead·성공 후보 pin |
-| `agent_context.py` | 요청 단위 호출자 맥락과 게스트 차단 |
-| `agent_memory.py` | `public_agent_memory/` 장기 기억(쓰기 경로 강제 + 커밋) |
-| `public_agent_files.py` | 공개 채널 산출물을 `Public_agent/` 안으로만 |
-| `memory_hygiene.py` | 코드/게이트와 모순되는 기억 노트 정리 |
-| `log_streamer.py` | 로그 스트리밍 서비스 |
+| `discord_bot_server.py` | 이벤트 라우팅 · admin 에이전트 · `git_sync`(게이트 → 커밋 → push) |
+| `main_public.py` · `bot_tools.py` | 공개 채널 에이전트와 공유 도구, (키 × 모델) 폴백 풀 |
+| `orchestrator_tool.py` | admin 채널에서 오케스트레이터 런을 백그라운드로 띄우고 · 보고 · 재개 · 중지 |
+| `agent_context.py` | 요청 단위 호출자 맥락 · 게스트 차단 |
+| `agent_memory.py` | 공개 채널 장기 기억 — **이 기계에만 쌓고 git 에 남기지 않는다** |
+| `quota_tracker.py` · `log_streamer.py` | 호출 한도 · 로그 스트리밍 |
 
-**안전장치(커밋 경로 위에 강제):**
+## 2. 게이트 — 규칙을 실행 경로에 둔다
 
-- `gatekeeper.py` + `gates/` — 커밋 직전 게이트 9개(G003·G004·G005·G008·G009·G011~G014)를
-  돌리고 하나라도 걸리면 커밋하지 않는다. 산문 규칙은 읽히지 않으면 아무것도 막지 못하므로,
-  규칙을 실행 경로에 올린 것이 요점이다. 전체 ~0.6초.
-- `scripts/capability_ratchet.py` — 능력 래칫(옛 G010). CP-ALS를 실제로 돌리는 무거운
-  검사라 커밋 경로에서 빼서 `scripts/check_improve.sh`(점검 시점)로 옮겼다.
-- `self_challenge.py` — 진단을 검사 코드로 써서 RED(사고 커밋에서 실패) / GREEN(현재 통과)
-  두 실행을 통과해야만 `gates/`로 승격한다. 증명되지 않은 진단은 게이트가 되지 못한다.
-- `tests/test_gates_on_incidents.py` — 실제 사고 커밋 트리에서 게이트가 정말 걸리는지 재증명.
-  (전체 이력이 필요하다. shallow clone에서는 돌지 않는다.)
-
-게이트는 두 곳에서 강제된다: VM의 `git_sync()`(봇이 스스로 커밋할 때)와
-`.github/workflows/gates.yml`(누가 어디서 push하든). 후자는 전체 이력을 받아
-사고 회귀 증명까지 돌리고, 의존성이 실제로 깔렸는지 먼저 확인한다 -- 설치가 반쯤
-실패해 게이트가 조용히 SKIP 되면서 CI만 초록으로 뜨는 것을 막는다.
+- `gatekeeper.py` + `gates/` — 커밋 직전에 게이트를 전부 돌리고 하나라도 걸리면 커밋하지 않는다.
+  산문 규칙은 읽히지 않으면 아무것도 막지 못한다.
+- `self_challenge.py` — 진단을 검사 코드로 써서 **사고 커밋에서 실패(RED) · 지금 통과(GREEN)** 를 둘 다 보여야 게이트로 승격한다.
+- `tests/test_gates_on_incidents.py` — 실제 사고 커밋에서 게이트가 걸리는지 재증명한다. **전체 이력이 필요하다** —
+  이력이 없는 새 저장소에서는 CI 의 이 단계가 옳게 빨개진다(사고 커밋을 되살려야 한다).
+- 게이트는 두 곳에서 강제된다: VM 의 `git_sync()` 와 `.github/workflows/gates.yml`.
 
 ```bash
-python3 gatekeeper.py                 # 게이트 전체 실행 (통과 0 / 위반 1)
-python3 gatekeeper.py --list          # 등록된 게이트와 그 사고 이력
-python3 self_challenge.py prove --candidate <검사.py> --broken-commit <사고커밋>
-python3 memory_hygiene.py             # dry-run, --apply 로 실제 정리
+python3 gatekeeper.py            # 게이트 전체 (통과 0 / 위반 1)
+python3 gatekeeper.py --list     # 게이트와 그 사고 이력
+bash scripts/precheck.sh         # 밀기 전 검사 — HEAD 를 임시 워크트리로 꺼내 돌린다
 ```
 
-## 2-1. 소설 오케스트레이션 — `novel/`
+## 3. 무엇을 git 에 남기지 않는가
 
-씨앗(무작위 조합) -> 세계 -> 역방향 조립 -> 집필 -> **기계 관문 23개**. 다른 오케스트레이션과
-같은 원칙 위에 있다: 생성자와 심판을 분리하고 심판은 LLM 이 아니다. "재미있는가" 는 판정하지
-않고 **세계가 자기모순인가**만 본다 -- 그건 취향이 아니라 사실이라 기계가 볼 수 있다.
+사람들의 **대화 · 요청 · 검색어 · 올린 파일 · 공개 채널 산출물**은 이 기계에만 두고 커밋하지 않는다(`.gitignore`).
+저장소가 공개되면 남의 말과 검색 기록이 인터넷에 그대로 남기 때문이다.
 
-```bash
-python3 novel/seed.py --n 10                          # 씨앗 뽑기 (LLM 안 씀)
-python3 novel/world_seeded.py --new                   # 세계로 펴기 (LLM 안 씀)
-python3 novel/overnight.py --world seeded --hours 2   # 집필
-python3 novel/read.py --path novel/seeded.json --ep 1-3
-```
-
-**설계·사용법·실패 이력 전부 [`novel/README.md`](novel/README.md) 에 있다.** 소설 작업을
-새로 시작하기 전에 그것부터 읽을 것 -- 밤을 날린 사고 일곱 개가 거기 적혀 있다.
-
-### DRIFT — 자유 연속 집필 (조립하지 않는 쪽)
-
-위가 **조립**(결말을 정하고 거꾸로 비트를 쌓는다)이라면, DRIFT 는 **흐름**이다. 줄거리를
-먼저 짜지 않고 첫 문장 하나에서 끝까지 이어 쓴다. 조립이 인과는 튼튼한데 문장이 칸에
-갇힌다는 판단에서 나왔다.
-
-| | 부품 | 하는 일 |
-|---|---|---|
-| **D** | Diffusion 확산 | 세계를 넓히며 앞엣것을 다시 키운다 |
-| **R** | Rhythm 리듬 | 문장 길이와 대사 분포를 잰다 |
-| **I** | Intrusion 충격 | 2,000자마다 제3자가 들이닥쳐 점층을 끊는다 |
-| **F** | Freewriting 자유 | 씬도 회차도 없이 덩어리를 이어 붙인다 |
-| **T** | Truth 원장 | 앞에서 쓴 것과의 모순만 잡는다 (게이트는 최소) |
-
-```bash
-scripts/drift.sh start      # 새 원고
-scripts/drift.sh go 50000   # 이어서 5만 자
-scripts/drift.sh status     # 어디까지 왔나
-scripts/drift.sh read       # 읽는다
-```
-
-**사용법 전부 [`novel/DRIFT.md`](novel/DRIFT.md).** 에이전트 세션에서는 `/drift` 스킬로
-바로 부를 수 있다(`.claude/skills/drift/`).
-
-### MATHDRIFT — 수학적 지평을 소설처럼 (`mathdrift/`)
-
-DRIFT 를 수학으로 옮긴 것. 씨앗 식 하나(Brent 항등식)에서 연산자(경계화·표수 이동·매장·
-점근화·대칭성 강제 …)로 **식을 파생**한다. 오가는 것은 오로지 수학적 기호뿐이고, 발산에는
-게이트가 없다 -- 검증(①재현, Brent 항등식 검산)은 시켰을 때만 따로 돈다.
-
-```bash
-scripts/mathdrift.sh start 50     # 새 원장
-scripts/mathdrift.sh go 100       # 이어 넓힌다
-scripts/mathdrift.sh diff S10     # 연산자가 식에 무엇을 했나 (기호 단위, 호출 0회)
-```
-
-**설계와 세 번 데인 기록 전부 [`mathdrift/README.md`](mathdrift/README.md).** 에이전트
-세션에서는 `/mathdrift` 스킬로 부른다.
-
-## 2-2. 법 학습자료 관문 — `law/`
-
-같은 원칙(생성자와 심판을 분리하고 심판은 LLM 이 아니다)을 법에 옮긴 것. 소설은 기계가
-대조할 원장을 인공적으로 쌓아야 했지만, 법은 그 원장이 **이미 밖에 있다** -- 조문 원문이다.
-그래서 "인용한 조문이 실재하는가" 를 취향이 아니라 사실로 판정한다.
-
-지금 있는 것은 **원장과 심판뿐이다.** 생성기는 아직 없다 -- 관문이 무엇을 잡는지 정해두고
-생성기를 붙이는 것이 순서라서 그렇다(`novel/` 에서 반대로 했다가 원고가 관문 통과용으로
-균질해졌다).
-
-```bash
-python3 law/fetch.py 형법 민법        # 조문을 받아 law/corpus/ 에 채운다 (LAW_API_OC 필요)
-python3 law/gate.py 법이론서          # 문서 관문 L001~L008 · 문언 관문 W001~W005
-python3 law/wording.py 법이론서 --trace       # 낱말이 어느 조문에 근거하는지
-python3 law/issuegate.py law/cases/대여금_예시.json   # 쟁점 도출 + 관문 J001~J010
-python3 law/tuner.py plan             # 제일 많이 걸린 규칙과 그 지시문
-```
-
-판정은 통과/기각 둘이 아니라 **셋**이다. 세 번째가 **미검증** -- 원장이 그 법령을 안 담고
-있어 아직 아무도 안 본 것이다. 통과가 아니다. 실측(법이론서 17개, 조문 원장을 실제로 받아
-채운 뒤): 기각 1개 · hard 2 · soft 30 · **검증 299건 · 미검증 13건**.
-
-쟁점은 뽑지 않고 **도출한다.** 같은 요건표를 원고 쪽에서 한 번, 피고 쪽에서 한 번 돌려
-결론이 갈리는 자리가 쟁점이다(독일 Relationstechnik). 그래서 "쟁점을 잘 뽑았는가" 가 취향
-논쟁이 되지 않는다.
-
-문언 관문은 `novel/wording.py` 를 **뒤집은 것**이다. 소설에서 같은 뜻 다른 꼴은 다양성이지만
-법에서 문언은 바꿔 쓰면 안 된다 -- '명할 수 있다'(재량)를 '명하여야 한다'(기속)로, '및'을
-'또는'으로, '준용'을 '적용'으로 바꾸면 전부 다른 법이 된다.
-
-설계 근거는 출처와 함께 [`law/METHOD.md`](law/METHOD.md) 에, 다음 방향은
-[`law/ROADMAP.md`](law/ROADMAP.md) 에, 사용법은 [`law/README.md`](law/README.md) 에 있다.
-
-## 2. 오케스트레이션 에이전트 — `orchestrator/`
-
-문제를 계획(plan.json) → 컴포넌트 코드 + 검증 코드로 쪼개서 실행하고, 실패하면 계획을
-고쳐 다시 시도한다. 실행 기록은 `orchestrator/runs/<이름>/`에 남는다.
-자세한 내용은 `orchestrator/README.md`.
-
-**Discord(admin 채널)에서 부를 수 있다** — `orchestrator_tool.py`가 다리다. 런은 수 분
-걸리므로 백그라운드(`setsid`)로 띄우고 런 이름/로그 경로를 즉시 돌려준다:
-
-| 도구 | 하는 일 |
+| git 에 없다(기계에만) | git 에 있다 |
 |---|---|
-| `orchestrator_solve(problem)` | 새 런을 띄운다. 살아 있는지 확인한 뒤에만 "시작했다"고 답한다 |
-| `orchestrator_status(run)` | 노드별 검증 상태·마지막 실패 사유·최종 결과·로그 끝부분 |
-| `orchestrator_resume(run)` | 죽었거나 미완인 런을 이어서(검증된 노드는 건너뛴다) |
-| `orchestrator_stop(run)` | 프로세스 그룹째 중지. 산출물은 남으므로 재개 가능 |
+| `public_agent_memory/` 기억 노트 · `inbox/` 올린 파일 · `Public_agent/*.md` · 검색·요청 원장(`dig` · `repair` · `improve` · `research`) · `원장.json` · `.env` | 판정 원장(`eval` · `router` · `graph` · `falsegreen` · `codify` · `secaudit`) — 사람의 말이 없고, **G020** 이 지키는 채점 기록이다 |
 
-런 이름 인자는 `orchestrator/runs/` 바로 아래로만 해석된다(G014가 탈출 카나리로 감시).
-자식은 새 세션에 들어가지만 systemd cgroup은 벗어나지 못한다 -- 재배포로 봇이 재시작되면
-돌던 런도 죽는다. 그때는 `orchestrator_resume`으로 이어서 돌린다.
+- **저장소는 비공개로 둔다.** 공개가 꼭 필요하면 위 목록 밖의 것도 다시 훑는다(남의 논문 PDF · 수집한 웹페이지 등).
+- `.env` 는 절대 커밋하지 않는다 — G004 가 자격증명 커밋과 로그 출력을 막는다.
 
-## 3. 행렬곱 자가개선 루프 — `mathmetics/matrix_exponent/`
+## 배포 · 설정
 
-`se-matrix-search.service`로 밤새 돌리는 무한 개선 루프. 3×3 행렬곱 스킴을 CP-ALS로 탐색하고
-(`searcher.py`), 심판(`verifier.py`)이 정확 검산으로만 통과시킨다.
-
-- `self_improve_loop.py` / `improve_agent.py` — 탐색 전략 자체를 고쳐가는 루프
-- `benchmarks.json` — 이미 도달한 기준. G010(능력 래칫)이 이 기준의 후퇴를 막는다
-- `jump_searcher.py`, `run_jump_project.py` — IJP(도약 탐색) 계열 실험 (v3/v4 사본은
-  2026-09-08 정리에서 지웠다. 아무도 임포트하지 않았다 -- `git show` 로 되살릴 수 있다)
-- 심판 무결성은 G009, 검증 함수의 공허한 통과는 G008이 막는다
-- `scripts/check_improve.sh` — 서버에 배포된 코드와 루프 상태 점검
-
-## 그 밖에 남긴 것
-
-| 경로 | 왜 남겼나 |
-|---|---|
-| `jaso/` | 자기소개서 관문 — 경험 원장 대조(J001~J008)와 치환 검사(P001~P006). 생성은 아직 없다 (`jaso/README.md` · `jaso/DESIGN.md`) |
-| `mathgen/` | 어려운 적분 문제 생성기를 진화시키는 루프. 심판은 sympy 뿐 (`mathgen/README.md`) |
-| `compression/` | 가중치 압축 코덱 탐색. 부정행위 코덱을 실격시키는 심판 (`compression/README.md`) |
-| `npu/` | 1.58비트 삼진 NPU(SystemVerilog) 설계·검증 스위트. 2026-09-02 작업분 |
-| `public_agent_memory/` | 봇이 실제로 읽고 쓰는 장기 기억 |
-| `Public_agent/` | 공개 채널 산출물 폴더 + m=22/IJP 기록, 봇 사고 기록 |
-| `ai_concept/`, `법이론서/`, `편입수학 이론서/`, `mathmetics/LLM_응답품질/` | 옵시디언으로 동기화되는 학습·이론 문서 |
-| `reports/` | 시스템 분석·정리 보고서 |
-| `deploy/`, `.github/workflows/` | systemd 유닛과 배포 워크플로 |
-
-## 배포
-
-`main`에 push하면 `.github/workflows/deploy-oracle.yml`이 Oracle VM에 SSH로 들어가
-`git reset --hard origin/main` 후 서비스를 재시작한다. 서비스는 `deploy/*.service` 세 개
-(`se-discord-bot`, `se-log-streamer`, `se-matrix-search`).
-
-## 설정
-
-`.env.example`을 `.env`로 복사해 채운다. `.env`는 절대 커밋하지 않는다(G004가 자격증명
-커밋·로그 출력을 막는다). 의존성은 `requirements.txt`.
+- `main` 에 push 하면 `.github/workflows/deploy-oracle.yml` 이 Oracle VM 에 SSH 로 들어가 서비스를 다시 띄운다
+  (`deploy/*.service`: `se-discord-bot` · `se-log-streamer` · `se-matrix-search`). VM 비밀값이 없으면 이 단계는 실패로 끝나고 서버에 닿지 않는다.
+- `.env.example` 을 `.env` 로 복사해 채운다. 의존성은 `requirements.txt`.
+- 작업 규칙(백그라운드 실행 · 머지 순서 · 측정 규율 등)은 [`CLAUDE.md`](CLAUDE.md).
