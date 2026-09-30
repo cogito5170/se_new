@@ -1,0 +1,201 @@
+"""두 직선 최단거리 문제의 외부 심판 검사.
+
+**이 파일은 오케스트레이터가 보지 않는다.** repair_node 가 노드에 보여주는 것은 문제
+기술서와 verify.py 뿐이다. 여기서 쓰는 무식한 수치 최소화는 심판이 초록 사례를 실제로
+통과시키는지 확인하려는 것이지, 풀이를 저장소에 남기려는 것이 아니다.
+
+무엇을 지키는가:
+  1. 명백히 틀린 답을 거부한다
+  2. **맞는 답을 받아들인다** -- 전부 거부하는 심판도 고장이다
+  3. 퇴화한 경우(평행/일치)에도 최소점이면 받아들인다. 유일해를 강요하지 않는다
+  4. 일차 조건만 겨우 맞춘 가짜를 섭동 검사가 잡는다
+
+수치 최소화만 쓴다. 정규방정식도 외적 공식도 여기에 없다 -- 심판이 특정 풀이법에
+묶이지 않는다는 것을 이 파일 자체가 보인다.
+"""
+from __future__ import annotations
+
+import json
+import math
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+PROB = REPO / "orchestrator" / "problems" / "line_distance"
+sys.path.insert(0, str(PROB))
+
+import verify  # noqa: E402
+
+CASES = json.loads((PROB / "cases.json").read_text(encoding="utf-8"))
+FAILURES: list[str] = []
+
+
+def check(cond: bool, msg: str) -> None:
+    if not cond:
+        FAILURES.append(msg)
+
+
+def _f(case, t, s) -> float:
+    return verify._norm(verify._residual(case, t, s))
+
+
+def _numeric_min(case, iters: int = 200) -> tuple:
+    """좌표하강 + 대각 방향 + 큰 초기 보폭. 해석적 풀이를 쓰지 않고 최소점 하나를 찾는다.
+
+    처음에는 보폭 64 에서 시작해 반씩 줄였는데, 그것으로는 **near_par 에서 최소점을 못
+    찾았다** -- 진짜 최소점이 t=s=-5e6 에 있어 64 에서 반씩 줄여서는 도달하지 못한다.
+    거리 5.0 을 최소라고 내놨고, 그때 심판이 그것을 통과시켜 초록이 떴다.
+    **검증기와 그 검증이 같은 맹점을 공유한 것**이고, 그래서 둘 다 고쳤다.
+
+    좁은 골짜기(거의 평행한 두 직선)에서는 축 방향만으로 못 내려간다. 대각 방향을 넣는다."""
+    DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
+    t = s = 0.0
+    step = 1e8                                    # 멀리 있는 최소점에 닿을 만큼 크게 시작
+    for _ in range(iters):
+        for _ in range(200):
+            best = _f(case, t, s)
+            moved = False
+            for dt, ds in DIRS:
+                v = _f(case, t + dt * step, s + ds * step)
+                if v < best - 1e-15:
+                    t, s, best, moved = t + dt * step, s + ds * step, v, True
+            if not moved:
+                break
+        step *= 0.5
+        if step < 1e-12:
+            break
+    return t, s, _f(case, t, s)
+
+
+def _answer(pairs) -> dict:
+    return {"cases": [{"id": c["id"], "t": t, "s": s, "distance": d}
+                      for c, (t, s, d) in zip(CASES, pairs)]}
+
+
+def test_rejects_obvious_garbage() -> None:
+    """형식 위반 / 빠진 case / 전부 0 -- 전부 거부해야 한다."""
+    for label, out in (("dict 아님", [1, 2]),
+                       ("cases 없음", {"nope": 1}),
+                       ("빈 리스트", {"cases": []}),
+                       ("전부 0", _answer([(0.0, 0.0, 0.0)] * len(CASES)))):
+        ok, why = verify.check(out, {})
+        check(not ok, f"{label} 을 통과시켰다")
+
+
+def test_accepts_true_minimum() -> None:
+    """맞는 답을 받아들이는가. **전부 거부하는 심판도 고장이다.**"""
+    pairs = [_numeric_min(c) for c in CASES]
+    ok, why = verify.check(_answer(pairs), {})
+    check(ok, f"수치 최소점을 통과시키지 못한다: {why}")
+    if ok:
+        print(f"    [통과] {why[:100]}")
+
+
+def test_accepts_any_minimizer_when_degenerate() -> None:
+    """평행/일치 직선은 최소점이 무한히 많다. 어느 것을 내도 받아야 한다.
+
+    유일해를 강요하면 오케스트레이터가 맞는 답을 내고도 떨어진다 -- 심판이 문제를
+    실제보다 좁게 정의하는 형태의 고장이다."""
+    pairs = [_numeric_min(c) for c in CASES]
+    shifted = []
+    for c, (t, s, d) in zip(CASES, pairs):
+        if c["id"] in ("parallel", "identical"):
+            # 방향을 따라 같이 미끄러뜨린다. 잔차가 그대로면 여전히 최소점이다.
+            n1 = verify._dot(c["v1"], c["v1"])
+            n12 = verify._dot(c["v1"], c["v2"])
+            delta = 3.0
+            tt, ss = t + delta, s + delta * n12 / n1 if n12 else s
+            if abs(_f(c, tt, ss) - d) < 1e-9:
+                t, s = tt, ss
+        shifted.append((t, s, _f(c, t, s)))
+    ok, why = verify.check(_answer(shifted), {})
+    check(ok, f"퇴화한 경우의 다른 최소점을 거부한다: {why}")
+
+
+def test_catches_near_miss() -> None:
+    """최소점에서 살짝 벗어난 답을 잡는가. 허용치가 헐거우면 심판이 헛돈다."""
+    pairs = [_numeric_min(c) for c in CASES]
+    for eps, must_fail in ((1e-12, False), (1e-2, True), (1.0, True)):
+        off = []
+        for c, (t, s, _) in zip(CASES, pairs):
+            tt = t + eps
+            off.append((tt, s, _f(c, tt, s)))
+        ok, why = verify.check(_answer(off), {})
+        if must_fail:
+            check(not ok, f"최소점에서 {eps} 벗어난 답을 통과시켰다")
+        else:
+            check(ok, f"수치 오차 수준({eps})의 답을 거부한다: {why}")
+
+
+def test_catches_ill_conditioned_near_miss() -> None:
+    """조건수가 나쁜 경우에 일차 조건이 헛도는 것을 잡는가.
+
+    **실측으로 걸린 실패다.** near_par 의 두 직선은 z=0 평면에서 평행하지 않으므로 실제로
+    만난다 -- 진짜 최소거리는 0 이다. 그런데 오케스트레이터는 최소점에서 444 떨어진
+    (t,s)=(-4999555.5, -4999555.5), 거리 4.44e-4 를 냈고, **옛 심판이 그것을 통과시켰다.**
+
+    이유: 거의 평행이라 헤시안이 거의 특이해서, 최소점이 아닌 곳에서도 <v2,d> 가
+    4.4e-10 이다. 일차 조건 허용치 1e-6 이 이 조건수에서는 터무니없이 헐겁다. 무작위
+    섭동도 못 잡는다 -- 최소점이 좁은 골짜기를 따라 멀리 있으면 무작위 방향이 그 골짜기에
+    떨어질 확률이 사실상 0 이다.
+
+    기하급수 직선탐색이 그것을 잡는다. 이 검사가 깨지면 심판이 다시 헛돈다."""
+    np_case = next(c for c in CASES if c["id"] == "near_par")
+    others = {c["id"]: _numeric_min(c)[:2] for c in CASES if c["id"] != "near_par"}
+
+    def judge_with(t, s):
+        rows = []
+        for c in CASES:
+            tt, ss = (t, s) if c["id"] == "near_par" else others[c["id"]]
+            rows.append({"id": c["id"], "t": tt, "s": ss, "distance": _f(c, tt, ss)})
+        return verify.check({"cases": rows}, {})
+
+    # 오케스트레이터가 실제로 낸 답 -- 기각되어야 한다
+    ok, why = judge_with(-4999555.536601, -4999555.536601)
+    check(not ok, "조건수가 나쁜 경우의 근접오답을 통과시킨다 (옛 심판의 실패)")
+    check("near_par" in why, f"기각 사유가 near_par 이어야 한다: {why[:80]}")
+
+    # 훨씬 멀리 빗나간 답도 기각되어야 한다 (옛 심판은 이것도 통과시켰다)
+    ok, _ = judge_with(-0.001, -0.001)
+    check(not ok, "거리 5.0 인 답을 통과시킨다 (진짜 최소는 0)")
+
+    # 진짜 최소점은 통과해야 한다
+    ok, why = judge_with(-5.0e6, -5.0e6)
+    check(ok, f"진짜 최소점을 거부한다 -- 임계가 너무 빡빡하다: {why[:100]}")
+    check(abs(_f(np_case, -5.0e6, -5.0e6)) < 1e-9, "near_par 의 진짜 최소거리는 0 이다")
+
+
+def test_verifier_does_not_contain_the_answer() -> None:
+    """심판 파일이 풀이법을 담고 있지 않은가.
+
+    담고 있으면 오케스트레이터가 verify.py 를 읽고 베낀다 -- repair_node 는 노드에
+    verifier 를 읽기 전용으로 보여주기 때문이다. 그러면 이 시험이 무의미해진다."""
+    import re
+    src = (PROB / "verify.py").read_text(encoding="utf-8")
+    # 단어 경계로 본다. resolve( 가 solve( 로 잡히는 거짓 양성을 피한다.
+    banned = [r"\blstsq\b", r"\bpinv\b", r"\bsolve\(", r"\bcross\(",
+              r"\bdet\(", r"\binv\(", r"normal\s+equation"]
+    hits = [b for b in banned if re.search(b, src)]
+    check(not hits, f"심판이 풀이법을 담고 있다: {hits}")
+    check("grad" in src.lower() or "직교" in src,
+          "심판이 무엇을 확인하는지 설명이 없다")
+
+
+def main() -> int:
+    for fn in (test_rejects_obvious_garbage, test_accepts_true_minimum,
+               test_accepts_any_minimizer_when_degenerate, test_catches_near_miss,
+               test_catches_ill_conditioned_near_miss,
+               test_verifier_does_not_contain_the_answer):
+        fn()
+    if FAILURES:
+        print("실패:")
+        for f in FAILURES:
+            print("  -", f)
+        return 1
+    print("직선거리 심판: 쓰레기 거부, 최소점 통과, 퇴화 허용, 근접오답 검출, "
+          "조건수 나쁜 경우 검출, 풀이 미포함 -- 통과")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

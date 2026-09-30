@@ -1,0 +1,4 @@
+host_test
+libfw.so
+*.o
+fault_test

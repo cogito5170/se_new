@@ -1,0 +1,7 @@
+# 제3자 자산(fetch_assets.sh 로 받음)·빌드 산출물은 커밋하지 않는다
+assets/
+models/
+out/
+*.so
+logs/
+__pycache__/

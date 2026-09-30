@@ -1,0 +1,24 @@
+# 출처 원장 (G022): paper/*.html 의 <div class="ref"> 안 <li> 인용마다 한 행.
+# 확인수준: 전문|초록|목록|조각. 그 수준이 문서의 그 <li> 안에 [출처:<수준>] 로 보여야 한다.
+{"논문":"센서불가지_능동탐색.html","번호":1,"확인수준":"조각","날짜":"2026-09-26","질의":"Charnov marginal value theorem optimal foraging 1976","어디서":"교과서 수준 귀속(널리 확립된 결과) -- 이번 작업에서 원문을 다시 읽지 않음. τ 정지 규칙의 개념 귀속으로만 인용"}
+{"논문":"센서불가지_능동탐색.html","번호":2,"확인수준":"조각","날짜":"2026-09-26","질의":"Elfes occupancy grid mobile robot perception navigation 1989","어디서":"교과서 수준 귀속 -- 원문 미열람. belief 격자 표현의 개념 귀속으로만 인용"}
+{"논문":"센서불가지_능동탐색.html","번호":3,"확인수준":"조각","날짜":"2026-09-26","질의":"Sha using simplicity to control complexity Simplex architecture 2001","어디서":"교과서 수준 귀속 -- 원문 미열람. RTA/Simplex 안전층의 개념 귀속으로만 인용"}
+{"논문":"센서불가지_능동탐색.html","번호":4,"확인수준":"조각","날짜":"2026-09-27","질의":"Mamba linear-time sequence modeling selective state spaces Gu Dao 2023","어디서":"교과서/널리 알려진 결과 수준 귀속 -- 원문 미열람. 선택적 SSM(입력변조 IIR) 원자의 개념 귀속으로만 인용. 저장소 선행조사 paper/선행조사/mamba-ssm-가속기.md 와 짝"}
+{"논문":"센서불가지_능동탐색.html","번호":5,"확인수준":"조각","날짜":"2026-09-27","질의":"Silver AlphaZero general reinforcement learning chess shogi Go self-play Science 2018 value network search","어디서":"교과서 수준 귀속 -- 원문 미열람. 탐색 말단의 학습 가치(value-in-search) 패턴의 개념 귀속으로만 인용"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 1, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA NPR 7150.2 software engineering requirements verification validation traceability", "어디서": "NASA 소프트웨어 요구표준 — V&V 구분·model V&V·양방향 traceability. 원문 미열람, 사용자 제공 요약·공개 링크 기반 개념 귀속"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 2, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA-STD-8739.8B software assurance software safety IV&V off-nominal fault", "어디서": "소프트웨어 assurance/safety 표준 — IV&V 독립성·off-nominal/fault evidence. 원문 미열람, 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 3, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA SP-2016-6105 systems engineering handbook verification validation lifecycle", "어디서": "SE 핸드북 — V&V 생명주기 위치. 원문 미열람, 개념 귀속"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 4, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA-STD-7009 standard models and simulations credibility verification validation", "어디서": "M&S 신뢰성 표준 — 모델/시뮬 자체의 V&V·credibility. 원문 미열람, 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 5, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA core flight system cFS cFE component executive flight software Goddard", "어디서": "cFS/cFE — component+executive flight SW 구조. 원문 미열람, 개념 귀속"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 6, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA Remote Agent Deep Space 1 autonomous executive 1999", "어디서": "Remote Agent/DS1 — 자율 onboard executive 실비행 선례. 원문 미열람, 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 7, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA autonomy planning scheduling execution FDIR autoNGC DSM TechPort", "어디서": "NASA autonomy+FDIR 통합. 원문 미열람, TechPort 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 8, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA terrain relative navigation Mars 2020 high-fidelity simulation field test", "어디서": "Mars2020 TRN — 고fidelity sim + field/HW 시험 병행. 원문 미열람, 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 9, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA JPL ALHAT autonomous landing hazard avoidance Monte Carlo HITL field", "어디서": "ALHAT — sim+field+HITL 단계. 원문 미열람, JPL 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 10, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA SPLICE safe precise landing hazard detection lidar DEM", "어디서": "SPLICE — HD LiDAR로 지형 3D map/DEM 분석. 원문 미열람, NASA 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 11, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Building maps for terrain relative navigation using Blender NTRS 2021 flight imagery", "어디서": "Blender-TRN NTRS — imagery로 scene 짓고 실비행 영상 대조 검증. 원문 미열람, NTRS 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 12, "확인수준": "조각", "날짜": "2026-09-28", "질의": "NASA JPL FINDER microwave heartbeat breathing detection disaster victims liveness", "어디서": "FINDER — 위치센서 아닌 생체 미세운동 식별. liveness 채널 선례. 원문 미열람, JPL 요약 기반"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 13, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Brooks robust layered control system mobile robot subsumption 1986", "어디서": "subsumption/arbitration 개념 귀속. 원문 미열람(교과서 수준)"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 14, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Gat on three-layer architectures deliberator sequencer reactive 1998", "어디서": "3T 계층 개념 귀속. 원문 미열람"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 15, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Colledanchise Ogren behavior trees robotics AI introduction 2018", "어디서": "BT modularity/hierarchy 개념 귀속. 원문 미열람"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 16, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Kalman new approach linear filtering prediction 1960", "어디서": "칼만 필터·innovation 개념 귀속. 원문 미열람(교과서 수준)"}
+{"논문": "자율결정_관측가능성_검증.html", "번호": 17, "확인수준": "조각", "날짜": "2026-09-28", "질의": "Kaelbling Littman Cassandra planning acting partially observable stochastic domains POMDP 1998", "어디서": "POMDP belief 개념 귀속. 원문 미열람"}

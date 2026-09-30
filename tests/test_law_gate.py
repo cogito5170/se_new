@@ -1,0 +1,343 @@
+"""법 기계 관문이 **실제로 걸리는가**. 걸리는 것을 보여주지 못한 관문은 관문이 아니다.
+
+이 저장소가 self_challenge.py 로 배운 것: 진단이 진짜인지 알려면 고장난 입력에서 실패
+(RED)하고 멀쩡한 입력에서 통과(GREEN)하는 것을 둘 다 보여야 한다. 그래서 관문마다
+'지어낸 문서' 와 '멀쩡한 문서' 를 짝으로 넣는다.
+
+원장은 tests/fixtures/law_corpus/ 의 **가상 법령**을 쓴다. 실제 조문을 검사 고정값으로
+쓰면 법 개정 때 검사가 빨개지고, 더 나쁘게는 옛 조문이 정답 자리에 남는다.
+
+    python3 tests/test_law_gate.py
+"""
+from __future__ import annotations
+
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from law import corpus as CP                                          # noqa: E402
+from law import gate as G                                             # noqa: E402
+
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "law_corpus"
+
+fails = []
+
+
+def ok(cond, msg):
+    print(("  OK   " if cond else "  실패 ") + msg)
+    if not cond:
+        fails.append(msg)
+
+
+def doc(sections: dict, meta: dict | None = None):
+    """문서 하나를 임시 파일로 만든다. 관문은 파일에서 읽는 것을 전제한다."""
+    m = {"title": "검사용", "domain": "00_검사", "tags": "[검사]",
+         "key_principle": "검사", "source_statute": "가상시험법"}
+    m.update(meta or {})
+    body = "---\n" + "\n".join(f'{k}: "{v}"' for k, v in m.items() if v) + "\n---\n\n"
+    # 빠진 절은 자동으로 채운다. 절 이름이 아니라 **번호 앞자리**로 맞춰야 한다 --
+    # 제목에 괄호가 붙은 절("6. 사례 적용 (학습용 ...)")을 이름으로 맞추다가 같은 절이
+    # 두 벌 생겼고, 관문이 그중 빈 쪽을 읽어 멀쩡한 문서를 기각했다(실측).
+    out = dict(sections)
+    for name in G.REQUIRED_SECTIONS:
+        num = name.split(".")[0] + "."
+        if not any(k.startswith(num) for k in out):
+            out[name] = "내용.\n"
+    for name in sorted(out, key=lambda k: int(k.split(".")[0])):
+        body += f"## {name}\n{out[name]}\n"
+    tmp = Path(tempfile.mkdtemp()) / "검사문서.md"
+    tmp.write_text(body, encoding="utf-8")
+    return G.parse(tmp)
+
+
+CORPUS = CP.load(FIXTURE)
+EMPTY = CP.Corpus()
+
+print("[원장] 조문 원문을 조문 단위로 담는다")
+ok(CORPUS.covers("가상시험법"), "코퍼스 파일 이름이 법령명이 된다")
+ok(CORPUS.has("가상시험법", "7") and CORPUS.has("가상시험법", "7의2"),
+   "제7조와 제7조의2 를 다른 조문으로 담는다")
+ok(not CORPUS.covers("형법"), "안 넣은 법령은 담고 있지 않다고 답한다")
+ok(CP.kor_number("1천500만") == 15_000_000 and CP.kor_number("3천만") == 30_000_000,
+   "'1천500만' 과 '3천만' 을 값으로 바꾼다 (표기 차이로 기각하지 않기 위해)")
+ok(CP.normalize_statute("도시정비법") == "도시 및 주거환경정비법",
+   "줄여 쓴 법령명을 정식 명칭으로 편다")
+cits = CP.find_citations("민법 제703조와 제704조. 이 법 제7조의2 를 본다")
+ok([c.article for c in cits] == ["703", "704", "7의2"], "조문 인용을 순서대로 뽑는다")
+ok(cits[0].statute == "민법" and cits[1].statute == "민법",
+   "'민법 제703조와 제704조' 는 둘 다 민법에 맨다 (같은 문장 안에서 이어받는다)")
+ok(cits[2].statute is None,
+   "문장이 바뀌면 앞 법령명을 안 끌어오고, '이 법' 은 법령명으로 세지 않는다")
+
+# **실측이 잡은 새는 자리.** "사단법인은 ... 제40조" 에서 '사단법' 을 법령명으로 잡아
+# 그 인용이 위반도 통과도 아닌 '미검증' 으로 조용히 샜다. 민법 제40조를 대조할 수 있는데
+# 안 한 것이다. 돌연변이 검사(law/mutate.py)가 없는 조문 번호를 심었는데 안 잡혀서 드러났다.
+for 문장, 무엇 in (("사단법인은 사원의 결합체로서 제40조에 따른다", "사단법인"),
+                 ("반면 재단법인은 제43조에 따라 출연이 필요하다", "재단법인")):
+    ok(CP.find_citations(문장)[0].statute is None,
+       f"'{무엇}' 에서 법령명을 만들어내지 않는다")
+ok(CP.find_citations("형법 제129조부터 제132조까지")[0].statute == "형법",
+   "진짜 법령명은 그대로 잡는다")
+ok(CP.normalize_statute("헌법") == "대한민국헌법",
+   "문서가 '헌법' 이라 쓰면 원장의 '대한민국헌법' 으로 잇는다")
+
+print()
+print("[L001] 없는 조문을 인용하면 기각한다 -- 환각 인용")
+d = doc({"2. 조문과 이론": "제99조에 따르면 청산인은 지정된다.\n"})
+vs, checked, unver = G.check_citations(d, CORPUS)
+ok(any(v.rule == "L001" and v.severity == "hard" for v in vs),
+   f"원장에 없는 제99조 -> hard (얻은 값 {[str(v) for v in vs]})")
+ok(checked == 1 and unver == 0, f"검증 1건 · 미검증 0건 (얻은 값 {checked}/{unver})")
+
+d = doc({"2. 조문과 이론": "제7조에 따르면 5년 이하의 징역에 처한다.\n"})
+vs, checked, unver = G.check_citations(d, CORPUS)
+ok(not vs and checked == 1, "실재하는 조문은 통과한다")
+
+d = doc({"2. 조문과 이론": "제99조에 따르면 청산인은 지정된다.\n"})
+vs, checked, unver = G.check_citations(d, EMPTY)
+ok(not vs and unver == 1 and checked == 0,
+   "원장이 비면 같은 인용이 기각이 아니라 **미검증**으로 센다")
+
+print()
+print("[L002] 조문에 없는 문장을 인용부호로 옮기면 기각한다")
+d = doc({"2. 조문과 이론": '제7조는 "청산인은 즉시 사임하여야 한다"고 규정한다.\n'})
+ok(any(v.rule == "L002" for v in G.check_quotes(d, CORPUS)), "지어낸 인용문 -> hard")
+d = doc({"2. 조문과 이론": '제7조는 "5년 이하의 징역 또는 1천500만원 이하의 벌금"으로 정한다.\n'})
+ok(not G.check_quotes(d, CORPUS), "원문에 있는 문구를 옮긴 것은 통과한다")
+
+d = doc({"2. 조문과 이론": "제7조가 정하는 '가상의 임무 위배'는 넓게 읽힌다.\n"})
+ok(not G.check_quotes(d, CORPUS),
+   "작은따옴표는 강조다 -- 한국어에서 '…' 를 조문 인용으로 보면 멀쩡한 문장이 기각된다")
+
+# **따옴표 안이 다 조문은 아니다.** 실측: 사례 절의
+# `피고인이 공판기일에 "내용이 사실과 다르다"며 ...` 가 hard 로 기각됐다.
+# 조문을 잘못 옮긴 게 아니라 가상 사실관계 속 피고인의 진술이다.
+d = doc({"6. 사례 적용 (학습용 창작 사례, 실제 판례 아님)":
+         '피고인이 공판기일에 "내용이 사실과 다르다"며 부인하는 경우, '
+         '제7조에 따라 증거능력이 없다.\n'})
+ok(not [v for v in G.check_quotes(d, CORPUS) if v.rule == "L002"],
+   f"인용 조사가 붙은 사람의 말은 조문 인용이 아니다 "
+   f"(얻은 값 {[v.detail[:40] for v in G.check_quotes(d, CORPUS)]})")
+# 그 반대편을 같이 못 박는다: 조사가 붙었어도 규정 동사가 뒤따르면 그대로 검사한다.
+d = doc({"2. 조문과 이론":
+         '제7조는 "조문에 없는 아주 이상한 문장이다"라고 규정한다.\n'})
+ok([v for v in G.check_quotes(d, CORPUS) if v.rule == "L002"],
+   '`"..."라고 규정한다` 는 그대로 잡는다 -- 이걸 놓치면 관문의 본체를 잃는다')
+
+print()
+print("[원장] 조 제목이 없는 조문도 잡는다 (헌법이 그렇게 생겼다)")
+ok(CORPUS.has("가상시험법", "40") and CORPUS.has("가상시험법", "41"),
+   "제목 없이 본문이 바로 오는 조문도 머리로 본다")
+ok("제12조 및 제40조에 따른다" in (CORPUS.text("가상시험법", "42") or ""),
+   "줄 첫머리에 와도 번호가 뒤로 가면 머리가 아니라 참조다")
+
+print()
+print("[L003] 그 조문에 없는 법정형·기간을 붙이면 기각한다 -- 오귀속")
+d = doc({"2. 조문과 이론": "제7조는 7년 이하의 징역에 처하도록 규정하고 있습니다.\n"})
+vs = G.check_quantities(d, CORPUS)
+ok(any(v.rule == "L003" and v.severity == "hard" for v in vs),
+   f"제7조는 5년인데 7년이라 적었다 -> hard (얻은 값 {[v.detail for v in vs]})")
+d = doc({"2. 조문과 이론": "제7조는 1500만원 이하의 벌금에 처하도록 규정합니다.\n"})
+ok(not G.check_quantities(d, CORPUS),
+   "'1천500만원' 을 '1500만원' 으로 쓴 것은 같은 값이라 통과한다")
+d = doc({"6. 사례 적용": "가상의 사실관계. 제7조 위반으로 2천만원의 손해가 났다.\n"})
+ok(all(v.severity == "soft" for v in G.check_quantities(d, CORPUS)),
+   "사례 절의 지어낸 금액은 기각하지 않고 보고만 한다")
+
+print()
+print("[L004] **원장이 있으면 대조하고, 없으면 금지한다** -- 둘을 섞지 않는다")
+d = doc({"3. 핵심 법리": "대법원 2020다12345 판결은 이를 확인하였습니다.\n"})
+vs, _ = G.check_case_citation(d)
+ok(any(v.rule == "L004" and v.severity == "hard" for v in vs),
+   "판례 원장이 비어 있으면 사건번호 -> hard (대조할 수 없으니까)")
+ok(any("원장이 비어" in v.detail for v in vs),
+   f"왜 막았는지 적는다 -- 지어냈다는 뜻이 아니다 (얻은 값 {[v.detail[:30] for v in vs]})")
+d = doc({"3. 핵심 법리": "구체적 범위는 조문 원문에 명시되지 않음, 학설/판례 확인 필요합니다.\n"})
+ok(not G.check_case_citation(d)[0], "'판례 확인 필요' 로 남긴 것은 막지 않는다")
+
+# RED: 원장을 채웠는데도 실재하는 판례를 계속 막으면, 원장을 채운 보람이 없다.
+_판례원장 = Path(tempfile.mkdtemp())
+(_판례원장 / "2018다287522.txt").write_text(
+    "# 2018다287522 · 대법원 · 20200521 · 건물인도\n# 받은 것\n\n[판시사항]\n...\n",
+    encoding="utf-8")
+_찬원장 = CP.Corpus()
+_찬원장.cases = CP.load_cases(_판례원장)
+d = doc({"3. 핵심 법리": "대법원 2018다287522 판결.\n"})
+ok(not [v for v in G.check_case_citation(d, _찬원장)[0] if "2018다287522" in v.detail],
+   f"원장에 있는 사건번호는 통과한다 (얻은 값 {G.check_case_citation(d, _찬원장)[0]})")
+d = doc({"3. 핵심 법리": "2099다99999 참조.\n"})
+
+# **덜 받은 원장에서 없는 것은 '지어냈다' 가 아니라 '아직 안 받았다' 다.**
+# 판례는 한두 번에 다 못 받아 원장이 일부만 찬 상태가 오래 간다. 그때 기각하면
+# 실재하는 판례를 지어냈다고 버린다 -- 과잉 기각하는 심판은 맞는 답도 버린다.
+_vs, _미검증 = G.check_case_citation(d, _찬원장)
+ok(not _vs and _미검증 == 1,
+   f"훑기를 안 끝냈으면 미검증으로 센다 (얻은 값 위반 {len(_vs)} · 미검증 {_미검증})")
+
+_찬원장.case_scope = {"전부": True}
+_vs, _미검증 = G.check_case_citation(d, _찬원장)
+ok(any("원장에 없는" in v.detail for v in _vs) and _미검증 == 0,
+   f"다 받았다고 적혀 있을 때만 기각한다 (얻은 값 {[v.detail for v in _vs]})")
+
+print()
+print("[L006] 한 문서가 같은 조문에 다른 법정형을 달면 기각한다 -- 원장 없이도 돈다")
+d = doc({"2. 조문과 이론": "제7조는 5년 이하의 징역에 처한다.\n",
+         "5. 실무상 흔한 오해": "제7조는 3년 이하의 징역이라고 오해합니다.\n"})
+ok(any(v.rule == "L006" for v in G.check_self_contradiction(d)),
+   "5년과 3년 -> hard (원장 없이 문서 안에서만 판정)")
+d = doc({"2. 조문과 이론": "제7조는 5년 이하의 징역 또는 1천500만원 이하의 벌금에 처한다.\n"})
+ok(not G.check_self_contradiction(d),
+   "징역과 벌금은 종류가 달라 모순이 아니다")
+
+print()
+print("[L007] 구조 규약")
+d = doc({"2. 조문과 이론": "제7조.\n"}, meta={"source_statute": ""})
+ok(any("source_statute" in v.detail for v in G.check_structure(d)),
+   "source_statute 가 비면 hard -- 인용의 소속을 정할 수 없다")
+d.sections.pop("7. 연습 사실관계", None)
+ok(any("연습 사실관계" in v.detail for v in G.check_structure(d)), "절이 빠지면 hard")
+
+print()
+print("[L008] 지어낸 사실관계에 지어냈다고 적었는가")
+d = doc({"6. 사례 적용 (학습용 창작 사례, 실제 판례 아님)":
+         "### 사례 1\n**사실관계:** A 법인이 해산하였으나 청산인이 없었다.\n"})
+ok(any(v.rule == "L008" and v.severity == "hard" for v in G.check_created_facts(d)),
+   "절 제목에만 라벨이 있고 블록 안에는 없으면 hard")
+d = doc({"6. 사례 적용 (학습용 창작 사례, 실제 판례 아님)":
+         "### 사례 1\n**사실관계:** 가상의 A 법인이 해산하였다.\n"})
+ok(not [v for v in G.check_created_facts(d) if v.severity == "hard"],
+   "블록 안에 '가상의' 가 있으면 통과한다")
+
+print()
+print("[창작 사례의 수] **조문의 수를 안 벗어나는 사례는 쓸모없는 사례다**")
+# 실측: "청산인 갑은 3주 기간을 넘겨 **5주** 만에 등기하였다" 가 기각됐다. 그런데
+# 문서는 완전히 옳다 -- 3주는 제94조대로 적었고 5주는 지어낸 사건의 사실이며, 문장이
+# "5주 만에 등기한 것은 법정 기간을 도과한 것이다" 라고 제대로 결론짓는다.
+# 그것을 벌하면 다음 원고는 조문의 수만 되뇌는 사례를 쓴다.
+_창작 = ("학습용으로 새로 창작한 가상의 사실관계이며 실제 판례가 아님.\n\n"
+       "제12조는 3년 이내에 종결할 것을 요구하므로, 5년 만에 종결한 것은 도과다.\n")
+ok(not G.check_quantities(doc({"6. 사례 적용": _창작}), CORPUS),
+   "창작 블록에서 조문의 수(3년)를 맞게 썼으면 지어낸 수(5년)는 사실로 본다")
+# **여기서 멈춰야 한다.** 맞게 쓴 수가 하나도 없으면 조문을 잘못 옮긴 것이다.
+ok(len(G.check_quantities(doc({"6. 사례 적용":
+        "학습용으로 새로 창작한 가상의 사실관계.\n\n제12조는 5년 이내에 종결하여야 한다.\n"}),
+        CORPUS)) == 1,
+   "사례 안이라도 '제12조는 5년 이내' 는 조문을 잘못 옮긴 것이라 그대로 잡는다")
+# 창작 라벨이 없는 절은 지어낸 사실관계의 자리가 아니다.
+ok(len(G.check_quantities(doc({"2. 조문과 이론":
+        "제12조는 3년 이내여야 하는데 실무는 5년을 쓴다.\n"}), CORPUS)) == 1,
+   "조문 절에서는 완화하지 않는다 -- 거기 숫자는 조문에서 왔어야 한다")
+
+print("[2홉] **조문이 끌어다 쓰는 조문까지 한 홉 따라간다**")
+# 민법 제724조는 청산인의 직무를 "제87조의 규정을 준용한다" 로만 정한다. 제724조
+# 본문만 보면 청산인의 직무에 관한 서술은 영영 '견줄 값 없음' 이다 -- 안 보는 자리가
+# 넓으면 어긋남 0 은 뜻이 없다. KoBLEX(EMNLP 2025)가 한국법에서 이것이 실제 병목임을
+# 226문항으로 보여준다(1홉 55 · 2홉 125 · 3홉 46).
+def via(a):
+    return [n for n, _ in CORPUS.via("가상시험법", a)]
+
+
+ok(via("22") == ["제12조"], f"준용을 따라간다 (얻은 값 {via('22')})")
+ok(via("7의2") == ["제7조"], f"'제7조의 죄' 도 따라간다 -- 가중 구성요건의 본체다 "
+   f"(얻은 값 {via('7의2')})")
+ok(via("51") == ["전조(제50조)"], f"'전조' 는 원장 차례에서 바로 앞 조문이다 -- "
+   f"제N조의2 가 있으므로 N-1 이 아니다 (얻은 값 {via('51')})")
+# **넓히는 쪽이 곧 눈이 밝아지는 것은 아니다.** 단순 지시까지 따라가면 조문 하나로
+# 법 전체가 딸려 오고, 그러면 무엇이든 조문 어딘가에 있으므로 어긋남이 영영 안 난다.
+ok(via("42") == [], f"'제12조 및 제40조에 따른다' 는 단순 지시라 안 따라간다 "
+   f"(얻은 값 {via('42')})")
+ok(via("12") == [], f"끌어다 쓰는 것이 없으면 빈 목록 (얻은 값 {via('12')})")
+
+# L003 도 같이 따라가야 한다. 안 그러면 **맞게 쓴 수량을 없는 수량이라고 기각한다.**
+ok(not G.check_quantities(doc({"2. 조문과 이론": "제22조에 따라 청산은 3년 이내에 종결한다."}), CORPUS),
+   "준용된 제12조의 '3년' 은 제22조를 인용해도 맞는 수량이다")
+ok(len(G.check_quantities(doc({"2. 조문과 이론": "제22조에 따라 청산은 5년 이내에 종결한다."}), CORPUS)) == 1,
+   "그래도 조문에 없는 '5년' 은 그대로 잡는다 -- 넓힌 것이지 눈을 감은 것이 아니다")
+
+print("[회귀] 실제 문서 17개에서 관문이 돌고, 닫힌책 규율이 지켜져 있는가")
+real = Path(__file__).resolve().parent.parent / "법이론서"
+if real.is_dir():
+    files = sorted(real.rglob("*.md"))
+    case_hits, struct_hits, parsed = 0, 0, 0
+    for f in files:
+        rd = G.parse(f)
+        parsed += 1
+        case_hits += len(G.check_case_citation(rd)[0])
+        struct_hits += len(G.check_structure(rd))
+    # **수를 못 박지 않는다.** 전에는 "문서 17개" 라 적었는데, 민사소송법 네 편이
+    # 들어오자 그 자리에서 깨졌다 -- 원고가 늘어난 것은 좋은 일인데 자가 그것을
+    # 실패로 셌다. 여기서 보려는 것은 "진짜 문서 위에서 관문이 돌았는가" 이지
+    # 문서가 몇 개인가가 아니다. 0 이면 이 절 전체가 헛돈 것이므로 그것만 막는다.
+    ok(parsed == len(files) and parsed >= 17,
+       f"법이론서 문서를 하나도 안 빠뜨리고 읽는다 (읽은 값 {parsed} · 파일 {len(files)})")
+    ok(case_hits == 0,
+       f"지어낸 판례 인용 0건 -- 조문 안에서만 말하는 규율이 지켜졌다 (얻은 값 {case_hits})")
+    ok(struct_hits == 0, f"8절·front-matter 규약 위반 0건 (얻은 값 {struct_hits})")
+else:
+    print("  건너뜀 법이론서/ 가 없다")
+
+print()
+print("[법령명] **잘못 알아보는 것이 못 알아보는 것보다 나쁘다**")
+# 실측: `관할지방법원판사` 에서 '관할지방법' 을, `지방법원판사` 에서 '지방법' 을
+# 법령명으로 읽었다. 원장에 없는 이름이라 그 인용이 조용히 미검증으로 샜고, 돌연변이
+# `제201조 -> 제901조` 를 못 잡았다. 못 알아보면 선언 법령으로 되돌아가 그대로
+# 대조되지만, 잘못 알아보면 대조 자체가 사라진다.
+for _글 in ("관할지방법원판사의 구속영장", "지방법원판사는 신속히", "법인의 대표자"):
+    ok(not CP.STATUTE_NAME.findall(_글),
+       f"{_글[:12]!r} 에서 법령명을 만들지 않는다 (얻은 값 {CP.STATUTE_NAME.findall(_글)})")
+for _글, _몇 in (("형법상 재물", "형법"), ("민법의 규정", "민법"),
+                ("형사소송법에 따라", "형사소송법"), ("상법상 상인", "상법")):
+    ok(_몇 in CP.STATUTE_NAME.findall(_글),
+       f"{_글!r} 에서는 {_몇!r} 를 그대로 읽는다 (얻은 값 {CP.STATUTE_NAME.findall(_글)})")
+
+print()
+print("[전조는 양방향] **뒷 조문이 나를 '전조' 라 부르면 두 조는 한 덩이다**")
+# 실측(상법): 제450조가 "전조제1항의 승인을 한 후 **2년**내에" 라고 쓴다. 제449조를
+# 부른 지문에서 '2년' 을 찾으면, 전조를 앞으로만 따라가는 자에게는 영영 안 보인다.
+# 그래서 law/mcq.py 가 멀쩡한 지문(문 64 ③)을 "제449조에 없는 수량" 이라며 기각했다 --
+# 이 저장소가 답한 유일한 문항이었고, 그것이 거짓 양성이었다.
+_앞 = [n for n, _ in CORPUS.via("가상시험법", "50")]
+_뒤 = [n for n, _ in CORPUS.via("가상시험법", "51")]
+ok(any("제51조" in n for n in _앞),
+   f"제50조에서 뒷조(제51조)로 간다 -- 제51조가 스스로 '전조' 라 적었으므로 (얻은 값 {_앞})")
+ok(any("제50조" in n for n in _뒤),
+   f"제51조에서 앞조(제50조)로도 간다 -- 앞 방향은 그대로다 (얻은 값 {_뒤})")
+ok(CORPUS.via("가상시험법", "7") == [],
+   f"'전조' 라 안 적은 뒷 조문은 안 따라간다 -- 넓히되 닫아 둔다 (얻은 값 {CORPUS.via('가상시험법', '7')})")
+
+# **끼워 넣은 조문이 사이에 낀다.** 실측(상법): 제449조 -- 제449조의2 -- 제450조.
+# 한 칸만 가는 자는 제449조의2 에서 멈추고, 정작 "전조제1항의 승인을 한 후 2년내에"
+# 라고 쓴 제450조에 영영 못 닿는다. 반대 방향도 같이 틀린다 -- 제450조의 '전조' 가
+# 사이에 낀 제449조의2 를 가리키게 된다. 고치기 전 실측(가상시험법 52/52의2/53):
+#     via("52") == []                    <- 뒷조의 '2년' 이 안 보인다
+#     via("53") == ['전조(제52의2조)']    <- 앞조를 잘못 짚고, 이름도 틀리게 적었다
+_끼움앞 = [n for n, _ in CORPUS.via("가상시험법", "52")]
+_끼움뒤 = [n for n, _ in CORPUS.via("가상시험법", "53")]
+ok(any("제53조" in n for n in _끼움앞),
+   f"제52조에서 끼워 넣은 제52조의2 를 건너뛰고 제53조까지 간다 (얻은 값 {_끼움앞})")
+ok(any(n == "전조(제52조)" for n in _끼움뒤),
+   f"제53조의 '전조' 는 끼움 앞의 본체 제52조도 후보다 -- 둘 다 준다 (얻은 값 {_끼움뒤})")
+ok(any(n == "전조(제52조의2)" for n in _끼움뒤),
+   f"끼워 넣은 제52조의2 도 후보로 남는다 -- 글만 봐서는 못 가른다 (얻은 값 {_끼움뒤})")
+ok(all("의2조" not in n for n in _끼움뒤),
+   f"제52조의2 를 '제52의2조' 나 '제52조의2조' 라 적지 않는다 (얻은 값 {_끼움뒤})")
+ok(len([n for n, _ in CORPUS.via("가상시험법", "3")]) == 0,
+   "끼움 건너뛰기는 닫혀 있다 -- 끼움이 아닌 뒷 조문 하나에서 멈춘다")
+
+# 이것이 문 64 의 거짓 양성이 난 자리다. 제52조를 부른 글에서 뒷조의 '2년' 이 보여야 한다.
+d = doc({"2. 조문과 이론": "제52조의 승인을 한 후 2년내에 다른 결의가 없으면 책임이 해제된다.\n"})
+ok(not [v for v in G.check_quantities(d, CORPUS) if v.severity == "hard"],
+   "끼움 너머 뒷조(제53조)의 '2년' 이 어긋남으로 안 잡힌다")
+
+# 그래서 L003 이 뒷조의 수량을 제 것으로 본다.
+d = doc({"2. 조문과 이론": "제50조에 따르면 가중하여 처벌한다.\n"})
+ok(not [v for v in G.check_quantities(d, CORPUS) if v.severity == "hard"],
+   "제50조를 부른 글에서 제51조의 말이 어긋남으로 안 잡힌다")
+
+print()
+if fails:
+    print(f"법 관문: {len(fails)}개 실패 -- {fails}")
+    sys.exit(1)
+print("법 관문 L001~L008: 지어낸 인용·오귀속·자기모순·창작 라벨 -- RED/GREEN 통과")

@@ -1,0 +1,374 @@
+"""**보고서 파이프라인** -- 원장 · 셈 · 관문. 네트워크도 LLM 도 필요 없다.
+
+    python3 tests/test_brief.py
+
+제일 중요한 검사는 **B004(다시 셈해서 대조)** 다. 나머지 관문은 꼬리표를 보지만
+B004 는 값을 본다 -- 값을 손으로 바꿔치기해 놓고 관문이 잡는지 본다.
+`law/mutate.py` 가 조문 낱말 하나를 일부러 틀리게 심는 것과 같은 자리다:
+**어긋남 0 은 관문이 좋아서일 수도 있고 아무것도 못 잡아서일 수도 있다.**
+"""
+from __future__ import annotations
+
+import contextlib
+import datetime
+import io
+import json
+import sys
+import tempfile
+import urllib.error
+from dataclasses import replace
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from brief import derive as DV                                     # noqa: E402
+from brief import gate as GT                                       # noqa: E402
+from brief import ledger as LG                                     # noqa: E402
+from brief import report as RP                                     # noqa: E402
+from brief import source as SRC                                    # noqa: E402
+
+fails = []
+
+
+def ok(cond, msg):
+    print(("  OK   " if cond else "  실패 ") + msg)
+    if not cond:
+        fails.append(msg)
+
+
+CSV = ("Symbol,Date,Time,Open,High,Low,Close,Volume\n"
+       "^kospi,2026-09-09,16:00:00,2500,2530,2480,2510,412000\n"
+       "^ndq,2026-09-09,16:00:00,20000,20100,19800,19850,88000\n")
+
+주식 = SRC.get("주식")
+
+
+# **받은날을 박아 두지 마라.** 2026-09-09 로 박아 두었더니 신선도(3일)를 넘긴 날
+# 부터 "멀쩡한 보고서" 검사가 혼자 빨개졌다(실측 2026-09-13: `B003/hard 주식: 4일
+# 낡았다`). 코드는 그대로인데 **시계가 움직여서** 빨간 것이다 -- 거짓 빨강이고,
+# 그날 반례 사냥이 brief/report.py 에서 107 번 연속 FALSE_RED 를 낸 까닭이다.
+# 낡음을 재는 검사는 아래에서 날짜를 **일부러** 넘겨 준다(2020-01-01 따위).
+오늘 = datetime.date.today().isoformat()
+
+
+def led_of(text=CSV, 받은날=오늘):
+    v = LG.inspect(주식, LG.parse(주식, text))
+    return LG.Ledger(출처="주식", 받은날=받은날, 질의="검사", 줄=v["good"],
+                     버린것=v["버린것"])
+
+
+print("── 출처 표는 스스로 앞뒤가 맞는가 ─────────────────────")
+for name, s in SRC.SOURCES.items():
+    # **칸을 안 적는 출처가 있다.** 응답 꼴이 깊이별로 흩어져 있어 `find_rows` 가
+    # 묶어 주는 자리(Yahoo chart v8)에서는, 칸을 박아 두면 출처가 칸을 하나 더
+    # 주는 날 '스키마가 바뀌었다' 로 오판한다 -- 도착한 것에서 읽게 둔다.
+    # 그때 key 는 여기서 못 보지만 `inspect` 가 도착한 줄에서 본다(없으면 줄이
+    # 통째로 안 실려 시끄럽게 실패한다).
+    if s.칸:
+        ok(s.key in s.칸, f"{name}: key({s.key})가 칸 안에 있다")
+        ok(set(s.수칸) <= set(s.칸), f"{name}: 수칸이 전부 칸 안에 있다")
+    else:
+        ok(not s.수칸,
+           f"{name}: 칸을 안 적었으면 수칸도 안 적는다 -- 한쪽만 적으면 어긋난다")
+        ok(bool(s.key), f"{name}: 칸을 안 적어도 key 는 정한다 -- 되짚을 자리다")
+    ok(all(c in DV.RULES for c in s.셈), f"{name}: 셈이 전부 derive.RULES 에 있다")
+    ok("{심볼}" in s.url, f"{name}: url 에 채울 자리가 있다")
+    need = {c for c in s.셈 for c in DV.RULES[c][0]}
+    ok(need <= set(s.수칸), f"{name}: 셈이 필요한 칸을 출처가 다 받아 온다")
+ok(SRC.get("없는출처") is None, "없는 출처는 None -- 비슷한 것을 골라 주지 않는다")
+ok(SRC.심볼(주식, ["코스피", "모르는것"]) == ["^kospi", "모르는것"],
+   "**모르는 이름은 그대로 넘긴다** -- 임의로 고치면 딴 종목을 그 이름으로 보고한다")
+
+print()
+print("── 원장: 받은 것을 그대로 믿지 않는가 ──────────────────")
+ok(len(LG.parse(주식, CSV)) == 2, "CSV 를 두 줄로 읽는다")
+ok(LG.parse(주식, "깨진 것") != [] or True, "깨진 CSV 로 안 죽는다")
+ok(LG.parse(replace(주식, 꼴="json"), "{{{") == [], "깨진 JSON -> 빈 목록")
+
+v = LG.inspect(주식, LG.parse(주식, CSV))
+ok(v["통과"] and len(v["good"]) == 2, "멀쩡한 것은 통과")
+ok(isinstance(v["good"][0]["Close"], float), "수칸은 수로 바뀐다")
+ok(v["good"][0]["id"] == "^kospi", "key 칸이 줄 id 가 된다")
+
+drift = CSV.replace("Close", "Closing")
+ok(not LG.inspect(주식, LG.parse(주식, drift))["통과"],
+   "**칸 이름이 바뀌면 통째로 안 받는다** -- 스키마가 바뀐 모습이다")
+ok("빠졌다" in " ".join(LG.inspect(주식, LG.parse(주식, drift))["왜"]),
+   "왜 안 받았는지 적는다")
+
+nan = CSV.replace("2510", "N/A")
+r = LG.inspect(주식, LG.parse(주식, nan))
+ok(r["버린것"] == 1 and r["통과"] is False,
+   f"수가 아닌 줄은 버린다 -- 절반이 깨지면 통과도 안 된다 (버린 것 {r['버린것']})")
+ok(LG._num("N/A") is None and LG._num("1,234.5") == 1234.5,
+   "**못 읽는 수는 None 이다 -- 0 으로 안 채운다**")
+ok(not LG.inspect(주식, [])["통과"], "한 줄도 없으면 안 받는다")
+
+print()
+print("── 원장: 머리글이 없으면 안 읽는다 ────────────────────")
+with tempfile.TemporaryDirectory() as d:
+    p = Path(d) / "a.json"
+    LG.save(led_of(), p)
+    back = LG.load(p)
+    ok(back is not None and len(back) == 2 and back.받은날 == 오늘,
+       "저장 -> 읽기 왕복")
+    p.write_text(json.dumps({"줄": [{"id": "x"}]}), encoding="utf-8")
+    ok(LG.load(p) is None, "**출처·받은날이 없으면 None** -- 언제 것인지 모르면 못 쓴다")
+    p.write_text("{{{", encoding="utf-8")
+    ok(LG.load(p) is None, "깨진 파일도 None")
+ok(led_of(받은날="망가진날짜").나이() is None,
+   "받은날을 못 읽으면 나이는 None -- 모르는 것은 모른다고 한다")
+
+print()
+print("── 셈: 값이 맞고, **어디서 왔는지 들고 다니는가** ───────")
+led = led_of()
+facts = DV.row_facts(led, "^kospi", ("일간등락", "폭", "종가위치"), 주식.단위)
+by = {f.이름: f for f in facts}
+ok(abs(by["일간등락"].값 - 0.4) < 1e-9,
+   f"일간등락 (2510-2500)/2500 = 0.40% (실제 {by['일간등락'].값:.4f})")
+ok(abs(by["폭"].값 - 2.0) < 1e-9, f"폭 (2530-2480)/2500 = 2.00% ({by['폭'].값:.4f})")
+ok(abs(by["종가위치"].값 - 0.6) < 1e-9,
+   f"종가위치 (2510-2480)/(2530-2480) = 0.60 ({by['종가위치'].값:.4f})")
+ok(by["일간등락"].단위 == "%", "단위가 붙는다")
+ok(("^kospi", "Close") in by["일간등락"].근거 and ("^kospi", "Open") in by["일간등락"].근거,
+   "**근거에 어느 줄 어느 칸인지 적혀 있다**")
+ok(by["일간등락"].규칙 == "일간등락" and by["일간등락"].인자 == ("^kospi",),
+   "규칙과 인자가 남아 있다 -- 관문이 이것으로 다시 센다")
+ok(by["일간등락"].셈, "사람이 읽을 식도 같이")
+ok(DV.row_facts(led, "없는줄", ("일간등락",)) == [], "없는 줄에서는 아무것도 안 나온다")
+
+flat = led_of(CSV.replace("2530,2480", "2500,2500"))
+got = {f.이름 for f in DV.row_facts(flat, "^kospi", ("일간등락", "폭", "종가위치"))}
+ok("종가위치" not in got,
+   "**고가=저가면 종가위치를 안 만든다** -- 0 으로 채우지 않는다(분모 0)")
+ok("폭" in got, "그래도 폭은 셀 수 있으므로 센다 -- 하나가 안 된다고 다 버리지 않는다")
+
+print()
+print("── 셈: 가로질러 ──────────────────────────────────────")
+allf = DV.row_facts(led, "^kospi", ("일간등락",)) + DV.row_facts(led, "^ndq", ("일간등락",))
+up, down, flat_n = DV.한방향인가(allf, "일간등락")
+ok((up, down, flat_n) == (1, 1, 0), f"코스피는 오르고 나스닥은 내렸다 ({up},{down},{flat_n})")
+rank = DV.순위(allf, "일간등락")
+ok(rank[0][0] == "^kospi" and rank[-1][0] == "^ndq", "순위가 큰 것부터")
+ok(DV.흩어짐(allf, "일간등락") is not None, "둘이면 흩어짐을 센다")
+ok(DV.흩어짐(DV.row_facts(led, "^kospi", ("일간등락",)), "일간등락") is None,
+   "**하나뿐이면 안 센다** -- 표본 하나의 표준편차는 없는 값이다")
+
+print()
+print("── 관문 GREEN ────────────────────────────────────────")
+good = RP.build(주식, led)
+vs = GT.check(good, led, 주식)
+ok(not GT.hard(vs), f"멀쩡한 보고서에는 hard 위반이 없다 ({[str(x) for x in vs]})")
+
+print()
+print("── 관문 RED -- 일부러 망가뜨린다 ────────────────────────")
+f0 = [f for f in good if f.이름 == "일간등락"][0]
+
+tampered = [replace(f0, 값=99.9)]
+hits = GT.check_facts(tampered, led)
+ok(any(v.rule == "B004" for v in hits),
+   "**B004: 값을 바꿔치기하면 잡는다** -- 관문이 다시 세기 때문이다")
+ok(any("다시 세니" in v.msg for v in hits), "얼마가 나와야 하는지도 적는다")
+
+ok(any(v.rule == "B001" for v in GT.check_facts([replace(f0, 근거=())], led)),
+   "B001: 근거가 없으면 잡는다")
+ok(any(v.rule == "B002" for v in
+       GT.check_facts([replace(f0, 근거=(("없는줄", "Close"),), 규칙="", 인자=())], led)),
+   "B002: 원장에 없는 줄을 가리키면 잡는다")
+ok(any(v.rule == "B002" for v in
+       GT.check_facts([replace(f0, 근거=(("^kospi", "없는칸"),), 규칙="", 인자=())], led)),
+   "B002: 있는 줄이라도 없는 칸을 가리키면 잡는다")
+
+old = led_of(받은날="2020-01-01")
+ok(any(v.rule == "B003" for v in GT.check_ledger(old, 주식)), "B003: 낡은 원장을 잡는다")
+ok(any(v.rule == "B003" for v in GT.check_ledger(led_of(받은날="?"), 주식)),
+   "B003: 받은날을 못 읽어도 잡는다 -- 모르는 것은 안 된 것으로 다룬다")
+ok(any(v.rule == "B003" for v in GT.check_ledger(LG.Ledger(출처="x"), 주식)),
+   "B003: 빈 원장을 잡는다")
+
+ok(any(v.rule == "B005" for v in GT.check_prose("금리 때문이다.", good)),
+   "B005: 근거 없는 단정을 잡는다 (soft)")
+ok(not GT.check_prose("코스피 일간등락 0.4 로 올랐다.", good),
+   "**수를 댄 문장은 안 잡는다** -- 근거를 댔기 때문이다")
+ok(all(v.severity == "soft" for v in GT.check_prose("전망이다.", good)),
+   "B005 는 soft 다 -- 문장은 사람이 고칠 수 있다")
+
+print()
+print("── 보고서: 못 받치면 **수를 안 적는다** ─────────────────")
+
+
+def run(argv):
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        code = RP.main(argv)
+    return code, buf.getvalue()
+
+code, out = run(["없는출처", "--것", "코스피"])
+ok(code == 3 and "미검증" in out, "없는 출처 -> 끝값 3")
+code, out = run(["주식"])
+ok(code == 3 and "무엇을 받을지" in out, "--것 이 없으면 끝값 3")
+code, out = run(["주식", "--원장", "/없는/경로.json"])
+ok(code == 3 and "머리글" in out, "못 읽는 원장 -> 끝값 3, 왜인지 적는다")
+code, out = run(["--출처목록"])
+ok(code == 0 and "주식" in out and "환율" in out, "--출처목록 은 표를 보여 준다")
+
+print()
+print("── 보고서: 관문에 걸린 수는 **화면에서 뺀다** ───────────")
+with tempfile.TemporaryDirectory() as d:
+    p = Path(d) / "낡음.json"
+    LG.save(led_of(받은날="2019-01-01"), p)
+    code, out = run(["주식", "--원장", str(p)])
+    ok(code == 1, "hard 위반이 있으면 끝값 1")
+    ok("뺐다" in out, "뺐다고 적는다")
+    ok("2,510" not in out and "--" in out,
+       "**낡은 원장의 종가가 화면에 안 나온다** -- 수를 먼저 읽고 단서를 나중에 "
+       "읽게 두지 않는다")
+
+    p2 = Path(d) / "좋음.json"
+    LG.save(led_of(받은날=datetime.date.today().isoformat()), p2)
+    code, out = run(["주식", "--원장", str(p2)])
+    ok(code == 0, "신선한 원장이면 끝값 0")
+    ok("2,510.00" in out, "그때는 종가가 나온다")
+    ok("0.40" in out and "2.00" in out, "셈한 값도 나온다")
+    ok("셈:" in out and "(종가-시가)/시가" in out, "**식을 같이 적는다**")
+    ok("안 보는 것" in out and "원인" in out, "무엇을 안 보는지 매번 적는다")
+    ok("위반 없음" in out, "관문 결과를 보고서 안에 적는다")
+
+print()
+print("── 실패했을 때 **어디를 볼지 화면에 있는가** ──────────────")
+class _HE(urllib.error.HTTPError):
+    def __init__(self, code):
+        super().__init__("u", code, "x", {}, io.BytesIO(b""))
+
+
+def _던지고(code):
+    본 = []
+
+    def g(u, timeout=30.0):
+        본.append(u)
+        raise _HE(code)
+    LG.get = g
+    return 본
+
+
+원래get = LG.get
+try:
+    본 = _던지고(404)
+    led, err = LG.fetch(주식, 심볼="^kospi,^ndq")
+    ok("%5Ekospi" in 본[0],
+       f"**`^` 가 퍼센트 인코딩된다** ({본[0].split('?')[1][:34]}) -- "
+       "RFC 3986 에서 query 에 못 쓰는 글자다. 안 하면 404 로 떨어지거나 조용히 잘린다")
+    ok("^kospi" not in 본[0], "날것 `^` 가 주소에 안 남는다")
+    ok("[주소:" in err and "stooq" in err,
+       "**실패 까닭에 주소가 실린다** -- 주소를 봐야 무엇이 틀렸는지 안다")
+    ok("경로" in err, "404 는 경로가 틀린 것이라고 짚어 준다")
+    ok(led.질의 == 본[0], "못 받은 원장에도 무엇을 물었는지는 남는다")
+
+    _던지고(403)
+    _, err = LG.fetch(주식, 심볼="^kospi")
+    ok("막혔다" in err and "egress" in err,
+       "403 은 막힌 것 -- 심볼을 바꿔도 안 고쳐진다고 갈라 말한다")
+
+    _던지고(500)
+    _, err = LG.fetch(주식, 심볼="^kospi")
+    ok("출처 쪽 장애" in err, "500 은 우리가 고칠 데가 아니라고 적는다")
+
+    _던지고(418)
+    _, err = LG.fetch(주식, 심볼="^kospi")
+    ok("[주소:" in err, "모르는 코드여도 주소는 실린다")
+
+    # HTTP 200 인데 심볼이 없을 때 -- Stooq 는 N/D 를 준다
+    LG.get = lambda u, timeout=30.0: ("Symbol,Date,Time,Open,High,Low,Close,Volume\n"
+                                      "^KOSPI,N/D,N/D,N/D,N/D,N/D,N/D,N/D\n")
+    _, err = LG.fetch(주식, 심볼="^kospi")
+    ok("심볼이 그 출처에 없을 때" in err,
+       "**200 인데 쓸 줄이 없으면 심볼 문제라고 짚는다** -- 404 와 고칠 데가 다르다")
+    ok("[주소:" in err, "그때도 주소가 실린다")
+
+    # --url 로 통째로 받은 주소는 **안 건드린다**
+    본 = _던지고(404)
+    LG.fetch(SRC.즉석("https://x/a?q=^raw&b=1"), 심볼="쓰이지않음")
+    ok(본[0] == "https://x/a?q=^raw&b=1",
+       "**완성된 주소는 손대지 않는다** -- 부르는 쪽이 채워 온 것이다")
+finally:
+    LG.get = 원래get
+
+
+print()
+print("── **확인 안 된 출처는 확인 안 됐다고 말하는가** ──────────")
+ok(hasattr(주식, "확인"), "출처에 `확인` 칸이 있다 -- 언제 도는 것을 봤나")
+ok(all(isinstance(s.확인, str) for s in SRC.SOURCES.values()),
+   "모든 출처가 그 칸을 갖는다")
+ok(주식.미확인, "**Stooq 주식은 미확인이다** -- 실측 2026-09-09 VM 에서 404 였다")
+ok(SRC.즉석("https://x/a").미확인,
+   "**즉석 출처는 늘 미확인**이다 -- 방금 정한 주소라 도는 것을 본 사람이 없다")
+ok(not SRC.Source(이름="가", 설명="", url="{심볼}", 확인="2026-01-01 --탐색").미확인,
+   "확인 날짜를 적으면 미확인이 아니다")
+
+code, out = run(["--출처목록"])
+ok("[미확인]" in out, "**목록이 미확인을 표시한다** -- 표에 있다고 쓸 수 있는 게 아니다")
+ok("도는 것을 아무도 안 봤다" in out and "404" in out,
+   "몇 개가 왜 미확인인지 실측을 적는다")
+ok("--탐색" in out, "쓰기 전에 무엇부터 하라고 알려 준다")
+
+원래get = LG.get
+try:
+    LG.get = lambda u, timeout=30.0: (_ for _ in ()).throw(_HE(404))
+    code, out = run(["주식", "--것", "코스피"])
+    ok(code == 3, "미확인 출처가 실패하면 끝값 3")
+    ok("도는 것을 아무도 안 봤다" in out,
+       "**실패했을 때 '이 출처는 확인된 적 없다' 고 짚는다** -- "
+       "주소를 고치려 애쓰기 전에 알아야 할 것이다")
+    ok("--url" in out, "되는 주소를 붙이는 길을 같이 알려 준다")
+finally:
+    LG.get = 원래get
+
+
+print()
+print("── **--짧게: 한 메시지에 들어가되 규율은 안 줄인다** ──────")
+import datetime as _dt, random as _rnd
+_r = _rnd.Random(9); _n = 244; _lv = 2500.0
+_ts, _o, _h, _l, _c, _v = [], [], [], [], [], []
+_b = int(_dt.datetime(2025, 9, 9).timestamp())
+for _i in range(_n):
+    _op = _lv; _cl = _op * (1 + _r.gauss(0, 1.0) / 100)
+    _ts.append(_b + _i * 86400); _o.append(round(_op, 2)); _c.append(round(_cl, 2))
+    _h.append(round(max(_op, _cl) * 1.004, 2)); _l.append(round(min(_op, _cl) * 0.996, 2))
+    _v.append(_r.randint(3 * 10**5, 5 * 10**5)); _lv = _cl
+_몸 = json.dumps({"chart": {"result": [{"timestamp": _ts, "indicators": {"quote": [
+    {"open": _o, "high": _h, "low": _l, "close": _c, "volume": _v}]}}], "error": None}})
+원래get = LG.get
+try:
+    LG.get = lambda u, timeout=30.0: _몸
+    _, 짧 = run(["야후", "--것", "코스피", "--따질", "close", "--짧게"])
+    _, 전 = run(["야후", "--것", "코스피", "--따질", "close"])
+    ok(len(짧) < len(전), f"짧게가 더 짧다 ({len(짧)} < {len(전)}자)")
+    ok(len(짧) <= RP.DISCORD, f"**Discord 한도 안에 든다** ({len(짧)}자 <= {RP.DISCORD})")
+    for 것 in ("평범", "p ", "표본 242", "위반 없음", "안 보는 것", "전문:"):
+        ok(것 in 짧, f"**{것!r} 는 줄여도 남는다** -- 이것이 빠지면 판정을 못 읽는다")
+    ok("칸마다" not in 짧 and "줄마다" not in 짧, "표와 산문은 빠진다")
+
+    # 넓게 물으면 명제가 16개 -- 그래도 한도 안이어야 하고 판정 수는 남아야 한다
+    _, 넓 = run(["야후", "--것", "코스피", "--짧게"])
+    ok(len(넓) <= RP.DISCORD, f"**명제 16개여도 한도 안** ({len(넓)}자)")
+    ok("따짐 16" in 넓, "몇 개를 따졌는지는 무슨 일이 있어도 남는다")
+    ok("못잼 16" in 넓, "판정 수도 남는다")
+    ok("도달 가능한 최소 p" in 넓, "**왜 못잼인지**도 남는다")
+
+    # 잘렸으면 잘렸다고 적는다
+    _, 좁 = run(["야후", "--것", "코스피", "--짧게"])
+    if "…명제" in 좁:
+        ok("판정 수는 위에 다 있다" in 좁, "뺐으면 뺐다고 적고 어디를 보라고 알려 준다")
+    else:
+        ok(True, "이번엔 다 들어갔다 (자르기는 한도를 넘을 때만 돈다)")
+finally:
+    LG.get = 원래get
+
+
+print()
+if fails:
+    print(f"보고: {len(fails)}개 실패 -- {fails}")
+    sys.exit(1)
+print("출처 선언 · 스키마 강제 · 추적 가능한 셈 · 관문 B001~B005 RED/GREEN · "
+      "걸린 수 빼기 -- 통과")

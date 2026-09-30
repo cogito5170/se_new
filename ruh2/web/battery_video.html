@@ -1,0 +1,123 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+html,body{margin:0;background:#1a1f26;overflow:hidden;font-family:"NanumSquare","NanumGothic",sans-serif;color:#e8eef5}
+#wrap{position:relative;width:1280px;height:720px;overflow:hidden}
+canvas{display:block}
+#ov{position:absolute;inset:0;pointer-events:none}
+.co-root{position:absolute;inset:0}
+.co-svg{position:absolute;left:0;top:0}
+.co-line{fill:none;stroke:#ffd166;stroke-width:1.4;opacity:.9}
+.co-dot{fill:#ffd166;stroke:#1a1f26;stroke-width:1.5}
+.co-lab{position:absolute;font-size:14px;line-height:1.25;background:rgba(14,19,26,.86);border:1px solid #3a4658;border-radius:6px;padding:4px 8px;box-sizing:border-box}
+.co-lab b{display:block;font-size:14.5px;color:#fff}
+.co-lab span{display:block;color:#9fb3c8;font-size:12.5px}
+.title{position:absolute;left:24px;top:18px}
+.title .k{font-size:13px;letter-spacing:.14em;color:#ffd166;font-weight:700}
+.title .t{font-size:26px;font-weight:800}
+.panel{position:absolute;right:16px;top:16px;width:380px;bottom:16px;background:rgba(12,17,24,.9);border:1px solid #2c3a4c;border-radius:10px;padding:10px 12px;box-sizing:border-box;display:none}
+.panel h4{margin:0 0 2px;font-size:13px;color:#9fb3c8;font-weight:600;letter-spacing:.05em}
+.stage{font-size:20px;font-weight:800;margin:2px 0 6px}
+.rx{font-family:"NanumGothicCoding",monospace;font-size:13px;color:#c9d6e3;line-height:1.5;margin-bottom:6px}
+.legend{position:absolute;left:24px;bottom:18px;font-size:14px;background:rgba(14,19,26,.86);border:1px solid #3a4658;border-radius:8px;padding:8px 12px;display:none;line-height:1.55}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.end{position:absolute;inset:0;background:rgba(10,14,20,.92);display:none;align-items:center;justify-content:center}
+.end .box{width:900px}
+.end h2{font-size:34px;margin:0 0 10px}
+.end table{border-collapse:collapse;font-size:20px;width:100%}
+.end td{padding:7px 10px;border-bottom:1px solid #2c3a4c}
+.end td:last-child{text-align:right;font-family:"NanumGothicCoding",monospace;color:#ffd166}
+.end p{color:#9fb3c8;font-size:15px}
+.clock{position:absolute;left:24px;top:74px;font-family:"NanumGothicCoding",monospace;font-size:15px;color:#9fb3c8;display:none}
+</style></head><body><div id="wrap"><canvas id="c" width="1280" height="720"></canvas><div id="ov">
+<div class="title"><div class="k" id="tk">RuH2-P1 · 예상 구현 시뮬레이션</div><div class="t" id="tt">Ru 수소 전극 Ni–H₂ 배터리 프로토타입</div></div>
+<div class="clock" id="clock"></div>
+<div class="panel" id="panel"><h4>BMS 로그 (모델 출력, C/2)</h4><div class="stage" id="stage"></div><div class="rx" id="rx"></div><svg id="plots" width="356" height="520"></svg></div>
+<div class="legend" id="legend"></div>
+<div class="end" id="end"><div class="box"><h2>한 사이클 요약 (모델, 25 °C, C/2)</h2><table id="endt"></table><p>모든 값은 가정 파라미터 모델의 출력입니다. 실측이 아닙니다. 파라미터 표는 보고서 부록에 있습니다.</p></div></div>
+</div></div>
+<script src="__THREE__"></script>
+<script src="__ROOMENV__"></script>
+<script src="battery3d.js"></script>
+<script>
+const B = __BATT__;
+const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("c"), antialias: true, preserveDrawingBuffer: true});
+renderer.setSize(1280, 720, false); renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+const S = makeBatteryScene(THREE, renderer, B.spec, document.getElementById("ov"), {calloutTop: 110, calloutBottom: 30});
+const cam = S.cam, $ = id => document.getElementById(id);
+const ser = B.cycle.series, T_END = ser.t[ser.t.length - 1];
+const sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+const seg = (t, a, b) => sm((t - a) / (b - a));
+const vy = S.R_o + 2.2;
+function camAt(pos, tgt) { cam.position.set(...pos); cam.lookAt(...tgt); }
+function lerp3(a, b, u) { return a.map((v, i) => v + (b[i] - v) * u); }
+const P_WIDE = [[-30, 30, 52], [10, 6, 0]], P_CUT = [[-9, 8.5, 12.5], [0, 4.6, 0]], P_MID = [[-24, 26, 42], [8, 6, 0]];
+function sample(tsim) { let lo = 0, hi = ser.t.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ser.t[m] <= tsim) lo = m; else hi = m; } return lo; }
+// plots
+const PL = $("plots"), PH = 118, PW = 356;
+const charts = [["V", "셀 전압 (V)", 1.0, 1.6, "#6fa8ff"], ["I", "전류 (A)", -0.6, 0.6, "#eb6834"], ["p", "H₂ 압력 (bar abs)", 0.8, 5.0, "#1baf7a"], ["T", "온도 (°C)", 24, 30, "#e0a526"]];
+function drawPlots(k) {
+  let h = "";
+  charts.forEach(([key, name, lo, hi, col], i) => {
+    const y0 = i * (PH + 12) + 4, X = t => 34 + (t / T_END) * (PW - 44), Y = v => y0 + 18 + (1 - (v - lo) / (hi - lo)) * (PH - 30);
+    const arr = key === "T" ? ser.T.map(v => v - 273.15) : ser[key];
+    let d = ""; for (let j = 0; j <= k; j += 3) d += (j ? "L" : "M") + X(ser.t[j]).toFixed(1) + "," + Y(arr[j]).toFixed(1);
+    let dg = ""; for (let j = 0; j < ser.t.length; j += 6) dg += (j ? "L" : "M") + X(ser.t[j]).toFixed(1) + "," + Y(arr[j]).toFixed(1);
+    h += `<text x="0" y="${y0 + 12}" fill="#9fb3c8" font-size="12">${name}</text>`;
+    h += `<text x="${PW}" y="${y0 + 12}" fill="#fff" font-size="13" text-anchor="end" font-family="NanumGothicCoding">${arr[k].toFixed(key === "T" ? 1 : 3)}</text>`;
+    [lo, hi].forEach(v => h += `<text x="30" y="${Y(v) + 4}" fill="#6b7c90" font-size="10" text-anchor="end">${v}</text><line x1="34" x2="${PW - 10}" y1="${Y(v)}" y2="${Y(v)}" stroke="#243142"/>`);
+    if (key === "p") { const yt = Y(B.spec.VESSEL.p_trip_bar_abs); }
+    h += `<path d="${dg}" fill="none" stroke="#2c3a4c" stroke-width="1.5"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2"/>`;
+    h += `<circle cx="${X(ser.t[k])}" cy="${Y(arr[k])}" r="4" fill="${col}" stroke="#0c1118" stroke-width="1.5"/>`;
+    if (key === "p") { const soc = ser.soc_p[k]; h += `<text x="${PW}" y="${y0 + PH - 2}" fill="#1baf7a" font-size="12" text-anchor="end">SOC(압력) ${(Math.max(0, soc) * 100).toFixed(0)} %</text>`; }
+  });
+  h += `<text x="34" y="${4 * (PH + 12) + 6}" fill="#6b7c90" font-size="11">0 h</text><text x="${PW - 10}" y="${4 * (PH + 12) + 6}" fill="#6b7c90" font-size="11" text-anchor="end">${(T_END / 3600).toFixed(1)} h</text>`;
+  PL.innerHTML = h;
+}
+const E = B.cycle;
+$("endt").innerHTML = [["충전 입력 / 방전 출력 용량", `${E.Qin.toFixed(2)} / ${E.Qout.toFixed(2)} Ah`], ["쿨롱 효율", (E.CE * 100).toFixed(1) + " %"], ["에너지 효율 (왕복)", (E.EE * 100).toFixed(1) + " %"],
+  ["최대 H₂ 압력 (차단 6.0 bar)", E.p_max.toFixed(2) + " bar abs"], ["최대 온도 (차단 55 °C)", E.T_max.toFixed(1) + " °C"], ["Ru 전극 과전압 (방전 중앙값)", (B.catalyst[Object.keys(B.catalyst)[0]].eta_h2_mV_dis).toFixed(1) + " mV"]]
+  .map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+window.DURATION = 70;
+let lastT = 0;
+window.renderAt = function (t) {
+  const dt = Math.max(0, t - lastT); lastT = t;
+  $("panel").style.display = t >= 18 && t < 64 ? "block" : "none";
+  $("clock").style.display = t >= 18 && t < 64 ? "block" : "none";
+  $("legend").style.display = t >= 7.5 && t < 16 ? "block" : "none";
+  $("end").style.display = t >= 64 ? "flex" : "none";
+  cam.clearViewOffset(); S.setInset(0);
+  let explode = 0;
+  if (t < 6) { const a = -0.5 + t * 0.06; camAt([Math.sin(a) * 58 + 10, 30 - t, Math.cos(a) * 58], [10, 6, 0]); S.setCallouts(true); $("tk").textContent = "RuH2-P1 · 예상 구현 시뮬레이션"; $("tt").textContent = "Ru 수소 전극 Ni–H₂ 배터리 프로토타입"; }
+  else if (t < 18) {
+    const u = seg(t, 6, 9), back = seg(t, 15.5, 18);
+    const a0 = -0.5 + 6 * 0.06, wide = [Math.sin(a0) * 58 + 10, 24, Math.cos(a0) * 58];
+    const pos = lerp3(lerp3(wide, P_CUT[0], u), P_MID[0], back), tg = lerp3(lerp3([10, 6, 0], P_CUT[1], u), P_MID[1], back);
+    camAt(pos, tg); explode = seg(t, 8.5, 11) * (1 - seg(t, 14, 16));
+    S.setCallouts(true, p => /스택|피드스루|압력용기|플랜지|NTC/.test(p.name)); S.setInset(0, 360);
+    $("tk").textContent = "절개도 · 전극 스택"; $("tt").textContent = "back-to-back 4 unit · Ø46 mm";
+    const C = B.spec.CELL;
+    $("legend").innerHTML = `<b>unit pair 적층 (두께)</b><br><i style="background:#c7ccd3"></i>가스 스크린 ${C.screen_thk_mm} mm<br><i style="background:#2a2c30"></i>Ru/C 수소 전극 ${C.gde_thk_mm} mm · ${C.ru_loading_mg_cm2} mg Ru/cm²<br><i style="background:#efece2"></i>분리막 ${C.sep_thk_mm} mm<br><i style="background:#4f7d58"></i>Ni(OH)₂ 전극 ${C.ni_thk_mm} mm · ${C.ni_areal_mAh_cm2.toFixed(1)} mAh/cm²<br><i style="background:#efece2"></i>분리막 · <i style="background:#2a2c30"></i>Ru/C 전극`;
+  } else if (t < 64) {
+    const u = (t - 18) / 46, k = sample(u * T_END), a = -0.62 + 0.18 * Math.sin(u * Math.PI);
+    cam.setViewOffset(1280, 720, 200, 0, 1280, 720); S.setInset(400);
+    camAt([Math.sin(a) * 50 + 8, 28, Math.cos(a) * 50], [8, 6, 0]);
+    const I = ser.I[k], mode = I > 0 ? "charge" : I < 0 ? "discharge" : "rest";
+    S.setState({ p: ser.p[k], V: ser.V[k], I, s: ser.s[k], T: ser.T[k] - 273.15, soc_p: ser.soc_p[k], A_ru: ser.A_ru[k], mode });
+    S.setCallouts(true, p => /압력 트랜스|압력계|릴리프|전극 스택|션트|STM32|인터록/.test(p.name));
+    $("tk").textContent = "C/2 한 사이클 · 모델 재생"; $("tt").textContent = mode === "charge" ? "충전: H₂ 발생 → 압력 상승" : mode === "discharge" ? "방전: H₂ 소비 → 압력 하강" : "휴지: 자가방전으로 압력 서서히 하강";
+    $("clock").textContent = `t = ${(ser.t[k] / 3600).toFixed(2)} h   (영상 1 s ≈ ${(T_END / 46 / 60).toFixed(1)} min)`;
+    $("stage").textContent = mode === "charge" ? `충전 CC +${I.toFixed(2)} A` : mode === "discharge" ? `방전 CC ${I.toFixed(2)} A` : "휴지 (0 A)";
+    $("stage").style.color = mode === "charge" ? "#6fa8ff" : mode === "discharge" ? "#eb6834" : "#9fb3c8";
+    $("rx").innerHTML = mode === "charge" ? `(+) Ni(OH)<sub>2</sub> + OH<sup>−</sup> → NiOOH + H<sub>2</sub>O + e<sup>−</sup><br>(−) Ru: 2H<sub>2</sub>O + 2e<sup>−</sup> → H<sub>2</sub> + 2OH<sup>−</sup>` + (ser.f_oer[k] > 0.05 ? `<br><span style="color:#e0a526">과충전 O<sub>2</sub> ${(ser.f_oer[k] * 100).toFixed(0)} % → Ru에서 H<sub>2</sub>와 재결합</span>` : "")
+      : mode === "discharge" ? `(+) NiOOH + H<sub>2</sub>O + e<sup>−</sup> → Ni(OH)<sub>2</sub> + OH<sup>−</sup><br>(−) Ru: H<sub>2</sub> + 2OH<sup>−</sup> → 2H<sub>2</sub>O + 2e<sup>−</sup>` : `NiOOH + ½H<sub>2</sub> → Ni(OH)<sub>2</sub> (자가방전, 속도 ∝ p<sub>H2</sub>)`;
+    drawPlots(k);
+    S.drawScreen();
+  } else { camAt(P_MID[0], P_MID[1]); S.setCallouts(false); }
+  S.setExplode(explode);
+  S.animate(dt || 1 / 30);
+  S.render(1280, 720);
+  return true;
+};
+window.renderAt(0); window.__ready = true;
+</script></body></html>

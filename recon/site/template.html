@@ -1,0 +1,201 @@
+<title>RECON-R1 정찰 로버</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* layout: 현장 기록부 — 좁은 본문 열, 3D·영상은 넓게, 수치는 모노 */
+:root{
+  --paper:#f3f4f1; --panel:#ffffff; --ink:#1d242b; --mute:#5d6873; --rule:#d5dad6;
+  --accent:#c4520f; --accent-ink:#ffffff; --blue:#2f6fb0; --ok:#2e8540; --warn:#b7791f; --bad:#b83232;
+  --stage:#1a1f26; --stage-ink:#e6edf3;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --lead:#ffb454; --ink2:#b8c4d2;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#12161b; --panel:#1a2027; --ink:#e3e8ec; --mute:#98a4ae; --rule:#2c343d;
+  --accent:#ef7a35; --accent-ink:#14100c; --blue:#6ea8e0; --ok:#5cb870; --warn:#d9a441; --bad:#e36464; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#12161b; --panel:#1a2027; --ink:#e3e8ec; --mute:#98a4ae; --rule:#2c343d;
+  --accent:#ef7a35; --accent-ink:#14100c; --blue:#6ea8e0; --ok:#5cb870; --warn:#d9a441; --bad:#e36464; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:clamp(16px,3vw,32px);padding-block:28px 64px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,5vw,46px);letter-spacing:-.01em;font-weight:700}
+h2{font-size:22px;font-weight:700;display:flex;align-items:baseline;gap:12px}
+h2 .no{font-family:var(--f-mono);font-size:13px;color:var(--accent);font-weight:600}
+.lede{max-width:68ch;color:var(--mute)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.head{display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+.specline{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--f-mono);font-size:13px}
+.specline span b{color:var(--accent);font-weight:600}
+.warn{border:1.5px solid var(--bad);color:var(--bad);border-radius:6px;padding:10px 14px;font-size:13.5px;max-width:90ch}
+.stage{position:relative;background:var(--stage);border-radius:10px;overflow:hidden;aspect-ratio:16/9;max-width:100%}
+.stage canvas{display:block;width:100%;height:100%}
+.tools{position:absolute;right:12px;bottom:12px;display:flex;gap:6px;z-index:5;flex-wrap:wrap}
+.btn{font:600 12.5px var(--f-body);background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:6px 11px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.co-root{position:absolute;inset:0;pointer-events:none}.co-svg{position:absolute;left:0;top:0;overflow:visible}
+.co-line{fill:none;stroke:var(--lead);stroke-width:1.2;opacity:.9}.co-dot{fill:var(--lead);stroke:#151a21;stroke-width:1.5}
+.co-lab{position:absolute;font-size:12px;line-height:1.25;background:rgba(15,19,24,.9);border:1px solid #3a4658;border-radius:5px;padding:3px 7px;color:#fff}
+.co-lab b{display:block;font-size:12.5px}.co-lab span{display:block;color:var(--ink2);font-size:11px}
+@media (max-width:720px){.co-root{display:none}.stage.showco .co-root{display:block}}
+.hint{font-size:12.5px;color:var(--mute);margin-top:6px}
+/* scenarios */
+.scen{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px}
+@media (max-width:860px){.scen{grid-template-columns:minmax(0,1fr)}}
+.list{display:flex;flex-direction:column;gap:14px;max-height:640px;overflow:auto;padding-right:4px}
+@media (max-width:860px){.list{max-height:260px}}
+.grp h4{margin:0 0 4px;font-size:11.5px;letter-spacing:.12em;color:var(--mute);font-family:var(--f-mono)}
+.item{display:grid;grid-template-columns:40px 1fr;gap:6px;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;color:var(--ink);padding:5px 8px;cursor:pointer;font:14px var(--f-body);border-radius:0 4px 4px 0}
+.item:hover{background:var(--panel)}.item[aria-current="true"]{border-left-color:var(--accent);background:var(--panel)}
+.item .mono{color:var(--mute);font-size:12px;padding-top:2px}
+.player{display:flex;flex-direction:column;gap:12px;min-width:0}
+video{width:100%;border-radius:8px;background:#000;aspect-ratio:16/9}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+.kpi{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:8px 10px}
+.kpi small{display:block;color:var(--mute);font-size:11.5px}.kpi b{font-family:var(--f-mono);font-size:17px}
+.how{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.how p{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--f-mono);font-size:11.5px;padding:2px 7px;border-radius:4px;background:var(--rule);color:var(--ink)}
+.chip.s{background:var(--bad);color:#fff}.chip.a{background:var(--warn);color:#fff}.chip.r{background:var(--blue);color:#fff}
+.ev{font-family:var(--f-mono);font-size:12px;color:var(--mute);display:flex;flex-direction:column;gap:2px}
+.ev span b{color:var(--ink);font-weight:600}
+/* data */
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:left;white-space:nowrap}
+th{font-size:12px;color:var(--mute);font-weight:600}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px}
+.fig{display:flex;flex-direction:column;gap:6px;min-width:0}.fig img{border-radius:6px;border:1px solid var(--rule);background:#fff}
+.fig figcaption{font-size:12.5px;color:var(--mute)}
+figure{margin:0}
+.dwg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.dwg a{display:flex;flex-direction:column;gap:4px;color:var(--ink);text-decoration:none;font-size:13px}
+.dwg img{border:1px solid var(--rule);border-radius:5px;background:#fff;aspect-ratio:1.414;object-fit:cover}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:110px 1fr 92px;gap:10px;align-items:center;font-size:13px}
+.bar .track{height:14px;background:var(--rule);border-radius:3px;position:relative}
+.bar .fill{position:absolute;inset:0 auto 0 0;border-radius:3px}
+.bar .n{font-family:var(--f-mono);text-align:right}
+ul.lim{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+<header class="head">
+  <div class="eyebrow">RCN-DOC-001 · rev A · 2026-09-29 · 설계 제안</div>
+  <h1>RECON-R1 정찰 로버</h1>
+  <p class="lede">지형을 스스로 돌아다니며 3D 고도지도와 그 불확실도를 모으는 스키드 조향 로버. 무엇을 보러 갈지는 정보이득 목적함수가, 무엇을 해도 되는지는 SE 저장소의 비LLM 결정 커널(C)이 정한다.</p>
+  <div class="specline" id="specline"></div>
+  <div class="warn">여기의 모든 결과는 가상 시험장 시뮬레이션 출력입니다. 로버는 아직 만들어지지 않았고, 부품 사양은 데이터시트 검색 조각 수준입니다. 실측으로 바꿀 자리는 청사진 PDF 의 TEST-01~08 에 있습니다.</div>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:12px">
+  <h2><span class="no">01</span>실물 치수 3D</h2>
+  <div class="stage" id="stage"><canvas id="c3d"></canvas>
+    <div class="tools">
+      <button class="btn" id="bLab" aria-pressed="true">라벨</button>
+      <button class="btn" id="bExp" aria-pressed="false">분해</button>
+      <button class="btn" id="bFov" aria-pressed="false">LiDAR 시야</button>
+    </div></div>
+  <div class="hint">끌어서 돌리고, 휠로 확대합니다. 1 칸 = 1 cm, 치수는 spec.py 에서 옵니다. LiDAR 는 뒤집어 달아 사각 반경이 0.47 m 입니다(바로 세우면 4.9 m).</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+  <h2><span class="no">02</span>시나리오 30 — 대응 방법별 주행 영상</h2>
+  <div class="scen">
+    <nav class="list" id="list" aria-label="시나리오"></nav>
+    <div class="player">
+      <video id="vid" controls muted playsinline preload="metadata"></video>
+      <div class="kpis" id="kpis"></div>
+      <div class="how" id="how"></div>
+    </div>
+  </div>
+  <div class="tbl"><table id="kt"></table></div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+  <h2><span class="no">03</span>같은 조건 기준선 비교와 슬립 필터 비교</h2>
+  <div class="two">
+    <div class="fig"><div class="bars" id="mcbars"></div><figcaption id="mccap"></figcaption></div>
+    <div class="tbl"><table id="ft"></table></div>
+  </div>
+  <div class="two">
+    <figure class="fig"><img src="f/filters_maps.png" alt="필터 네 개로 만든 지도의 고도 오차"><figcaption>같은 원시 데이터로 쌓은 지도 네 장의 |고도 오차|. 엔코더만 쓰면 진흙을 지난 뒤 지도 전체가 어긋난다.</figcaption></figure>
+    <figure class="fig"><img src="f/unc_maps.png" alt="최종 불확실도 지도"><figcaption>최종 셀 σ 지도와 참 궤적. 빈칸은 아직 모르는 곳.</figcaption></figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+  <h2><span class="no">04</span>도면</h2>
+  <div class="dwg" id="dwg"></div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:10px">
+  <h2><span class="no">05</span>아직 모르는 것</h2>
+  <ul class="lim">
+    <li>LIO 는 대용 모델이다. FAST-LIO2 를 실제 로그로 돌려 TEST-05 에서 교체해야 한다.</li>
+    <li>지도 σ 는 프레임 사이 오차를 독립으로 보아 작게 나올 수 있다. 재방문이 드물게 선택된 이유와 겹친다.</li>
+    <li>뒤집은 Mid-360 장착 허용, Orin Nano 이더넷의 하드웨어 PTP, 모터 순질량은 데이터시트로 확인하지 못했다.</li>
+    <li>C 결정 커널은 호스트에서만 컴파일했다. ARM 크로스빌드와 실시간 타이밍은 남아 있다.</li>
+  </ul>
+</section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>__ROVER3D__</script>
+<script>
+const ROWS=__ROWS__, SPEC=__SPEC__, MC=__MC__, FIL=__FIL__;
+const $=s=>document.querySelector(s);
+const pct=x=>x==null?'-':(x*100).toFixed(1)+'%', cm=x=>x==null||isNaN(x)?'-':(x*100).toFixed(1)+' cm';
+$('#specline').innerHTML=[['질량',SPEC.MECH.mass_kg+' kg'],['윤거·축거',SPEC.MECH.track*100+' · '+SPEC.MECH.wheelbase*100+' cm'],['평균 전력',SPEC.P_AVG.toFixed(1)+' W'],['가용',SPEC.E_WH.toFixed(0)+' Wh · '+SPEC.RUNTIME_H.toFixed(2)+' h'],['전복 한계',SPEC.MECH.max_slope_deg.toFixed(1)+'°'],['LiDAR 사각',SPEC.MECH.lidar_blind_r_inverted.toFixed(2)+' m']].map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join('');
+// ---- 3D
+(function(){try{
+  const st=$('#stage'),cv=$('#c3d');
+  const R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=0.75;
+  const V=makeRoverScene(THREE,R,SPEC,st,{calloutTop:14});
+  const cam=V.cam;cam.position.set(115,95,125);
+  const oc=new THREE.OrbitControls(cam,cv);oc.target.set(0,22,0);oc.enableDamping=true;oc.update();
+  function size(){const w=st.clientWidth,h=st.clientHeight;R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+  new ResizeObserver(size).observe(st);size();
+  let lab=true,exp=0,expT=0,fov=false;
+  const tog=(b,v)=>b.setAttribute('aria-pressed',v?'true':'false');
+  $('#bLab').onclick=e=>{lab=!lab;V.setCallouts(lab);st.classList.toggle('showco',lab);tog(e.currentTarget,lab)};
+  $('#bExp').onclick=e=>{expT=expT?0:1;tog(e.currentTarget,expT)};
+  $('#bFov').onclick=e=>{fov=!fov;V.setFov(fov);tog(e.currentTarget,fov)};
+  function loop(){exp+=(expT-exp)*0.12;V.setExplode(exp);oc.update();V.render(st.clientWidth,st.clientHeight);requestAnimationFrame(loop)}loop();
+}catch(e){$('#stage').insertAdjacentHTML('beforeend','<p style="color:#fff;padding:20px">3D 를 그리지 못했습니다: '+e.message+'</p>')}})();
+// ---- scenarios
+const GR=[['TEST-01~08','T'],['고장 9','F'],['기준선 4','B'],['정책 행동 9','P']];
+$('#list').innerHTML=GR.map(([n,p])=>`<div class="grp"><h4>${n}</h4>${ROWS.filter(r=>r.id[0]===p).map(r=>`<button class="item" data-id="${r.id}"><span class="mono">${r.id}</span><span>${r.title.replace(/^(TEST-0\d |고장: |기준선: |정책: )/,'')}</span></button>`).join('')}</div>`).join('');
+function show(id){const r=ROWS.find(x=>x.id===id);if(!r)return;
+  document.querySelectorAll('.item').forEach(b=>b.setAttribute('aria-current',b.dataset.id===id?'true':'false'));
+  const v=$('#vid');if(r.video){v.src='v/'+id+'.mp4';v.poster=''}else{v.removeAttribute('src')}
+  $('#kpis').innerHTML=[['커버리지',pct(r.cov)],['관심구역',r.aoi==null?'-':pct(r.aoi)],['고도 RMSE',cm(r.rmse)],['위치 ATE',cm(r.ate)],['주행',r.dist.toFixed(0)+' m'],['에너지',r.wh.toFixed(2)+' Wh'],['충돌',r.coll]].map(([a,b])=>`<div class="kpi"><small>${a}</small><b>${b}</b></div>`).join('');
+  const cls=a=>/STOP|EMERG/.test(a)?'s':/AVOID|RELOC/.test(a)?'a':/RETURN|REVISIT|OBSERVE/.test(a)?'r':'';
+  $('#how').innerHTML=`<p><b>${r.title}</b> · ${r.what}</p><p>${r.how}</p><div class="chips">${r.acts.map(a=>`<span class="chip ${cls(a)}">${a}</span>`).join('')}</div>`+
+    (r.ev.length?`<div class="ev">${r.ev.map(e=>`<span><b>${e.t.toFixed(1)} s ${e.kind}</b> ${e.msg}</span>`).join('')}</div>`:'')+`<p class="hint">시뮬 ${r.t.toFixed(0)} s · 종료: ${r.done}</p>`;
+  try{localStorage.setItem('recon-scen',id)}catch(e){}}
+$('#list').addEventListener('click',e=>{const b=e.target.closest('.item');if(b)show(b.dataset.id)});
+let first='P09';try{first=localStorage.getItem('recon-scen')||first}catch(e){}if(location.hash&&ROWS.some(r=>r.id===location.hash.slice(1)))first=location.hash.slice(1);show(first);
+$('#kt').innerHTML='<tr><th>ID</th><th>시나리오</th><th>커버리지</th><th>관심구역</th><th>RMSE</th><th>ATE</th><th>거리 m</th><th>Wh</th><th>충돌</th></tr>'+ROWS.map(r=>`<tr><td class="mono">${r.id}</td><td>${r.title}</td><td class="n">${pct(r.cov)}</td><td class="n">${r.aoi==null?'-':pct(r.aoi)}</td><td class="n">${cm(r.rmse)}</td><td class="n">${cm(r.ate)}</td><td class="n">${r.dist.toFixed(0)}</td><td class="n">${r.wh.toFixed(2)}</td><td class="n">${r.coll}</td></tr>`).join('');
+// ---- MC
+const NM={fixed:'고정 웨이포인트',random:'무작위',frontier:'프런티어',proposed:'제안 J+fw'},CC={fixed:'var(--mute)',random:'var(--warn)',frontier:'var(--blue)',proposed:'var(--accent)'};
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+if(Object.keys(MC).length){const ks=['fixed','random','frontier','proposed'].filter(k=>MC[k]);
+  $('#mcbars').innerHTML='<b style="font-size:13px">커버리지 (σ<5 cm), 240 s 평균</b>'+ks.map(k=>{const m=mean(MC[k].map(r=>r.cov));return `<div class="bar"><span>${NM[k]}</span><div class="track"><div class="fill" style="width:${m*100}%;background:${CC[k]}"></div></div><span class="n">${(m*100).toFixed(1)}%</span></div>`}).join('')+
+  '<b style="font-size:13px;margin-top:6px">관심구역 σ≤2 cm 달성</b>'+ks.map(k=>{const m=mean(MC[k].map(r=>r.aoi));return `<div class="bar"><span>${NM[k]}</span><div class="track"><div class="fill" style="width:${m*100}%;background:${CC[k]}"></div></div><span class="n">${(m*100).toFixed(1)}%</span></div>`}).join('');
+  $('#mccap').textContent=`시드 ${MC[ks[0]].length}개씩, 같은 세계·안전층·유도·제어. 관심구역은 제안 방법만 목적함수로 안다. 시드 수가 적어 작은 차이는 차이로 읽지 않는다.`;}
+if(FIL.length){const ks=[['odom','F1 엔코더만'],['odom_gyro','F2 +자이로'],['ekf_lio','F3 EKF+LIO'],['proposed','F4 제안']];const mm=(k,f)=>mean(FIL.map(r=>r[k][f]));
+  $('#ft').innerHTML='<tr><th>진흙 슬립 · 필터</th><th>최종 위치 오차</th><th>요 오차</th><th>지도 RMSE</th><th>유령 셀</th></tr>'+ks.map(([k,n])=>`<tr><td>${n}</td><td class="n">${mm(k,'final_err_m').toFixed(3)} m</td><td class="n">${mm(k,'yaw_err_deg').toFixed(2)}°</td><td class="n">${(mm(k,'map_rmse_m')*100).toFixed(1)} cm</td><td class="n">${mm(k,'ghost_cells').toFixed(0)}</td></tr>`).join('');}
+// ---- drawings
+const D=[['RCN-S-001_system','시스템 블록도'],['RCN-E-001_power','전원 분배 회로도'],['RCN-E-002_signal','신호·시간동기 배선도'],['RCN-M-001_mech','기구도'],['RCN-H-001_harness','하네스 표'],['RCN-A-001_assembly','조립 순서도']];
+$('#dwg').innerHTML=D.map(([f,n])=>`<a href="d/${f}.png" target="_blank" rel="noopener"><img src="d/${f}.png" alt="${n}" loading="lazy"><span><span class="mono">${f.slice(0,9)}</span> ${n}</span></a>`).join('');
+</script>

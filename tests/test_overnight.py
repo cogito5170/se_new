@@ -1,0 +1,301 @@
+"""야간 러너의 red-green -- **실패가 밤을 죽이지 않는가.**
+
+drive_novel 은 에피소드가 실패하면 break 한다. 사람이 볼 때는 맞지만 자는 동안에는 그
+break 하나가 남은 시간을 통째로 날린다. 여기서 검증하는 것은 문장이 아니라 그 성질이다.
+
+LLM 없이 돈다. 실행: python3 tests/test_overnight.py
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+
+from novel import drive as D                                          # noqa: E402
+from novel import overnight                                           # noqa: E402
+from novel.overnight import Director                                  # noqa: E402
+
+fails = []
+
+
+def ok(cond, label):
+    print(f"    {'OK  ' if cond else '실패'} {label}")
+    if not cond:
+        fails.append(label)
+
+
+print("[폴백] claude -p 가 죽으면 Gemini 로 내려가는가")
+calls = {"primary": 0, "fallback": 0}
+
+
+class Boom:
+    def __call__(self, prompt):
+        calls["primary"] += 1
+        raise RuntimeError("claude -p 실패(구독 한도 소진 가능)")
+
+
+def fake_default(prompt):
+    calls["fallback"] += 1
+    return '{"ok": true}'
+
+
+d = Director.__new__(Director)
+d.primary = Boom()
+d.fall_after, d.retry_after = 3, 1800.0
+d.max_retry_after = 7200.0
+d.streak, d.demoted_at = 0, None
+d.stats = {"primary": 0, "fallback": 0, "fail": 0, "probe": 0}
+orig = D.default_llm
+D.default_llm = fake_default
+try:
+    for _ in range(5):
+        d("프롬프트")
+finally:
+    D.default_llm = orig
+
+ok(calls["primary"] == 3, f"3회 연속 실패까지만 위를 두드린다 (얻은 값 {calls['primary']})")
+ok(calls["fallback"] == 5, f"그 뒤로는 전부 폴백 (얻은 값 {calls['fallback']})")
+ok(d.demoted_at is not None, "강등 시각이 기록된다")
+ok(d.stats["fail"] == 3, f"실패 횟수가 집계된다 ({d.stats})")
+
+print("[복귀] 재시도가 밤을 먹지 않는가 -- 탐침 한 번만")
+probes = {"n": 0}
+
+
+class Probe:
+    def __init__(self, fail=True):
+        self.fail = fail
+
+    def __call__(self, prompt):
+        probes["n"] += 1
+        if self.fail:
+            raise RuntimeError("탐침도 실패")
+        return '{"ok": true}'
+
+
+d.probe = Probe(fail=True)
+d.demoted_at = time.time() - 2000        # retry_after(1800) 를 넘긴 과거
+calls["primary"], before = 0, d.retry_after
+D.default_llm = fake_default
+try:
+    d("프롬프트")
+finally:
+    D.default_llm = orig
+ok(probes["n"] == 1, f"탐침을 딱 한 번만 쏜다 (얻은 값 {probes['n']})")
+ok(calls["primary"] == 0,
+   "**본 프롬프트로 재시도하지 않는다** -- 300초 타임아웃 3회가 사이클마다 반복되면 "
+   "7시간 중 3.5시간이 대기로 날아간다")
+ok(d.retry_after == before * 2, f"실패하면 간격이 두 배 ({before/60:.0f}분 -> {d.retry_after/60:.0f}분)")
+ok(d.demoted_at is not None, "강등이 유지된다")
+
+d.probe = Probe(fail=False)
+d.demoted_at = time.time() - d.retry_after - 10
+calls["primary"] = 0
+D.default_llm = fake_default
+try:
+    d("프롬프트")
+finally:
+    D.default_llm = orig
+ok(d.demoted_at is None, "탐침이 성공하면 복귀한다 -- 자정 리셋을 쓸 수 있다")
+
+print("[상한] 간격이 무한히 늘지 않는가")
+d.retry_after, d.max_retry_after = 6000.0, 7200.0
+d.probe = Probe(fail=True)
+d.demoted_at = time.time() - 99999
+D.default_llm = fake_default
+try:
+    d("프롬프트")
+finally:
+    D.default_llm = orig
+ok(d.retry_after == 7200.0, f"상한에서 멈춘다 ({d.retry_after/60:.0f}분)")
+
+print("[생존] 에피소드가 터져도 다음으로 넘어가는가")
+work = Path(tempfile.mkdtemp())
+runner = work / "boom_runner.py"
+runner.write_text(f'''
+import sys
+sys.path.insert(0, {str(REPO)!r})
+from novel import drive as D
+from novel import overnight
+
+seen = []
+def boom_build(novel, spec, llm, max_repairs=3, log=None):
+    seen.append(spec["eps"][0])
+    if len(seen) <= 2:
+        raise RuntimeError("일부러 터뜨린다")
+    return []
+
+D.build_episode = boom_build
+overnight.D.build_episode = boom_build
+overnight.D.drive = lambda *a, **k: {{"status": "done", "verified": 0,
+                                     "failed": 0, "remaining": 0}}
+sys.argv = ["x", "--hours", "0.05", "--path", {str(work / "n.json")!r},
+            "--gemini-director"]
+rc = overnight.main()
+print("SEEN", len(seen))
+''', encoding="utf-8")
+r = subprocess.run([sys.executable, str(runner)], capture_output=True, text=True, timeout=120)
+seen = int(next((l.split()[1] for l in r.stdout.splitlines() if l.startswith("SEEN")), "0"))
+ok(seen > 2, f"앞의 두 에피소드가 터져도 계속 돈다 (시도 {seen}개)")
+ok(r.returncode == 0, f"러너 자체는 정상 종료한다 (rc={r.returncode})")
+
+rep = Path(work / "n.overnight.json")
+ok(rep.exists(), "아침에 읽을 요약 파일을 남긴다")
+if rep.exists():
+    j = json.loads(rep.read_text(encoding="utf-8"))
+    ok(len(j["episodes_failed"]) >= 2, f"실패한 에피소드가 기록된다 ({len(j['episodes_failed'])}건)")
+    ok("error" in json.dumps(j, ensure_ascii=False), "무엇 때문에 터졌는지 남는다")
+
+print("[예산] 벽시계를 넘기면 멈추는가")
+ok("--hours" in Path(REPO / "novel/overnight.py").read_text(encoding="utf-8"),
+   "시간 예산 인자가 있다")
+
+print("[방어] 잘못된 웹훅 URL 이 런을 죽이지 않는가")
+print("      ← 실측: 예시 문구 '복사한_URL' 이 환경변수에 그대로 들어가")
+print("        urllib.request.Request 가 ValueError 를 냈고 그것이 위로 올라갔다")
+import os as _os                                                      # noqa: E402
+# **봇 설정까지 치우고 본다.** 봇이 실제로 도는 기계에는 DISCORD_BOT_TOKEN 과
+# CHANNEL_ID 가 살아 있고, Discord.on 은 웹훅 **또는** 토큰 경로로 켜진다. 웹훅만
+# 망가뜨려 놓고 "꺼져야 한다" 고 보면, 봇을 제대로 설정한 사람만 검사가 깨진다.
+# 제품 동작은 옳다 -- 웹훅 하나가 잘못됐다고 멀쩡한 봇 경로까지 끌 이유가 없다.
+_KEYS = ("DISCORD_WEBHOOK_URL", "DISCORD_BOT_TOKEN", "DISCORD_CHANNEL_ID")
+_saved = {k: _os.environ.get(k) for k in _KEYS}
+for _k in _KEYS:
+    _os.environ.pop(_k, None)
+_os.environ["DISCORD_WEBHOOK_URL"] = "복사한_URL"
+try:
+    dc = overnight.Discord()
+    ok(not dc.on, "URL 이 아니면 알림을 끈다")
+    ok(dc.send("x") is False, "보내려 해도 조용히 False -- 예외가 안 올라온다")
+except Exception as e:                                                # noqa: BLE001
+    ok(False, f"예외가 올라왔다 ({type(e).__name__})  ← 알림이 런을 죽인다")
+# **웹훅이 망가져도 봇 경로는 산다.** 이것이 진짜 계약이다.
+_os.environ["DISCORD_BOT_TOKEN"] = "t"
+_os.environ["DISCORD_CHANNEL_ID"] = "1"
+ok(overnight.Discord().on, "웹훅이 쓰레기여도 봇 경로가 있으면 켜진다")
+for _k in ("DISCORD_BOT_TOKEN", "DISCORD_CHANNEL_ID"):
+    _os.environ.pop(_k, None)
+_os.environ["DISCORD_WEBHOOK_URL"] = "https://example.invalid/hook"
+try:
+    ok(overnight.Discord().send("x") is False, "닿지 않는 URL 도 False 로 넘어간다")
+except Exception as e:                                                # noqa: BLE001
+    ok(False, f"예외가 올라왔다 ({type(e).__name__})")
+for _k, _v in _saved.items():
+    _os.environ.pop(_k, None)
+    if _v is not None:
+        _os.environ[_k] = _v
+_old = _saved["DISCORD_WEBHOOK_URL"]
+if _old is None:
+    _os.environ.pop("DISCORD_WEBHOOK_URL", None)
+else:
+    _os.environ["DISCORD_WEBHOOK_URL"] = _old
+
+print("[동시 실행] 두 벌이 같은 원고를 쓰지 못하게 막는가")
+print("      ← 2026-09-04 실측: 산문이 0자인데 end:done 이 찍히고 씬 수가 오락가락했다")
+import subprocess                                                     # noqa: E402
+import types                                                          # noqa: E402
+
+real_run = subprocess.run
+
+
+def fake_pgrep(out):
+    def run(cmd, *a, **k):
+        if cmd and cmd[0] == "pgrep":
+            return types.SimpleNamespace(stdout=out, returncode=0)
+        return real_run(cmd, *a, **k)
+    return run
+
+
+subprocess.run = fake_pgrep("999999 python3 novel/overnight.py --hours 7\n")
+try:
+    overnight._refuse_if_running(Path("x.json"))
+    ok(False, "다른 런이 있으면 SystemExit 로 멈춘다")
+except SystemExit as e:
+    ok(e.code == 2, f"SystemExit(2) 로 멈춘다 (code={e.code})")
+
+subprocess.run = fake_pgrep("")
+try:
+    overnight._refuse_if_running(Path("x.json"))
+    ok(True, "혼자면 그냥 시작한다")
+except SystemExit:
+    ok(False, "혼자인데 막혔다")
+
+# 자기 자신과 watch.py 는 세지 않는다
+import os                                                             # noqa: E402
+subprocess.run = fake_pgrep(f"{os.getpid()} python3 novel/overnight.py\n"
+                            f"12345 python3 novel/watch.py -f\n"
+                            f"12346 python3 tests/test_overnight.py\n"
+                            f"12347 tail -f logs/ep1.log\n")
+try:
+    overnight._refuse_if_running(Path("x.json"))
+    ok(True, "자기 자신 · 감시기 · 검사 · tail 은 '다른 런' 이 아니다\n"
+             "         ← test_overnight.py 도 pgrep 에는 'overnight.py' 로 잡힌다.\n"
+             "           이걸 세면 검사를 돌리는 것만으로 진짜 실행이 막힌다")
+except SystemExit:
+    ok(False, "자기 이름을 품은 프로세스를 남으로 셌다")
+
+subprocess.run = real_run
+
+print()
+if fails:
+    print(f"야간 러너: {len(fails)}개 실패 -- {fails}")
+    sys.exit(1)
+print("야간 러너: 폴백·복귀·에피소드 생존·요약·예산 -- 통과")
+
+
+# ==================================================== Discord 알림
+print()
+print("[Discord] 켜고 끄기")
+from novel.overnight import Discord                                   # noqa: E402
+import os                                                             # noqa: E402
+
+d0 = Discord(token="", channel_id="", webhook="")
+ok(not d0.on, "토큰도 웹훅도 없으면 꺼진다")
+ok(d0.send("무시됨") is False, "꺼진 상태에서 보내면 조용히 False")
+
+d1 = Discord(token="tok", channel_id="123", webhook="")
+ok(d1.on, "봇 토큰 + 채널이면 켜진다")
+d2 = Discord(token="", channel_id="", webhook="https://discord.com/api/webhooks/x/y")
+ok(d2.on, "웹훅만 있어도 켜진다")
+
+print("[Discord] 실패해도 런을 죽이지 않는가")
+d3 = Discord(token="bad-token-value", channel_id="000000000000000000", webhook="")
+sent = d3.send("이 호출은 실패해야 한다")
+ok(sent is False, "실패하면 False 를 돌려줄 뿐 예외를 올리지 않는다")
+ok(d3.failed == 1, f"실패가 집계된다 ({d3.failed})")
+
+print("[Discord] **토큰이 로그에 새지 않는가** -- 이 저장소의 G004 가 존재하는 이유")
+import io, contextlib                                                 # noqa: E402
+# 자리표시자 표식(placeholder)을 넣어 G004 의 _LIVE_SECRET 오탐을 피한다. 진짜처럼
+# 생긴 문자열을 테스트에 박으면 자격증명 스캐너가 그것을 유출로 잡는다 -- 실제로 잡혔다.
+FAKE_CRED = "placeholder-not-a-real-bot-credential-0000"
+buf = io.StringIO()
+d4 = Discord(token=FAKE_CRED, channel_id="000000000000000000", webhook="")
+with contextlib.redirect_stderr(buf):
+    d4.send("실패를 유도한다")
+leaked = buf.getvalue()
+ok(FAKE_CRED not in leaked, f"실패 로그에 토큰이 없다 (로그: {leaked.strip()[:70]})")
+ok("Discord 전송 실패" in leaked, "대신 에러 종류와 코드만 남는다")
+
+print("[Discord] 하트비트는 조용할 때만")
+d5 = Discord(token="t", channel_id="1", webhook="", heartbeat=10_000)
+d5.send = lambda text: (beats.append(text), True)[1]
+beats = []
+d5.last = time.time()
+d5.beat("살아있다")
+ok(not beats, "최근에 보냈으면 하트비트를 내지 않는다")
+d5.last = time.time() - 20_000
+d5.beat("살아있다")
+ok(len(beats) == 1, "오래 조용하면 한 번 낸다 -- 밤새 수백 개가 쌓이지 않게")
+
+print()
+if fails:
+    print(f"Discord 알림: {len(fails)}개 실패 -- {fails}")
+    sys.exit(1)
+print("Discord 알림: 켜기·실패 격리·토큰 비노출·하트비트 -- 통과")
