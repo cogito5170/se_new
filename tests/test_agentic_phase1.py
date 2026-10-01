@@ -72,7 +72,9 @@ class FakeFactory:
 
 def cfg_file(d, **over):
     base = {"model": MODEL, "model_fallback": False,
-            "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180}, "sandbox": "sandbox/"}
+            "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20,
+                        "sandbox_seconds": 60},
+            "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"]}
     base.update(over)
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
@@ -91,8 +93,12 @@ with tempfile.TemporaryDirectory() as tmp:
                      ({"fallback_models": ["gemini-3.5-flash"]}, "forbidden_key:fallback_models"),
                      ({"models": [MODEL, "x"]}, "forbidden_key:models"),
                      ({"model": ""}, "model_missing"),
-                     ({"budgets": {"model_calls": True, "forgery_retries": 1, "wall_seconds": 9}},
-                      "budget_invalid:model_calls")]:
+                     ({"budgets": {"model_calls": True, "forgery_retries": 1, "wall_seconds": 9, "tasks": 1,
+                                  "sandbox_seconds": 1}},
+                      "budget_invalid:model_calls"),
+                     ({"mandatory_checks": []}, "mandatory_checks_must_include_sandbox"),
+                     ({"mandatory_checks": ["lint"]}, "mandatory_checks_must_include_sandbox"),
+                     ({"allowed_kinds": ["read", "root"]}, "allowed_kinds_invalid")]:
         try:
             C.load(cfg_file(T, **bad))
             ok(False, f"{bad} 를 거절한다")
@@ -158,7 +164,8 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(not any("[Next]" in l for l in txt.split("답:")[1].splitlines()), "답 본문에서 [Next] 줄은 빠진다")
 
     fac = FakeFactory(("ok", FORGED, MODEL), ("ok", FORGED, MODEL))
-    c_small = C.load(cfg_file(T, budgets={"model_calls": 1, "forgery_retries": 1, "wall_seconds": 180}))
+    c_small = C.load(cfg_file(T, budgets={"model_calls": 1, "forgery_retries": 1, "wall_seconds": 180,
+                                           "tasks": 20, "sandbox_seconds": 60}))
     st, _, txt = run("q", c_small, root=T, keys=KEYS, client_factory=fac, run_id="budget")
     ok(st == "FAILED" and "budget_model_calls" in txt, "재질문도 예산에서 -- 호출 예산 1 이면 FAILED(budget_model_calls)")
 

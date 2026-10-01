@@ -4,7 +4,11 @@
   "budgets": {
     "model_calls": 4,
     "forgery_retries": 1,
-    "wall_seconds": 180
+    "wall_seconds": 180,
+    "tasks": 20,
+    "sandbox_seconds": 180
   },
-  "sandbox": "sandbox/"
+  "sandbox": "sandbox/",
+  "mandatory_checks": ["sandbox"],
+  "allowed_kinds": ["read", "compute"]
 }
