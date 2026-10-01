@@ -31,6 +31,19 @@ EVENT_TYPES = frozenset({
     "MCP_VERSION",          # protocol · sdk · server 를 따로 (5단계부터)
     "DIAG_WRITTEN",         # 진단 싱크에 몇 바이트 썼나(내용은 안 적는다)
     "ANSWER_ADOPTED",
+    # 2단계 -- Sequencer · Gate01 (정책 G · H)
+    "CHAIN_START",          # 작업 수 · 레지스트리 해시
+    "NEXT_RAISED",          # 작업 ID · 멱등키
+    "TASK_VALIDATED",
+    "TASK_REJECTED",        # 명세·권한 위반(사유 목록)
+    "DUPLICATE_SKIPPED",    # 같은 멱등키가 이미 승인됨 -- 다시 안 돈다
+    "NEXT_DISPATCHED",      # 앞 작업의 승인 ID 를 **원장에서 읽어** 싣는다
+    "NEXT_NOT_DISPATCHED",  # 막힌 작업도 조용히 건너뛰지 않는다
+    "TOOL_START",           # 실행기가 실제로 시작
+    "TOOL_END",             # 실행기 확인(끝남 · 결과 요약)
+    "CHECK_EVAL",           # 필수 검사(sandbox 등) 하나의 판정
+    "GATE_DECISION",        # Gate01 최종 판정 + 승인 ID
+    "TASK_COMPLETED",       # TOOL_END 와 승인 뒤에만
     "TERMINAL",
 })
 ACTORS = frozenset({"code", "model", "executor"})

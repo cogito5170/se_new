@@ -8,6 +8,9 @@
   · `model_fallback` 이 false 가 아님 -- 폴백을 켜는 길을 설정에 두지 않는다
   · 모델 목록처럼 보이는 칸(`models` · `fallback_models` · `fallback`) -- 모델은 하나다
   · 예산이 양의 정수가 아님
+  · `mandatory_checks` 에 `sandbox` 가 없음 -- 정책 C 의 필수 검증을 설정으로 끌 길을 두지 않는다
+    (빈 목록이면 "필수 검사 전부 통과" 가 **아무것도 안 재고** 참이 된다)
+  · `allowed_kinds` 가 모르는 부작용 종류를 담음
 """
 from __future__ import annotations
 
@@ -19,7 +22,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 DEFAULT_PATH = HERE / "config.json"
 
-BUDGET_KEYS = ("model_calls", "forgery_retries", "wall_seconds")
+BUDGET_KEYS = ("model_calls", "forgery_retries", "wall_seconds", "tasks", "sandbox_seconds")
+ACTION_KINDS = ("read", "compute", "write", "shell", "net")
 _FORBIDDEN_KEYS = ("models", "fallback_models", "fallback")
 
 
@@ -32,6 +36,8 @@ class Config:
     model: str
     budgets: dict
     sandbox: str
+    mandatory_checks: tuple
+    allowed_kinds: frozenset
     sha256: str
     path: str
 
@@ -61,5 +67,12 @@ def load(path: "str | Path | None" = None) -> Config:
         # bool 은 int 의 하위형이라 따로 막는다 -- true 가 1 로 통과하면 안 된다
         if not isinstance(v, int) or isinstance(v, bool) or v < (0 if k == "forgery_retries" else 1):
             raise ConfigError(f"budget_invalid:{k}")
+    mc = d.get("mandatory_checks")
+    if not isinstance(mc, list) or not all(isinstance(x, str) and x for x in mc) or "sandbox" not in mc:
+        raise ConfigError("mandatory_checks_must_include_sandbox")
+    ak = d.get("allowed_kinds")
+    if not isinstance(ak, list) or not ak or any(k not in ACTION_KINDS for k in ak):
+        raise ConfigError("allowed_kinds_invalid")
     return Config(model=model.strip(), budgets=dict(b), sandbox=str(d.get("sandbox", "")),
+                  mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak),
                   sha256=hashlib.sha256(raw).hexdigest(), path=str(p))

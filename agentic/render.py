@@ -4,7 +4,7 @@
 원장 사건으로만 채우고, 그 사건이 없으면 **없다고** 쓴다:
 
     루프     LOOP_EVAL 없음    -> UNKNOWN            (정책 F: 로그가 없다고 루프가 없는 게 아니다)
-    Gate01   GATE_EVAL 없음    -> 평가 안 함          (정책 G: 없는 결과를 TRUE 로 읽지 않는다)
+    Gate01   GATE_DECISION 없음 -> 평가 안 함         (정책 G: 없는 결과를 TRUE 로 읽지 않는다)
     MCP      MCP_VERSION 없음  -> 기록 없음 ×3        (정책 A.4 · A.5)
     상태     TERMINAL 없음     -> FAILED(no_terminal_event)
 
@@ -38,7 +38,11 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
                    f"HEAD {s.get('head_sha') or '기록 없음'}")
 
     ident = _last(events, "MODEL_IDENTITY")
-    if ident:
+    called = any(e["type"] == "MODEL_CALL_START" for e in events)
+    if not ident and not called:
+        conf = start["data"].get("model") if start else None
+        out.append(f"모델: 설정 {conf or '기록 없음'} · 이 실행은 모델을 부르지 않았다")
+    elif ident:
         d = ident["data"]
         shown = {"verified": "확인됨", "unreported": "미확인(응답이 모델을 밝히지 않음)",
                  "mismatch": "불일치"}.get(d["status"], d["status"])
@@ -50,8 +54,28 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
     loop = _last(events, "LOOP_EVAL")
     out.append(f"루프: {loop['data']['result']}" if loop else
                "루프: UNKNOWN (탐지기가 평가하지 않았다)")
-    gate = _last(events, "GATE_EVAL")
-    out.append(f"Gate01: {gate['data'].get('decision')}" if gate else "Gate01: 평가 안 함")
+    decs = [e for e in events if e["type"] == "GATE_DECISION"]
+    if decs:
+        out.append("Gate01: " + " · ".join(
+            f"{e['task_id'].rsplit(':', 1)[-1]} {e['data']['decision']}({e['data']['path']}"
+            + (f", {e['data']['reason']}" if e['data']['decision'] != 'APPROVED' else "") + ")"
+            for e in decs))
+    else:
+        out.append("Gate01: 평가 안 함")
+    names = {e["task_id"]: e["data"]["name"] for e in events if e["type"] == "NEXT_RAISED"}
+    for e in events:
+        t = e.get("task_id", "").rsplit(":", 1)[-1]
+        if e["type"] == "TASK_COMPLETED":
+            out.append(f"  작업 {t} {e['data']['name']}: 완료({e['data']['path']}) · 승인 {e['data']['approval_id']}")
+        elif e["type"] == "DUPLICATE_SKIPPED":
+            out.append(f"  작업 {t} {e['data']['name']}: 다시 안 돌림 -- 같은 작업이 이미 승인됨 "
+                       f"({e['data']['prior_task']}, 승인 {e['data']['approval_id']})")
+        elif e["type"] == "TASK_REJECTED":
+            out.append(f"  작업 {t} {names.get(e['task_id'], '?')}: 거절 -- {', '.join(e['data']['reasons'])}")
+        elif e["type"] == "NEXT_NOT_DISPATCHED":
+            out.append(f"  작업 {t} {e['data']['name']}: 디스패치 안 함 -- {e['data']['reason']}")
+        elif e["type"] == "CHECK_EVAL" and e["data"]["result"] != "TRUE":
+            out.append(f"  작업 {t}: 필수 검사 {e['data']['check']} = {e['data']['result']} ({e['data']['note']})")
     mcp = _last(events, "MCP_VERSION")
     if mcp:
         d = mcp["data"]
