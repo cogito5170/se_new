@@ -46,6 +46,7 @@ def cfg_at(d, **over):
                         "sandbox_seconds": 120, "react_turns": 6, "tool_output_chars": 4000},
             "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],
             "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3},
+            "rag": {"k": 3, "repo_graph": False, "record": False},
             "front": {"walp": False}}
     base.update(over)
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
@@ -143,11 +144,13 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(TL.REGISTRY_PATH.exists() and R.get("tools"), "agentic/tool_registry.json 이 있고 등록된 도구가 있다")
     cat_by = {t.name: t for t in cat}
     for n, ent in R.get("tools", {}).items():
+        if n.startswith("mcp__"):
+            continue                         # MCP 도구는 tests/test_agentic_phase5.py 가 본다
         ok(TL.source_sha(n) == ent["source_sha"], f"{n}: 함수 원문이 등록 때와 같다 (다르면 재등록: --register)")
         d, _ = TL.to_declaration(cat_by[n])
         ok(d == ent["declaration"] and TL.sha(d) == ent["decl_sha"], f"{n}: 선언이 지금 카탈로그에서 다시 만든 것과 같다")
         ok(ent["kind"] in cfg.allowed_kinds and not cat_by[n].llm and n in probes_real, f"{n}: 권한 안 · LLM 없음 · 탐침 있음")
-    ok(set(R.get("tools", {})) | set(R.get("rejected", {})) == set(cat_by),
+    ok({n for n in set(R.get("tools", {})) | set(R.get("rejected", {})) if not n.startswith("mcp__")} == set(cat_by),
        "카탈로그의 도구 전부가 등록 또는 거절에 있다")
 
     print("[제어부] 등록된 도구는 모델 없이, 아니면 모델로")

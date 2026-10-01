@@ -75,7 +75,8 @@ def cfg_file(d, **over):
             "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20,
                         "sandbox_seconds": 60, "react_turns": 6, "tool_output_chars": 4000},
             "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],
-            "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3}}
+            "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3},
+            "rag": {"k": 3, "repo_graph": False, "record": False}}
     base.update(over)
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))

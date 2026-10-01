@@ -106,7 +106,9 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
     if mcp:
         d = mcp["data"]
         out.append(f"MCP: protocol {d.get('protocol', 'unreported')} · sdk {d.get('sdk', 'unreported')} · "
-                   f"server {d.get('server', 'unreported')}")
+                   f"server {d.get('server', 'unreported')}"
+                   + (f" · client {d['client']}" if d.get("client") else "")
+                   + (f" ({d['tool']})" if d.get("tool") else ""))
     else:
         out.append("MCP: protocol 기록 없음 · sdk 기록 없음 · server 기록 없음")
 
@@ -118,6 +120,21 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
         if e["type"] == "NEXT_PROPOSED":
             out.append(f"다음 작업 제안(디스패치 안 됨): {e['data']['text']}")
 
+    mr, mw, mf = _last(events, "MEMORY_RETRIEVED"), _last(events, "MEMORY_WRITTEN"), _last(events, "MEMORY_WRITE_FAILED")
+    if mr or mw or mf:
+        parts = []
+        if mr:
+            hs = mr["data"].get("hits", [])
+            if mr["data"].get("error"):
+                parts.append(f"조회 실패({mr['data']['error']})")
+            else:
+                stale = sum(1 for h in hs if not h.get("hash_ok"))
+                parts.append(f"조회 {len(hs)}건" + (f"(원본이 바뀐 것 {stale})" if stale else ""))
+        if mw:
+            parts.append(f"기록 {mw['data']['result']} <{mw['data']['source']}>")
+        if mf:
+            parts.append(f"기록 실패({mf['data']['error']})")
+        out.append("기억: " + " · ".join(parts))
     diag = [e for e in events if e["type"] == "DIAG_WRITTEN"]
     if diag:
         where = (Path(run_dir) / "diag.log") if run_dir else "diag.log"

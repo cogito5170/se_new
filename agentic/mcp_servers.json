@@ -1,0 +1,11 @@
+{
+ "walp": {
+  "command": ["python3", "walp/mcp_server.py"],
+  "tools": {
+   "walp_interpret": {"kind": "write", "note": "부를 때마다 walp/usability/ledger.jsonl 에 덧쓴다(실측) -- 읽기가 아니다",
+                      "probe": {"args": {"text": "빨간 카드 찾아줘"}, "expect": "카드"}},
+   "walp_se_catalog": {"kind": "read", "probe": {"args": {}, "expect": "read_file"}},
+   "walp_usability_report": {"kind": "read", "probe": {"args": {}, "expect": "세션"}}
+  }
+ }
+}

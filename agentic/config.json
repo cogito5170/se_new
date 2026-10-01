@@ -10,6 +10,11 @@
     "react_turns": 6,
     "tool_output_chars": 4000
   },
+  "rag": {
+    "k": 3,
+    "repo_graph": true,
+    "record": true
+  },
   "loop": {
     "same_action": 2,
     "same_failure": 2,

@@ -17,7 +17,7 @@
 
 **Gemini 이름 규칙은 기억으로 적었다**(영문자·밑줄로 시작, 영숫자·밑줄·점·대시, 64자 이하). 실호출로 확인하지 않았다.
 
-    python3 -m agentic.tools --register        # 등록(탐침은 sandbox 에서). 결과를 agentic/tool_registry.json 에
+    python3 -m agentic.tools --register        # 등록(탐침은 sandbox 에서). bot_tools + MCP 서버(agentic/mcp_servers.json)
     python3 -m agentic.tools --declarations    # 등록된 도구의 functionDeclarations(JSON)
     python3 -m agentic.tools --probe <이름> '<인자 JSON>' '<기대 글자>'   # sandbox 안에서 쓰는 것
     python3 -m agentic.tools --verify <이름>   # 이 나무의 원문 해시가 등록과 같은가(제어부의 필수 검사)
@@ -54,7 +54,11 @@ def sha(obj) -> str:
 
 
 def source_sha(name: str, root: Path = ROOT) -> "str | None":
-    """bot_tools.py 의 그 @tool 함수 원문 해시. 없으면 None."""
+    """bot_tools.py 의 그 @tool 함수 원문 해시. 없으면 None.
+    MCP 도구(`mcp__서버__도구`)면 **지금 서버가 알려 주는** (이름·설명·inputSchema·서버 버전) 해시."""
+    from agentic import mcp_client as MC
+    if MC.split_name(name):
+        return MC.live_sha(name)
     p = root / "bot_tools.py"
     try:
         src = p.read_text(encoding="utf-8")
@@ -144,6 +148,10 @@ def check_output(out) -> list:
 
 
 def execute(name: str, args: dict, timeout: int = 120) -> dict:
+    from agentic import mcp_client as MC
+    if MC.split_name(name):
+        ent = load_registry().get("tools", {}).get(name) or {}
+        return MC.run_tool(name, args, expected_sha=ent.get("source_sha"), timeout=timeout)
     from walp import se_router
     return se_router.execute(name, args, timeout=timeout)
 
@@ -231,6 +239,10 @@ def _main_register() -> int:
     sink = DiagnosticSink(L)
     probes = json.loads(PROBES_PATH.read_text(encoding="utf-8"))
     reg = register(cfg, L, sink, probes, head_sha=_head_sha())
+    from agentic import mcp_client as MC
+    m_ok, m_bad = MC.register(cfg, L, sink, MC.load_servers())
+    reg["tools"].update(m_ok)
+    reg["rejected"].update(m_bad)
     L.terminal("DONE", "registry_built", f"등록 {len(reg['tools'])} · 거절 {len(reg['rejected'])}")
     REGISTRY_PATH.write_text(json.dumps(reg, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(f"등록 {len(reg['tools'])}: {', '.join(sorted(reg['tools']))}")
