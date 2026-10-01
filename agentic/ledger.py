@@ -58,6 +58,10 @@ EVENT_TYPES = frozenset({
     "MEMORY_RETRIEVED",     # 꺼낸 노트(저장소 · 출처 · 점수 · 원본 해시 일치)
     "MEMORY_WRITTEN",       # 적은 노트(출처 · 결과 · 깃발)
     "MEMORY_WRITE_FAILED",  # 기억을 못 적었다 -- 실행은 계속, 조용히는 아니다
+    # 6단계 -- sandbox 실행 · 회로 차단기 · 수리 요청
+    "SANDBOX_EXEC",         # 도구가 sandbox 안에서 돌았다(끝값 · 걸린초 · 판)
+    "TOOL_QUARANTINED",     # 도구 탓 실패가 문턱에 닿아 격리
+    "REPAIR_REQUESTED",     # 수리 요청(재현 명령 · 모델 없는 진단) -- 고치기는 사람이 --fix --apply 로
     "TERMINAL",
 })
 ACTORS = frozenset({"code", "model", "executor"})
