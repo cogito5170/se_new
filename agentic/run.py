@@ -67,32 +67,54 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
         else:
             if fr.route == "bypass":
                 prompt = W.strip_bypass(prompt)
+            fin = _finisher(prompt, cfg, L, runs_root(root), run_id)
             from agentic import controller as K          # 늦게: controller -> sequencer -> run 순환을 피한다
-            ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **(controller_opts or {}))
+            kopts = {k: v for k, v in (controller_opts or {}).items()
+                     if k in ("registry", "route_fn", "executor", "checks", "src_sha")}
+            ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **kopts)
             if ctl is None:
                 from agentic import thinker as TH
                 from agentic import tools as TL
                 o = dict(controller_opts or {})
                 M = FixedModel(cfg, L, sink, keys=keys, client_factory=client_factory)
-                state = TH.think(prompt, cfg, L, sink, M, runs_root(root), run_id, run_dir,
+                from agentic import memory as MEM
+                base = runs_root(root)
+                recall = None
+                if cfg.rag["k"] > 0:
+                    recall = (lambda q: MEM.recall(q, base, cfg.rag["k"], cfg.rag["repo_graph"],
+                                                   o.get("repo_graph_root") or ROOT))
+                state = TH.think(prompt, cfg, L, sink, M, base, run_id, run_dir,
                                  o.get("registry") if o.get("registry") is not None else TL.load_registry(),
-                                 o.get("executor"), o.get("checks"), o.get("src_sha"))
+                                 o.get("executor"), o.get("checks"), o.get("src_sha"), fin=fin, recall=recall)
             else:
                 st, reason, summary, tool, out = ctl
                 if st == "DONE":
                     # 도구 출력은 신뢰하지 않는 데이터다(D.7) -- 답 칸에만, 그렇게 표시해서
                     aid = L.emit("ANSWER_ADOPTED", "code", {"text": out, "identity": f"tool:{tool}",
                                                             "untrusted": True})
-                    L.terminal("DONE", "controller_tool", f"제어부가 등록된 도구 {tool} 로 끝냈다 · 모델 호출 0",
-                               [aid])
+                    fin("DONE", "controller_tool", f"제어부가 등록된 도구 {tool} 로 끝냈다 · 모델 호출 0", [aid])
                 else:
-                    L.terminal(st, reason, summary)
+                    fin(st, reason, summary)
                 state = st
     except LoggingFailure as e:
         text = (f"상태: LOGGING_FAILURE ({e}) -- 원장을 쓰지 못해 이 실행은 검사할 수 없다.\n"
                 f"원장 자리: {run_dir}\n답: (채택된 답 없음)")
         return "LOGGING_FAILURE", run_dir, text
     return state, run_dir, render(read_events(run_dir), run_dir)
+
+
+def _finisher(prompt, cfg, L, runs_base, run_id):
+    """끝을 쓰기 직전에 기억(RAG/Graph)에 적는다. 기억을 못 적어도 실행은 끝나되, 그 사실을 사건으로 남긴다."""
+    def fin(state, reason, summary, evidence=()):
+        if cfg.rag["record"]:
+            from agentic import memory as MEM
+            try:
+                r = MEM.record(read_events(L.dir), prompt, state, reason, runs_base, run_id)
+                L.emit("MEMORY_WRITTEN", "code", r)
+            except Exception as e:                       # noqa: BLE001 -- 기억은 감사 원장이 아니다
+                L.emit("MEMORY_WRITE_FAILED", "code", {"error": f"{type(e).__name__}: {str(e)[:120]}"})
+        return L.terminal(state, reason, summary, evidence)
+    return fin
 
 
 def main(argv=None) -> int:

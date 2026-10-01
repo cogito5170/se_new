@@ -1,6 +1,6 @@
 {
- "config_sha256": "cf20eb922db5148d84a441165a2b706c291f6b61c932b44958e6ea41e3409c33",
- "head_sha": "d13f878fb5d1cb1ba1ec361a1bedd29768bb4980",
+ "config_sha256": "febf06904dc4bdca07d31b1048562183786eaf0f90d89983b5f561d9d38e5b8b",
+ "head_sha": "b0d83d0470ac94f4b704098277c1befd6126ccc9",
  "rejected": {
   "adc_sweep": [
    "no_probe"
@@ -143,6 +143,31 @@
   ],
   "loss_sweep": [
    "no_probe"
+  ],
+  "mcp__walp__walp_interpret": [
+   "kind_not_allowed:write"
+  ],
+  "mcp__walp__walp_loop": [
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_rate": [
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_run": [
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_se_tool": [
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_sus": [
+   "unsupported_param_type:answers:array",
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_teach": [
+   "not_in_allowlist"
+  ],
+  "mcp__walp__walp_usability_report": [
+   "probe_failed:exit=1:{\"tool\": \"walp_usability_report\", \"reasons\": [\"tool_not_ok:tool_error:⚠ 표본이 작다 —"
   ],
   "monte_carlo": [
    "no_probe"
@@ -297,6 +322,29 @@
     "expect": "CTLE"
    },
    "source_sha": "8eab9385a7e98fcf26478e4439668112658132faa7ea706d78fb94d25b6eeac7"
+  },
+  "mcp__walp__walp_se_catalog": {
+   "decl_sha": "3bcb28275c13368f1b2169ac14ac706a1c27bac8fc0f4eb12b24e0938218eacb",
+   "declaration": {
+    "description": "배선된 SE 도구 목록(부작용 분류·LLM 추정·목록 해시).",
+    "name": "mcp__walp__walp_se_catalog",
+    "parameters": {
+     "properties": {},
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "read",
+   "probe": {
+    "args": {},
+    "expect": "read_file"
+   },
+   "protocol": "2025-06-18",
+   "server": "walp",
+   "server_version": "walp/0.2",
+   "source_sha": "cb4b74972f08263d95c76d53ed8352fb4c033c285e551abe86fe710aaed96a9a",
+   "tool": "walp_se_catalog",
+   "via": "mcp"
   },
   "read_file": {
    "decl_sha": "8ea07bf724330cdfdfea743623137d109c8976a9d19ab2d6ed426751d56082bd",

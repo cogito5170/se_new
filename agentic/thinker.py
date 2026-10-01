@@ -47,11 +47,24 @@ def _sha(s: str) -> str:
 
 
 def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executor=None, checks=None,
-          src_sha=None) -> str:
-    """종료 사건까지 쓰고 종료 상태를 돌려준다."""
+          src_sha=None, fin=None, recall=None) -> str:
+    """종료 사건까지 쓰고 종료 상태를 돌려준다. `fin(상태, 사유, 요약, 근거)` 가 끝을 쓴다(기본 L.terminal --
+    run.py 는 기억을 적고 끝내는 것을 넘긴다). `recall(물음) -> [노트]` 는 RAG 조회."""
     src_sha = src_sha or K.TL.source_sha
+    fin = fin or L.terminal
     decls = [e["declaration"] for _, e in sorted(registry.get("tools", {}).items())]
-    contents = [{"role": "user", "parts": [{"text": prompt}]}]
+    first = [{"text": prompt}]
+    if recall is not None:
+        try:
+            hits = recall(prompt)
+            L.emit("MEMORY_RETRIEVED", "code", {"hits": [{k: h[k] for k in ("store", "source", "score", "hash_ok")}
+                                                         for h in hits]})
+            if hits:
+                from agentic import memory as MEM
+                first.append({"text": MEM.as_context(hits)})
+        except Exception as e:                           # noqa: BLE001 -- 조회 실패는 막지 않되 적는다
+            L.emit("MEMORY_RETRIEVED", "code", {"hits": [], "error": type(e).__name__})
+    contents = [{"role": "user", "parts": first}]
     det = LoopDetector(cfg.loop)
     forged = tool_calls = refused = 0
     cap = cfg.budgets["tool_output_chars"]
@@ -86,7 +99,7 @@ def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executo
                         name, args, prompt, cfg, L, sink, runs_base, run_id, run_dir, registry,
                         executor, checks, event=f"{run_id}:t{turn}:{i}")
                     if st != "DONE":
-                        L.terminal(st, reason, f"사고부 {turn} 바퀴째 도구 {name} 가 게이트에서 졌다 -- {summary}")
+                        fin(st, reason, f"사고부 {turn} 바퀴째 도구 {name} 가 게이트에서 졌다 -- {summary}")
                         return st
                     clipped = out[:cap]
                     L.emit("TOOL_OBSERVATION", "executor", {"turn": turn, "tool": name, "chars": len(out),
@@ -97,7 +110,7 @@ def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executo
                 contents.append({"role": "user", "parts": responses})
                 if det.evaluate(L, turn, actions, obs, failure) == LOOP_DETECTED:
                     kinds = L_last_kinds(L)
-                    L.terminal("LOOP_LIMIT_REACHED", f"loop_detected:{kinds}",
+                    fin("LOOP_LIMIT_REACHED", f"loop_detected:{kinds}",
                                f"사고부 {turn} 바퀴 · 도구 호출 {tool_calls} -- 자동 실행을 멈춘다")
                     return "LOOP_LIMIT_REACHED"
                 continue
@@ -111,7 +124,7 @@ def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executo
                 # 같은 일이 두 사유로 끝난다)
                 det.evaluate(L, turn, None, ["forged", _sha(text)], None)
                 if forged > cfg.budgets["forgery_retries"]:
-                    L.terminal("NEEDS_REVIEW", "model_flag_forgery",
+                    fin("NEEDS_REVIEW", "model_flag_forgery",
                                f"{forged}번 깃발·버전을 지어내 답을 채택하지 않았다")
                     return "NEEDS_REVIEW"
                 contents.append({"role": "model", "parts": [{"text": "(discarded)"}]})
@@ -124,17 +137,17 @@ def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executo
             aid = L.emit("ANSWER_ADOPTED", "code", {"text": F.strip_next(text), "identity": r.identity,
                                                     "postcondition": "none", "turns": turn,
                                                     "tool_calls": tool_calls, "refused": refused}, [r.event_id])
-            L.terminal("DONE", "answer_adopted",
+            fin("DONE", "answer_adopted",
                        f"사고부 {turn} 바퀴 · 도구 호출 {tool_calls}(거절 {refused}) · 글 답은 사후조건 없음", [aid])
             return "DONE"
-        L.terminal("LOOP_LIMIT_REACHED", "budget_react_turns",
+        fin("LOOP_LIMIT_REACHED", "budget_react_turns",
                    f"바퀴 예산 {cfg.budgets['react_turns']} 을 다 썼다 · 도구 호출 {tool_calls}")
         return "LOOP_LIMIT_REACHED"
     except Blocked as b:
-        L.terminal("BLOCKED", b.reason, "모델 호출을 진행할 수 없다(다른 모델로 넘어가지 않는다)")
+        fin("BLOCKED", b.reason, "모델 호출을 진행할 수 없다(다른 모델로 넘어가지 않는다)")
         return "BLOCKED"
     except BudgetExhausted as b:
-        L.terminal("FAILED", b.reason, "예산을 다 썼다")
+        fin("FAILED", b.reason, "예산을 다 썼다")
         return "FAILED"
 
 

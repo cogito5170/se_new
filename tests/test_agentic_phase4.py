@@ -36,13 +36,14 @@ def ok(cond, label):
 MODEL = "gemini-3.1-flash-lite"
 
 
-def cfg_at(d, budgets=None, loop=None):
+def cfg_at(d, budgets=None, loop=None, rag=None):
     b = {"model_calls": 10, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20, "sandbox_seconds": 60,
          "react_turns": 6, "tool_output_chars": 50}
     b.update(budgets or {})
     base = {"model": MODEL, "model_fallback": False, "budgets": b, "sandbox": "sandbox/",
             "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"], "front": {"walp": False},
-            "loop": loop or {"same_action": 2, "same_failure": 2, "no_progress": 3}}
+            "loop": loop or {"same_action": 2, "same_failure": 2, "no_progress": 3},
+            "rag": rag or {"k": 3, "repo_graph": False, "record": False}}
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
     return C.load(p)

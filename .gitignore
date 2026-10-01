@@ -283,3 +283,5 @@ research/ledger.jsonl
 
 # agentic 실행 원장·진단 싱크 -- 실행 산출물이지 판정 이력이 아니다(진단 싱크는 원시 로그라 올리면 안 된다)
 agentic/runs/
+# agentic 기억(RAG/Graph) -- 그 기계에서 실행이 쌓은 노트. 원장 뿌리 아래에 산다
+agentic/memory/

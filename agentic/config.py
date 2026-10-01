@@ -13,6 +13,7 @@
   · `allowed_kinds` 가 모르는 부작용 종류를 담음
   · `front.walp` 가 켜졌는데 판정기 파일의 sha256 이 없음
   · `loop` 문턱(same_action · same_failure · no_progress)이 2 이상의 정수가 아님
+  · `rag` 가 {k: 0~10, repo_graph: bool, record: bool} 꼴이 아님
 """
 from __future__ import annotations
 
@@ -44,6 +45,7 @@ class Config:
     allowed_kinds: frozenset
     front: dict
     loop: dict
+    rag: dict
     sha256: str
     path: str
 
@@ -92,6 +94,12 @@ def load(path: "str | Path | None" = None) -> Config:
         # 문턱 1 은 '처음 한 번' 을 고리로 읽는다 -- 탐지기가 늘 울면 아무도 안 듣는다
         if not isinstance(v, int) or isinstance(v, bool) or v < 2:
             raise ConfigError(f"loop_invalid:{k}")
+    rg = d.get("rag")
+    if (not isinstance(rg, dict) or not isinstance(rg.get("k"), int) or isinstance(rg.get("k"), bool)
+            or not 0 <= rg["k"] <= 10 or not isinstance(rg.get("repo_graph"), bool)
+            or not isinstance(rg.get("record"), bool)):
+        raise ConfigError("rag_invalid")
     return Config(model=model.strip(), budgets=dict(b), sandbox=str(d.get("sandbox", "")),
                   mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), front=dict(front), loop=dict(lp),
+                  rag=dict(rg),
                   sha256=hashlib.sha256(raw).hexdigest(), path=str(p))

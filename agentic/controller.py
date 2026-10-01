@@ -78,6 +78,9 @@ def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, r
     def act(inputs, state, _n=name):
         out = run(_n, dict(inputs))
         out_box["out"] = out
+        if isinstance(out, dict) and isinstance(out.get("mcp"), dict):
+            # 정책 A.4: 서버가 **이번 연결에서** 말한 버전 셋을 따로 -- 등록 때 값이 아니라
+            L.emit("MCP_VERSION", "executor", {**out["mcp"], "tool": _n, "phase": "call"})
         return out if isinstance(out, dict) else {"ok": False, "error": "non_dict_output"}
 
     def tool_ok(state, spec):

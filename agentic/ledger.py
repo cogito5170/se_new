@@ -54,6 +54,10 @@ EVENT_TYPES = frozenset({
     "THINK_TURN",           # 바퀴 시작
     "MODEL_TOOL_CALL",      # 모델이 도구를 부르자고 했다(제안 -- 실행은 precheck · Gate01 뒤)
     "TOOL_OBSERVATION",     # 도구 출력의 크기·해시(내용은 모델에게만, 신뢰 안 함 표지로)
+    # 5단계 -- RAG / Graph
+    "MEMORY_RETRIEVED",     # 꺼낸 노트(저장소 · 출처 · 점수 · 원본 해시 일치)
+    "MEMORY_WRITTEN",       # 적은 노트(출처 · 결과 · 깃발)
+    "MEMORY_WRITE_FAILED",  # 기억을 못 적었다 -- 실행은 계속, 조용히는 아니다
     "TERMINAL",
 })
 ACTORS = frozenset({"code", "model", "executor"})
