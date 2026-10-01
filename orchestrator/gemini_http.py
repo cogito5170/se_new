@@ -48,11 +48,16 @@ class GeminiError(RuntimeError):
 
 
 class Reply:
-    """`.content` 로 읽는다 -- `llm_pool._extract_text` 가 그렇게 본다."""
-    __slots__ = ("content",)
+    """`.content` 로 읽는다 -- `llm_pool._extract_text` 가 그렇게 본다.
 
-    def __init__(self, content: str):
+    `.model_version` 은 **응답이 스스로 밝힌** 모델(응답 본문의 `modelVersion`)이다.
+    부른 이름과 실제로 답한 모델은 다를 수 있으므로 따로 둔다. 응답에 없으면 None --
+    "부른 이름" 으로 채우지 않는다(채우면 확인 안 된 것을 확인됐다고 적게 된다)."""
+    __slots__ = ("content", "model_version")
+
+    def __init__(self, content: str, model_version: "str | None" = None):
         self.content = content
+        self.model_version = model_version
 
 
 def _name_of(payload: dict, status: int) -> str:
@@ -123,7 +128,9 @@ class Client:
                 # 본문을 **그대로** 실어야 retryDelay 같은 것이 분류에 닿는다.
                 raise GeminiError(r.status_code, _name_of(payload, r.status_code),
                                   json.dumps(payload, ensure_ascii=False) or r.text)
-            return Reply(_answer_of(r.json()))
+            data = r.json()
+            mv = data.get("modelVersion") if isinstance(data, dict) else None
+            return Reply(_answer_of(data), mv if isinstance(mv, str) and mv else None)
         raise last
 
 

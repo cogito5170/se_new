@@ -280,3 +280,6 @@ improve/ledger.jsonl
 research/ledger.jsonl
 원장.json
 내원장.json
+
+# agentic 실행 원장·진단 싱크 -- 실행 산출물이지 판정 이력이 아니다(진단 싱크는 원시 로그라 올리면 안 된다)
+agentic/runs/
