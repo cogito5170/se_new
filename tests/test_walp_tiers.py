@@ -99,6 +99,9 @@ def main() -> int:
     라벨, _, 사용자시험 = D.재생표본(원장)
     ok(("프랑스 수도가 어디야", "knowledge") in 라벨 and not 사용자시험, "학습 라벨로는 들어가고 사용자 관문에는 안 들어간다")
 
+    print("[8] 배포 설정")
+    ok(B.답캐시켜기 is False, "답 캐시는 꺼져 있다(봉인 흐름 v1 의 H2 안 섬 — 등록한 규칙대로)")
+
     print("[7] Claude숙고 — SDK 호출 모양(가짜 anthropic 모듈)")
     받은: dict = {}
     class 블록:
