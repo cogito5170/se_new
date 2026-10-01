@@ -44,18 +44,34 @@ def try_tools(text, cfg, L, sink, runs_base, run_id, run_dir,
 
     if status != "TOOL":
         return miss(f"route:{status}:{r.get('why')}")
+    args = r.get("args") or {}
+    why = precheck(name, args, registry, src_sha)
+    if why:
+        return miss(why)
+    st, reason, summary, out = run_registered(name, args, text, cfg, L, sink, runs_base, run_id, run_dir,
+                                              registry, executor, checks, event=run_id)
+    return st, reason, summary, name, out
+
+
+def precheck(name, args, registry, src_sha=TL.source_sha) -> "str | None":
+    """디스패치 전의 거절 사유. None 이면 보낼 수 있다. 제어부와 사고부가 같은 것을 쓴다."""
     ent = registry.get("tools", {}).get(name)
     if ent is None:
         why = registry.get("rejected", {}).get(name)
-        return miss("not_registered" + (f":{why[0]}" if why else ""))
-    args = r.get("args") or {}
+        return "not_registered" + (f":{why[0]}" if why else "")
     bad = TL.check_args(ent["declaration"], args)
     if bad:
-        return miss("args_invalid:" + ",".join(bad[:3]))
-    now = src_sha(name)
-    if now != ent.get("source_sha"):
-        return miss("quarantined:source_changed")
+        return "args_invalid:" + ",".join(bad[:3])
+    if src_sha(name) != ent.get("source_sha"):
+        return "quarantined:source_changed"
+    return None
 
+
+def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, registry,
+                   executor=None, checks=None, event=""):
+    """등록된 도구 하나를 작업 하나짜리 Gate01 사슬로. (상태, 사유, 요약, 출력 글 또는 None).
+    **precheck 를 먼저 통과한 것만** 여기 온다."""
+    ent = registry["tools"][name]
     out_box = {}
     run = executor or TL.execute
 
@@ -68,13 +84,13 @@ def try_tools(text, cfg, L, sink, runs_base, run_id, run_dir,
         return TL.check_output(out_box.get("out")) == []
 
     reg = Registry({f"tool:{name}": Action(ent["kind"], act)}, {"tool_ok": tool_ok})
-    spec = TaskSpec(name=f"tool:{name}", goal=text[:200], primary=f"tool:{name}", post="tool_ok",
+    spec = TaskSpec(name=f"tool:{name}", goal=goal[:200], primary=f"tool:{name}", post="tool_ok",
                     inputs=args, permissions=(ent["kind"],),
-                    verify_argv=("python3", "-m", "agentic.tools", "--verify", name), event=run_id)
+                    verify_argv=("python3", "-m", "agentic.tools", "--verify", name), event=event)
     st, reason, summary = chain_in([spec], reg, cfg, checks if checks is not None else {"sandbox": G.sandbox_check},
                                    L, sink, runs_base, run_id, run_dir)
     out = out_box.get("out")
     text_out = out.get("result") if st == "DONE" and isinstance(out, dict) else None
     if st == "DONE" and not isinstance(text_out, str):
-        return "FAILED", "tool_output_missing", "승인됐는데 출력이 없다", name, None
-    return st, reason, summary, name, text_out
+        return "FAILED", "tool_output_missing", "승인됐는데 출력이 없다", None
+    return st, reason, summary, text_out

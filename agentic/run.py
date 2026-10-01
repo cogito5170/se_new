@@ -4,7 +4,8 @@
     python3 -m agentic.render <run_dir>      # 지난 실행을 원장에서 다시 그린다
 
 맨 앞에 WALP 앞단(`agentic/front.py`)이 있다: 잡담이면 모델을 안 부르고 WALP 가 답한다. `//` 로 시작하면 건너뛴다.
-그다음 제어부(`agentic/controller.py`): 등록된 도구로 끝낼 수 있으면 모델 없이 끝낸다. 못 하면 모델로.
+그다음 제어부(`agentic/controller.py`): 등록된 도구로 끝낼 수 있으면 모델 없이 끝낸다.
+못 하면 사고부(`agentic/thinker.py`): Gemini 가 등록된 도구를 부르며 ReAct 로 푼다(루프 탐지기 · 예산).
 
 아직 없는 것(2단계 이후): 도구 호출 · Sequencer · Gate01 평가 · 루프 탐지기 · MCP 클라이언트.
 그래서 화면의 그 칸들은 'UNKNOWN / 평가 안 함 / 기록 없음' 으로 나온다 -- **그것이 맞는 답이다.**
@@ -26,22 +27,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agentic import config as C                                         # noqa: E402
-from agentic import forgery as F                                        # noqa: E402
 from agentic import front as W                                          # noqa: E402
 from agentic.ledger import DiagnosticSink, Ledger, LoggingFailure, read_events  # noqa: E402
-from agentic.model import Blocked, BudgetExhausted, FixedModel          # noqa: E402
+from agentic.model import FixedModel                                    # noqa: E402
 from agentic.render import render                                       # noqa: E402
-
-PREAMBLE = (
-    "Answer the user's request directly.\n"
-    "Do not report execution status, test or gate results, loop status, tool or protocol "
-    "versions, or which model you are. The runtime records and reports those itself; "
-    "anything you write about them is discarded.\n"
-    "If you propose a follow-up task, put it on its own line starting with [Next].\n\n"
-)
-RETRY_NOTE = ("\n\nYour previous answer contained runtime status or version claims and was "
-              "discarded. Answer again with only the content.\n")
-
 
 def _head_sha() -> "str | None":
     try:
@@ -81,7 +70,13 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
             from agentic import controller as K          # 늦게: controller -> sequencer -> run 순환을 피한다
             ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **(controller_opts or {}))
             if ctl is None:
-                state = _drive(prompt, cfg, L, sink, keys, client_factory)
+                from agentic import thinker as TH
+                from agentic import tools as TL
+                o = dict(controller_opts or {})
+                M = FixedModel(cfg, L, sink, keys=keys, client_factory=client_factory)
+                state = TH.think(prompt, cfg, L, sink, M, runs_root(root), run_id, run_dir,
+                                 o.get("registry") if o.get("registry") is not None else TL.load_registry(),
+                                 o.get("executor"), o.get("checks"), o.get("src_sha"))
             else:
                 st, reason, summary, tool, out = ctl
                 if st == "DONE":
@@ -100,42 +95,8 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
     return state, run_dir, render(read_events(run_dir), run_dir)
 
 
-def _drive(prompt, cfg, L, sink, keys, client_factory) -> str:
-    M = FixedModel(cfg, L, sink, keys=keys, client_factory=client_factory)
-    ask = PREAMBLE + prompt
-    tries = 1 + cfg.budgets["forgery_retries"]
-    try:
-        for i in range(tries):
-            res = M.call(ask)
-            hits = F.scan(res.text)
-            if hits:
-                sink.write(f"forged_answer#{i + 1}", res.text)
-                L.emit("MODEL_FLAG_FORGERY", "code", {"hits": hits[:20], "attempt": i + 1},
-                       evidence=[res.event_id])
-                ask = PREAMBLE + prompt + RETRY_NOTE
-                continue
-            nexts = F.next_proposals(res.text)
-            for n in nexts:
-                L.emit("NEXT_PROPOSED", "model", {"text": n[:300]}, evidence=[res.event_id])
-            aid = L.emit("ANSWER_ADOPTED", "code", {"text": F.strip_next(res.text),
-                                                    "identity": res.identity},
-                         evidence=[res.event_id])
-            L.terminal("DONE", "answer_adopted",
-                       "모델 답 채택(도구 실행·게이트 평가 없음 -- 1단계)", [aid])
-            return "DONE"
-        L.terminal("NEEDS_REVIEW", "model_flag_forgery",
-                   f"{tries}번 다 깃발·버전을 지어내 답을 채택하지 않았다")
-        return "NEEDS_REVIEW"
-    except Blocked as b:
-        L.terminal("BLOCKED", b.reason, "모델 호출을 진행할 수 없다(다른 모델로 넘어가지 않는다)")
-        return "BLOCKED"
-    except BudgetExhausted as b:
-        L.terminal("FAILED", b.reason, "예산을 다 썼다")
-        return "FAILED"
-
-
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="agentic 1단계: 고정 모델 + 위조 게이트 + 원장 렌더")
+    ap = argparse.ArgumentParser(description="agentic: 앞단 · 제어부 · 사고부 · 원장 렌더")
     ap.add_argument("prompt")
     ap.add_argument("--config", default=None)
     a = ap.parse_args(argv)

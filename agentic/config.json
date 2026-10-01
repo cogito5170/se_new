@@ -6,7 +6,14 @@
     "forgery_retries": 1,
     "wall_seconds": 180,
     "tasks": 20,
-    "sandbox_seconds": 180
+    "sandbox_seconds": 180,
+    "react_turns": 6,
+    "tool_output_chars": 4000
+  },
+  "loop": {
+    "same_action": 2,
+    "same_failure": 2,
+    "no_progress": 3
   },
   "sandbox": "sandbox/",
   "mandatory_checks": ["sandbox"],

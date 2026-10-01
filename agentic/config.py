@@ -12,6 +12,7 @@
     (빈 목록이면 "필수 검사 전부 통과" 가 **아무것도 안 재고** 참이 된다)
   · `allowed_kinds` 가 모르는 부작용 종류를 담음
   · `front.walp` 가 켜졌는데 판정기 파일의 sha256 이 없음
+  · `loop` 문턱(same_action · same_failure · no_progress)이 2 이상의 정수가 아님
 """
 from __future__ import annotations
 
@@ -23,7 +24,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 DEFAULT_PATH = HERE / "config.json"
 
-BUDGET_KEYS = ("model_calls", "forgery_retries", "wall_seconds", "tasks", "sandbox_seconds")
+BUDGET_KEYS = ("model_calls", "forgery_retries", "wall_seconds", "tasks", "sandbox_seconds",
+               "react_turns", "tool_output_chars")
+LOOP_KEYS = ("same_action", "same_failure", "no_progress")
 ACTION_KINDS = ("read", "compute", "write", "shell", "net")
 _FORBIDDEN_KEYS = ("models", "fallback_models", "fallback")
 
@@ -40,6 +43,7 @@ class Config:
     mandatory_checks: tuple
     allowed_kinds: frozenset
     front: dict
+    loop: dict
     sha256: str
     path: str
 
@@ -80,6 +84,14 @@ def load(path: "str | Path | None" = None) -> Config:
         raise ConfigError("front_invalid")
     if front.get("walp") and not (isinstance(front.get("model_sha256"), str) and len(front["model_sha256"]) == 64):
         raise ConfigError("front_model_sha256_required")   # 판정기를 해시에 안 묶고 켜는 길은 없다
+    lp = d.get("loop")
+    if not isinstance(lp, dict):
+        raise ConfigError("loop_missing")
+    for k in LOOP_KEYS:
+        v = lp.get(k)
+        # 문턱 1 은 '처음 한 번' 을 고리로 읽는다 -- 탐지기가 늘 울면 아무도 안 듣는다
+        if not isinstance(v, int) or isinstance(v, bool) or v < 2:
+            raise ConfigError(f"loop_invalid:{k}")
     return Config(model=model.strip(), budgets=dict(b), sandbox=str(d.get("sandbox", "")),
-                  mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), front=dict(front),
+                  mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), front=dict(front), loop=dict(lp),
                   sha256=hashlib.sha256(raw).hexdigest(), path=str(p))

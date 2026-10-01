@@ -67,9 +67,19 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
         conf = start["data"].get("model") if start else None
         out.append(f"모델: 설정 {conf or '기록 없음'} · 응답 없음 · 미확인(호출이 성공하지 않았다)")
 
-    loop = _last(events, "LOOP_EVAL")
-    out.append(f"루프: {loop['data']['result']}" if loop else
-               "루프: UNKNOWN (탐지기가 평가하지 않았다)")
+    turns = [e for e in events if e["type"] == "THINK_TURN"]
+    if turns:
+        calls = [e for e in events if e["type"] == "MODEL_TOOL_CALL"]
+        obs = [e for e in events if e["type"] == "TOOL_OBSERVATION"]
+        out.append(f"사고부: {len(turns)} 바퀴 · 모델이 부른 도구 {len(calls)} (실행 {len(obs)} · "
+                   f"거절 {len(calls) - len(obs)})")
+    evals = [e for e in events if e["type"] == "LOOP_EVAL"]
+    if evals:
+        d = evals[-1]["data"]
+        out.append(f"루프: {d['result']}" + (f" ({', '.join(d.get('kinds') or [])})" if d.get("kinds") else "")
+                   + f" · 탐지기 {len(evals)}회 평가")
+    else:
+        out.append("루프: UNKNOWN (탐지기가 평가하지 않았다)")
     decs = [e for e in events if e["type"] == "GATE_DECISION"]
     if decs:
         out.append("Gate01: " + " · ".join(

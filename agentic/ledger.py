@@ -50,6 +50,10 @@ EVENT_TYPES = frozenset({
     "TOOL_REJECTED",        # 사유 목록(선언 불가 · 권한 밖 · LLM 사용 · 탐침 실패 · 탐침 없음)
     "CONTROLLER_ROUTE",     # LLM 없는 라우터의 판정
     "CONTROLLER_MISS",      # 제어부가 못 한 것 -- 디스패치 전이므로 모델로 넘어간다
+    # 4단계 -- 사고부 (정책 F · I)
+    "THINK_TURN",           # 바퀴 시작
+    "MODEL_TOOL_CALL",      # 모델이 도구를 부르자고 했다(제안 -- 실행은 precheck · Gate01 뒤)
+    "TOOL_OBSERVATION",     # 도구 출력의 크기·해시(내용은 모델에게만, 신뢰 안 함 표지로)
     "TERMINAL",
 })
 ACTORS = frozenset({"code", "model", "executor"})

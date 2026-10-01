@@ -133,6 +133,74 @@ class Client:
             return Reply(_answer_of(data), mv if isinstance(mv, str) and mv else None)
         raise last
 
+    def invoke_tools(self, contents: list, declarations: list, system: str = "") -> "ToolReply":
+        """**함수 호출(function calling)** -- 대화(contents)와 함수 선언을 보내고, 글 조각과 함수 호출 조각을
+        그대로 돌려받는다. 키·재시도·오류 계약은 `invoke` 와 같다(한 벌의 전송 `_post`).
+
+        보내는 꼴은 기억으로 적었다(실호출로 확인 전): `tools: [{functionDeclarations: [...]}]`,
+        `systemInstruction: {parts: [{text}]}`, 함수 결과는 `role: "user"` 의 `functionResponse` 조각."""
+        body = {"contents": contents,
+                "generationConfig": {"maxOutputTokens": self.max_output_tokens}}
+        if declarations:
+            body["tools"] = [{"functionDeclarations": declarations}]
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        if SAFETY:
+            body["safetySettings"] = SAFETY
+        data = self._post(body)
+        mv = data.get("modelVersion") if isinstance(data, dict) else None
+        return ToolReply(_parts_of(data), mv if isinstance(mv, str) and mv else None)
+
+    def _post(self, body: dict) -> dict:
+        import requests
+        url = API.format(model=self.model)
+        last = None
+        for _ in range(self.attempts):
+            try:
+                r = requests.post(url, headers={"x-goog-api-key": self.key}, json=body, timeout=self.timeout)
+            except Exception as e:
+                last = GeminiError(504, "DEADLINE_EXCEEDED", _hide(f"{type(e).__name__}: {e}", self.key))
+                continue
+            if r.status_code >= 400:
+                try:
+                    payload = r.json()
+                except Exception:
+                    payload = {}
+                raise GeminiError(r.status_code, _name_of(payload, r.status_code),
+                                  json.dumps(payload, ensure_ascii=False) or r.text)
+            return r.json()
+        raise last
+
+
+class ToolReply:
+    """`.parts` 는 [{"text": ...} | {"function_call": {"name", "args"}}], `.model_version` 은 Reply 와 같다."""
+    __slots__ = ("parts", "model_version")
+
+    def __init__(self, parts: list, model_version: "str | None" = None):
+        self.parts, self.model_version = parts, model_version
+
+
+def _parts_of(data: dict) -> list:
+    """함수 호출 응답에는 글이 없을 수 있다 -- `_answer_of` 를 쓰면 EMPTY 로 던진다. 그래서 따로 읽는다.
+    글도 호출도 없으면 `_answer_of` 와 같은 까닭으로 던진다(빈 것은 성공이 아니다)."""
+    cands = data.get("candidates") or []
+    if not cands:
+        fb = (data.get("promptFeedback") or {}).get("blockReason", "")
+        raise GeminiError(200, f"EMPTY{'/' + fb if fb else ''}", json.dumps(data, ensure_ascii=False))
+    out = []
+    for p in ((cands[0].get("content") or {}).get("parts")) or []:
+        if not isinstance(p, dict):
+            continue
+        fc = p.get("functionCall")
+        if isinstance(fc, dict) and isinstance(fc.get("name"), str):
+            out.append({"function_call": {"name": fc["name"], "args": fc.get("args") or {}}})
+        elif isinstance(p.get("text"), str) and p["text"].strip():
+            out.append({"text": p["text"]})
+    if not out:
+        reason = cands[0].get("finishReason", "")
+        raise GeminiError(200, f"EMPTY{'/' + reason if reason else ''}", json.dumps(data, ensure_ascii=False))
+    return out
+
 
 # **안전 필터.** 기본값은 전부 푼다 -- 이 저장소의 소설 파이프라인은 성인 연재물을
 # 쓰고(사용자 요구 2026-09-08: "지금은 12세, 나는 19세 연재물"), Gemini 의 기본 문턱은

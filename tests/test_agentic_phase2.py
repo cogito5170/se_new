@@ -39,8 +39,9 @@ def ok(cond, label):
 def cfg_at(d, **over):
     base = {"model": "gemini-3.1-flash-lite", "model_fallback": False,
             "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20,
-                        "sandbox_seconds": 120},
-            "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"]}
+                        "sandbox_seconds": 120, "react_turns": 6, "tool_output_chars": 4000},
+            "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],
+            "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3}}
     base.update(over)
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
@@ -248,7 +249,7 @@ with tempfile.TemporaryDirectory() as tmp:
     w = World()
     st, rd, txt = go([TaskSpec("t1", "g", "p", "yes", verify_argv=V), TaskSpec("t2", "g", "p2", "yes", verify_argv=V)],
                      w.registry(), c=cfg_at(T, budgets={"model_calls": 1, "forgery_retries": 0, "wall_seconds": 9,
-                                                         "tasks": 1, "sandbox_seconds": 9}))
+                                                         "tasks": 1, "sandbox_seconds": 9, "react_turns": 6, "tool_output_chars": 4000}))
     ok(st == "FAILED" and "budget_tasks" in txt and w.calls == ["p"], "예산 1 이면 둘째는 안 보내고 FAILED(budget_tasks)")
 
     print("[E.4] 사슬에서도 로깅 실패는 LOGGING_FAILURE")
