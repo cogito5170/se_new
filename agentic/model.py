@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import json
 import sys
 import time
 from dataclasses import dataclass
@@ -42,6 +43,25 @@ class ModelResult:
     reported: "str | None"
     identity: str            # verified | unreported
     event_id: str
+
+
+@dataclass
+class TurnResult:
+    parts: list              # [{"text"} | {"function_call": {"name", "args"}}]
+    reported: "str | None"
+    identity: str
+    event_id: str
+
+
+def _flatten(contents: list, system: str) -> str:
+    out = [system] if system else []
+    for c in contents:
+        for p in c.get("parts", []):
+            if "text" in p:
+                out.append(p["text"])
+            elif "functionResponse" in p:
+                out.append("[tool result] " + json.dumps(p["functionResponse"], ensure_ascii=False))
+    return "\n\n".join(out)
 
 
 def identity_of(configured: str, reported: "str | None") -> str:
@@ -81,6 +101,13 @@ class FixedModel:
             raise BudgetExhausted("budget_wall_seconds")
 
     def call(self, prompt: str) -> ModelResult:
+        r = self.turn([{"role": "user", "parts": [{"text": prompt}]}], [])
+        return ModelResult("".join(p.get("text", "") for p in r.parts), r.reported, r.identity, r.event_id)
+
+    def turn(self, contents: list, declarations: list, system: str = "") -> "TurnResult":
+        """한 바퀴의 모델 호출. 함수 선언을 주면 Gemini 가 함수 호출 조각을 돌려줄 수 있다.
+        클라이언트가 `invoke_tools` 를 못 하면(글만 받는 옛 꼴 · 시험 가짜) 대화를 글로 펴서 `invoke` 로 부른다 --
+        그때는 함수 호출이 나올 수 없고, 원장에 `tools_offered: 0` 으로 남는다."""
         keys = self._keys if self._keys is not None else _default_keys()
         if not keys:
             raise Blocked("no_api_key")
@@ -89,10 +116,17 @@ class FixedModel:
         for name, key in keys:
             self._check_budget()
             self.calls += 1
-            self.ledger.emit("MODEL_CALL_START", "code", {"model": model, "key_name": name,
-                                                          "call_no": self.calls})
+            client = self.factory(model, key)
+            native = hasattr(client, "invoke_tools")
+            self.ledger.emit("MODEL_CALL_START", "code", {"model": model, "key_name": name, "call_no": self.calls,
+                                                          "tools_offered": len(declarations) if native else 0})
             try:
-                reply = self.factory(model, key).invoke(prompt)
+                if native:
+                    reply = client.invoke_tools(contents, declarations, system)
+                    parts = list(reply.parts)
+                else:
+                    reply = client.invoke(_flatten(contents, system))
+                    parts = [{"text": reply.content or ""}]
             except Exception as e:                       # noqa: BLE001 -- 분류해서 원장에 남긴다
                 status = getattr(e, "status", None)
                 ename = getattr(e, "name", type(e).__name__)
@@ -103,13 +137,14 @@ class FixedModel:
                 continue                                 # 같은 모델, 다음 키. 다른 모델은 없다
             reported = getattr(reply, "model_version", None)
             ident = identity_of(model, reported)
-            self.ledger.emit("MODEL_CALL_END", "code", {"result": "ok", "key_name": name,
-                                                        "chars": len(reply.content or "")})
+            text_len = sum(len(p.get("text", "")) for p in parts)
+            self.ledger.emit("MODEL_CALL_END", "code", {"result": "ok", "key_name": name, "chars": text_len,
+                                                        "function_calls": sum("function_call" in p for p in parts)})
             eid = self.ledger.emit("MODEL_IDENTITY", "code", {
                 "configured": model, "reported": reported, "status": ident})
             if ident == "mismatch":
-                self.sink.write("model_text_discarded(mismatch)", reply.content or "")
+                self.sink.write("model_text_discarded(mismatch)", json.dumps(parts, ensure_ascii=False))
                 raise Blocked("model_mismatch")
-            return ModelResult(reply.content or "", reported, ident, eid)
+            return TurnResult(parts, reported, ident, eid)
         self.sink.write("model_unavailable", f"keys tried: {len(keys)} · last: {last}")
         raise Blocked("model_unavailable")

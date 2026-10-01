@@ -73,8 +73,9 @@ class FakeFactory:
 def cfg_file(d, **over):
     base = {"model": MODEL, "model_fallback": False,
             "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20,
-                        "sandbox_seconds": 60},
-            "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"]}
+                        "sandbox_seconds": 60, "react_turns": 6, "tool_output_chars": 4000},
+            "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],
+            "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3}}
     base.update(over)
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
@@ -94,7 +95,7 @@ with tempfile.TemporaryDirectory() as tmp:
                      ({"models": [MODEL, "x"]}, "forbidden_key:models"),
                      ({"model": ""}, "model_missing"),
                      ({"budgets": {"model_calls": True, "forgery_retries": 1, "wall_seconds": 9, "tasks": 1,
-                                  "sandbox_seconds": 1}},
+                                  "sandbox_seconds": 1, "react_turns": 1, "tool_output_chars": 1}},
                       "budget_invalid:model_calls"),
                      ({"mandatory_checks": []}, "mandatory_checks_must_include_sandbox"),
                      ({"mandatory_checks": ["lint"]}, "mandatory_checks_must_include_sandbox"),
@@ -144,9 +145,16 @@ with tempfile.TemporaryDirectory() as tmp:
     fac = FakeFactory(("ok", FORGED, MODEL), ("ok", FORGED, MODEL))
     st, rd, txt = run("q", cfg, root=T, keys=KEYS, client_factory=fac, run_id="forged")
     ok(st == "NEEDS_REVIEW", "사용자가 받은 그 답을 두 번 받으면 NEEDS_REVIEW(채택 안 함)")
-    for w in ("NO_LOOP_DETECTED", "A_TO_B", "0.46.0", "Industrial"):
+    for w in ("A_TO_B", "0.46.0", "Industrial", "Log:"):
         ok(w not in txt, f"화면에 {w!r} 가 안 나온다")
-    ok("루프: UNKNOWN" in txt, "루프 칸은 UNKNOWN (탐지기가 없다)")
+    # 4단계부터 탐지기가 있다 -- 루프 칸은 **코드의 평가**(LOOP_EVAL, 행위자 code)에서만 나온다.
+    # 모델이 쓴 'NO_LOOP_DETECTED' 는 그 칸 말고 어디에도 안 나와야 한다
+    evs_f = read_events(rd)
+    le = [e for e in evs_f if e["type"] == "LOOP_EVAL"]
+    ok(len(le) == 2 and all(e["actor"] == "code" for e in le), "루프 평가는 코드가 바퀴마다 했다(2회)")
+    loop_line = [l for l in txt.splitlines() if l.startswith("루프:")]
+    ok(loop_line == ["루프: NO_LOOP_DETECTED · 탐지기 2회 평가"], f"루프 칸은 탐지기의 평가 ({loop_line})")
+    ok(txt.count("NO_LOOP_DETECTED") == 1, "그 낱말은 루프 칸 한 번뿐 -- 모델 글에서 온 것은 없다")
     ok("Gate01: 평가 안 함" in txt, "Gate01 칸은 '평가 안 함' -- TRUE 가 아니다")
     ok("MCP: protocol 기록 없음 · sdk 기록 없음 · server 기록 없음" in txt, "MCP 칸은 세 갈래 다 기록 없음")
     forg = [e for e in read_events(rd) if e["type"] == "MODEL_FLAG_FORGERY"]
@@ -165,7 +173,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     fac = FakeFactory(("ok", FORGED, MODEL), ("ok", FORGED, MODEL))
     c_small = C.load(cfg_file(T, budgets={"model_calls": 1, "forgery_retries": 1, "wall_seconds": 180,
-                                           "tasks": 20, "sandbox_seconds": 60}))
+                                           "tasks": 20, "sandbox_seconds": 60, "react_turns": 6, "tool_output_chars": 4000}))
     st, _, txt = run("q", c_small, root=T, keys=KEYS, client_factory=fac, run_id="budget")
     ok(st == "FAILED" and "budget_model_calls" in txt, "재질문도 예산에서 -- 호출 예산 1 이면 FAILED(budget_model_calls)")
 
