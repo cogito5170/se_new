@@ -262,10 +262,15 @@ def _캐시뿌리() -> Path:
 
 
 def _캐시자리(spec: str) -> Path:
+    """배포 하나에 자리 하나 -- **파이썬 버전 · 아키텍처마다 따로.** 실측(2026-10-02, macOS): 바이너리 패키지
+    (pydantic_core 등)를 다른 파이썬이 깐 자리에서 읽으면 `No module named ..._pydantic_core` 로 깨진다.
+    이름만으로 나누면 파이썬을 올린 뒤에도 옛 자리를 '이미 깔렸다' 로 다시 쓴다."""
     import hashlib
+    import platform
     import re
     slug = re.sub(r"[^A-Za-z0-9._-]+", "_", spec)[:40]
-    return _캐시뿌리() / f"{slug}-{hashlib.sha256(spec.encode()).hexdigest()[:8]}"
+    tag = f"{sys.implementation.cache_tag}-{platform.machine() or 'na'}"
+    return _캐시뿌리() / f"{slug}-{tag}-{hashlib.sha256(spec.encode()).hexdigest()[:8]}"
 
 
 def 새의존성깔기(tmp: Path, env: dict, 초: int = _의존성_초) -> str:

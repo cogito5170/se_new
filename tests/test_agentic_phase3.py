@@ -133,7 +133,8 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(any(x.startswith(w) for x in rj.get(n, [])), f"{n}: {w}")
     ran = sorted(a[4] for a in calls)
     ok(ran == ["boom", "good", "nosb"], f"sandbox 탐침은 앞 검사를 통과한 후보에서만 돌았다 ({ran})")
-    ok(calls[0][:4] == ["python3", "-m", "agentic.tools", "--probe"], "탐침은 sandbox 안의 `agentic.tools --probe`")
+    ok(calls[0][:4] == [sys.executable, "-m", "agentic.tools", "--probe"],
+       "탐침은 sandbox 안의 `agentic.tools --probe` -- 지금 파이썬으로(문자 그대로 python3 가 아니다)")
     evs = read_events(T / "reg")
     ok(sum(e["type"] == "TOOL_REGISTERED" for e in evs) == 1 and sum(e["type"] == "TOOL_REJECTED" for e in evs) == 7,
        "원장에 등록 1 · 거절 7 -- 하나도 말 없이 빠지지 않는다")

@@ -85,7 +85,11 @@ def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, r
         out = run(_n, dict(inputs))
         out_box["out"] = out
         if isinstance(out, dict) and isinstance(out.get("sandbox"), dict):
-            L.emit("SANDBOX_EXEC", "executor", {"tool": _n, **out["sandbox"]})
+            err = None if out.get("ok") else str(out.get("error", ""))[:200]
+            L.emit("SANDBOX_EXEC", "executor", {"tool": _n, **out["sandbox"], "error": err})
+        if isinstance(out, dict) and not out.get("ok"):
+            # 실패 사유 원문은 진단 싱크로(E.1 · E.2). 첫 판은 이것이 없어 macOS 의 ImportError 가 아무 데도 안 남았다
+            sink.write(f"tool_error:{_n}", f"{out.get('error', '')}\n{out.get('stderr_tail', '')}")
         if isinstance(out, dict) and isinstance(out.get("mcp"), dict):
             # 정책 A.4: 서버가 **이번 연결에서** 말한 버전 셋을 따로 -- 등록 때 값이 아니라
             L.emit("MCP_VERSION", "executor", {**out["mcp"], "tool": _n, "phase": "call"})
@@ -97,7 +101,7 @@ def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, r
     reg = Registry({f"tool:{name}": Action(ent["kind"], act)}, {"tool_ok": tool_ok})
     spec = TaskSpec(name=f"tool:{name}", goal=goal[:200], primary=f"tool:{name}", post="tool_ok",
                     inputs=args, permissions=(ent["kind"],),
-                    verify_argv=("python3", "-m", "agentic.tools", "--verify", name), event=event)
+                    verify_argv=(TL.PY, "-m", "agentic.tools", "--verify", name), event=event)
     st, reason, summary = chain_in([spec], reg, cfg, checks if checks is not None else {"sandbox": G.sandbox_check},
                                    L, sink, runs_base, run_id, run_dir)
     out = out_box.get("out")
