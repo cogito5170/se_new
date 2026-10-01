@@ -90,20 +90,28 @@ def run_chain(specs, reg, cfg=None, root=None, run_id=None, checks=None):
     try:
         L = Ledger(run_dir, run_id)
         sink = DiagnosticSink(L)
-        store = IdemStore(base)
         L.emit("RUN_START", "code", {"config_sha256": cfg.sha256, "model": cfg.model,
                                      "head_sha": _head_sha(), "sandbox": cfg.sandbox})
         reg_hash = reg.hash()
         L.emit("CHAIN_START", "code", {"tasks": len(specs), "registry_sha256": reg_hash,
                                        "mandatory_checks": list(cfg.mandatory_checks)})
-        state_name = _chain(specs, reg, reg_hash, cfg, checks, L, sink, store, run_id, run_dir)
+        st, reason, summary = chain_in(specs, reg, cfg, checks, L, sink, base, run_id, run_dir, reg_hash)
+        L.terminal(st, reason, summary)
+        state_name = st
     except LoggingFailure as e:
         return "LOGGING_FAILURE", run_dir, (f"상태: LOGGING_FAILURE ({e}) -- 원장을 쓰지 못해 이 사슬은 "
                                             f"검사할 수 없다.\n원장 자리: {run_dir}")
     return state_name, run_dir, render(read_events(run_dir), run_dir)
 
 
-def _chain(specs, reg, reg_hash, cfg, checks, L, sink, store, run_id, run_dir) -> str:
+def chain_in(specs, reg, cfg, checks, L, sink, runs_base, run_id, run_dir, reg_hash=None) -> tuple:
+    """이미 열린 원장 안에서 사슬을 돈다. **종료 사건은 안 쓴다** -- (상태, 사유, 요약) 을 돌려주고
+    부르는 쪽이 끝낸다(제어부는 그 사이에 도구 출력을 답으로 채택해야 한다)."""
+    reg_hash = reg_hash or reg.hash()
+    return _chain(specs, reg, reg_hash, cfg, checks, L, sink, IdemStore(runs_base), run_id, run_dir)
+
+
+def _chain(specs, reg, reg_hash, cfg, checks, L, sink, store, run_id, run_dir) -> tuple:
     ex = G.Executor(reg, L, sink)
     state: dict = {}
     seen: dict = {}
@@ -172,10 +180,8 @@ def _chain(specs, reg, reg_hash, cfg, checks, L, sink, store, run_id, run_dir) -
             stop = (_OUTCOME[d.decision], d.reason)
 
     if stop is None:
-        L.terminal("DONE", "chain_approved", f"작업 {done}/{len(specs)} 승인")
-        return "DONE"
-    L.terminal(stop[0], stop[1], f"작업 {done}/{len(specs)} 승인 뒤 멈춤")
-    return stop[0]
+        return "DONE", "chain_approved", f"작업 {done}/{len(specs)} 승인"
+    return stop[0], stop[1], f"작업 {done}/{len(specs)} 승인 뒤 멈춤"
 
 
 # --- 데모: 저장소를 읽기만 한다. 모델 호출 없음. sandbox 검증은 진짜로 돈다 ---------------------

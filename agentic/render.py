@@ -47,9 +47,15 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
             "bypass": "앞단: '//' 로 건너뛰었다 -> 모델",
             "disabled": f"앞단: 꺼짐 ({d.get('reason')}) -> 모델",
         }.get(d.get("route"), f"앞단: {d.get('route')}"))
+    cr, cm = _last(events, "CONTROLLER_ROUTE"), _last(events, "CONTROLLER_MISS")
+    if cm:
+        out.append(f"제어부: 못 함 ({cm['data']['reason']}) -> 모델")
+    elif cr:
+        out.append(f"제어부: 등록된 도구 {cr['data']['tool']} 를 바로 실행(LLM 없는 라우팅)")
     ident = _last(events, "MODEL_IDENTITY")
     called = any(e["type"] == "MODEL_CALL_START" for e in events)
-    if not ident and not called and (not wf or wf["data"].get("route") == "small" or _last(events, "CHAIN_START")):
+    if not ident and not called and (not wf or wf["data"].get("route") == "small" or _last(events, "CHAIN_START")
+                                       or (cr and not cm)):
         conf = start["data"].get("model") if start else None
         out.append(f"모델: 설정 {conf or '기록 없음'} · 이 실행은 모델을 부르지 않았다")
     elif ident:
@@ -109,7 +115,10 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
 
     ans = _last(events, "ANSWER_ADOPTED")
     out.append("")
-    out.append("답:" if ans else "답: (채택된 답 없음)")
+    if ans and ans["data"].get("untrusted"):
+        out.append(f"답(도구 출력 · 신뢰 안 함 · {ans['data'].get('identity')}):")
+    else:
+        out.append("답:" if ans else "답: (채택된 답 없음)")
     if ans:
         out.append(ans["data"]["text"])
     return "\n".join(out)

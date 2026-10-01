@@ -1,0 +1,33 @@
+{
+ "read_file": {
+  "args": {
+   "path": "agentic/config.json",
+   "lines": 5
+  },
+  "expect": "gemini-3.1-flash-lite"
+ },
+ "spice_example": {
+  "args": {
+   "name": ""
+  },
+  "expect": "rc_lowpass"
+ },
+ "concept": {
+  "args": {
+   "name": "CTLE"
+  },
+  "expect": "CTLE"
+ },
+ "search_memory": {
+  "args": {
+   "query": "gemini"
+  },
+  "expect": "gemini"
+ },
+ "textbook": {
+  "args": {
+   "question": "CTLE peaking"
+  },
+  "expect": "Retrieved from the textbook"
+ }
+}
