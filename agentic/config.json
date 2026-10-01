@@ -15,6 +15,9 @@
     "repo_graph": true,
     "record": true
   },
+  "repair": {
+    "trip_after": 2
+  },
   "loop": {
     "same_action": 2,
     "same_failure": 2,

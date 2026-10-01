@@ -102,6 +102,15 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
             out.append(f"  작업 {t} {e['data']['name']}: 디스패치 안 함 -- {e['data']['reason']}")
         elif e["type"] == "CHECK_EVAL" and e["data"]["result"] != "TRUE":
             out.append(f"  작업 {t}: 필수 검사 {e['data']['check']} = {e['data']['result']} ({e['data']['note']})")
+    sx = [e for e in events if e["type"] == "SANDBOX_EXEC"]
+    if sx:
+        out.append(f"sandbox: 도구 실행 {len(sx)}번 · 판 {sx[-1]['data'].get('tree') or '?'}")
+    for e in events:
+        if e["type"] == "TOOL_QUARANTINED":
+            out.append(f"격리: {e['data']['tool']} -- 도구 탓 실패 {e['data']['trip_after']}번 이어짐 ({e['data']['reason']})")
+        elif e["type"] == "REPAIR_REQUESTED":
+            out.append(f"  수리 요청 #{e['data']['ticket']} -- 보기: python3 -m agentic.repair_queue --fix "
+                       f"{e['data']['ticket']} (고치기는 --apply 를 줄 때만)")
     mcp = _last(events, "MCP_VERSION")
     if mcp:
         d = mcp["data"]

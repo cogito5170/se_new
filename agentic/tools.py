@@ -21,6 +21,7 @@
     python3 -m agentic.tools --declarations    # 등록된 도구의 functionDeclarations(JSON)
     python3 -m agentic.tools --probe <이름> '<인자 JSON>' '<기대 글자>'   # sandbox 안에서 쓰는 것
     python3 -m agentic.tools --verify <이름>   # 이 나무의 원문 해시가 등록과 같은가(제어부의 필수 검사)
+    python3 -m agentic.tools --exec <이름> '<인자 JSON>'   # 도구 하나를 실행(sandbox 안에서 쓰는 것). 0 = 성공
 """
 from __future__ import annotations
 
@@ -156,6 +157,52 @@ def execute(name: str, args: dict, timeout: int = 120) -> dict:
     return se_router.execute(name, args, timeout=timeout)
 
 
+INFRA_ERRORS = ("sandbox_not_run", "timeout", "no_output", "server_unavailable", "protocol_unsupported",
+                "server_closed", "quarantined", "denied", "unregistered")
+
+
+def sandbox_execute(name: str, args: dict, timeout: int = 180, runner=None) -> dict:
+    """정책 C.1 · D.4: **도구 실행 자체를** sandbox(HEAD 워크트리 · 고삐 · 비밀 변수 없음)에서.
+    안에서 `agentic.tools --exec` 가 LLM 차단 실행기로 그 도구를 돌리고 JSON 한 줄을 낸다.
+
+    결과는 실행기 꼴 그대로에 `sandbox` 를 더한다. 판을 못 깔았으면 `sandbox_not_run`(인프라 -- 도구 탓이 아니다).
+    **도구는 커밋된 나무를 본다** -- 작업 트리에만 있는 파일은 안 보인다(정책 B.4 · B.5: 기존 클론을 안 쓴다)."""
+    if runner is None:
+        from sandbox.run import 실행 as runner
+    r = runner(["python3", "-m", "agentic.tools", "--exec", name, json.dumps(args, ensure_ascii=False)], 초=timeout)
+    meta = {"exit": r.get("끝값"), "ran": bool(r.get("돌았나")), "seconds": r.get("걸린초"),
+            "tree": (r.get("판") or "")[:80]}
+    if not r.get("돌았나"):
+        return {"ok": False, "error": f"sandbox_not_run:{str(r.get('메모', ''))[:60]}", "llm_attempts": 0,
+                "sandbox": meta}
+    line = next((l for l in reversed((r.get("stdout") or "").splitlines()) if l.startswith('{"exec":')), None)
+    if line is None:
+        return {"ok": False, "error": f"no_output:exit={r.get('끝값')}", "llm_attempts": 0, "sandbox": meta,
+                "stderr_tail": (r.get("stderr") or "")[-300:]}
+    try:
+        out = json.loads(line)["exec"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return {"ok": False, "error": "no_output:bad_json", "llm_attempts": 0, "sandbox": meta}
+    if not isinstance(out, dict):
+        return {"ok": False, "error": "no_output:not_object", "llm_attempts": 0, "sandbox": meta}
+    out["sandbox"] = meta
+    return out
+
+
+def broken_reason(out) -> "str | None":
+    """이 실패가 **도구 탓**인가(회로 차단기가 셀 것인가). 인프라 실패(판 · 시간 · 서버 연결)는 None."""
+    if not isinstance(out, dict):
+        return "output_not_object"
+    if out.get("llm_attempts"):
+        return f"llm_attempts:{out['llm_attempts']}"
+    if out.get("ok") is True:
+        return None
+    err = str(out.get("error", ""))
+    if err.startswith(INFRA_ERRORS):
+        return None
+    return err[:200] or "not_ok"
+
+
 def probe(name: str, args: dict, expect: str, executor=execute) -> list:
     out = executor(name, args)
     why = check_output(out)
@@ -219,6 +266,13 @@ def _main_probe(name, args_json, expect) -> int:
     return 0 if not why else 1
 
 
+def _main_exec(name, args_json) -> int:
+    """sandbox 안에서 쓰는 것. 실행기 결과를 `{"exec": ...}` 한 줄로. 끝값 0 = 출력 꼴이 맞고 ok · LLM 시도 0."""
+    out = execute(name, json.loads(args_json))
+    print(json.dumps({"exec": out}, ensure_ascii=False))
+    return 0 if check_output(out) == [] else 1
+
+
 def _main_verify(name) -> int:
     ent = load_registry().get("tools", {}).get(name)
     now = source_sha(name)
@@ -262,11 +316,14 @@ def main(argv=None) -> int:
     g.add_argument("--declarations", action="store_true")
     g.add_argument("--probe", nargs=3, metavar=("NAME", "ARGS_JSON", "EXPECT"))
     g.add_argument("--verify", metavar="NAME")
+    g.add_argument("--exec", nargs=2, metavar=("NAME", "ARGS_JSON"))
     a = ap.parse_args(argv)
     if a.probe:
         return _main_probe(*a.probe)
     if a.verify:
         return _main_verify(a.verify)
+    if a.exec:
+        return _main_exec(*a.exec)
     if a.declarations:
         print(json.dumps([e["declaration"] for e in load_registry()["tools"].values()], ensure_ascii=False, indent=1))
         return 0

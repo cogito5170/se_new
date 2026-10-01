@@ -43,7 +43,7 @@ def cfg_at(d, budgets=None, loop=None, rag=None):
     base = {"model": MODEL, "model_fallback": False, "budgets": b, "sandbox": "sandbox/",
             "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"], "front": {"walp": False},
             "loop": loop or {"same_action": 2, "same_failure": 2, "no_progress": 3},
-            "rag": rag or {"k": 3, "repo_graph": False, "record": False}}
+            "rag": rag or {"k": 3, "repo_graph": False, "record": False}, "repair": {"trip_after": 2}}
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
     return C.load(p)

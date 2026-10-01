@@ -45,7 +45,7 @@ def try_tools(text, cfg, L, sink, runs_base, run_id, run_dir,
     if status != "TOOL":
         return miss(f"route:{status}:{r.get('why')}")
     args = r.get("args") or {}
-    why = precheck(name, args, registry, src_sha)
+    why = precheck(name, args, registry, src_sha, runs_base)
     if why:
         return miss(why)
     st, reason, summary, out = run_registered(name, args, text, cfg, L, sink, runs_base, run_id, run_dir,
@@ -53,8 +53,9 @@ def try_tools(text, cfg, L, sink, runs_base, run_id, run_dir,
     return st, reason, summary, name, out
 
 
-def precheck(name, args, registry, src_sha=TL.source_sha) -> "str | None":
-    """디스패치 전의 거절 사유. None 이면 보낼 수 있다. 제어부와 사고부가 같은 것을 쓴다."""
+def precheck(name, args, registry, src_sha=TL.source_sha, runs_base=None) -> "str | None":
+    """디스패치 전의 거절 사유. None 이면 보낼 수 있다. 제어부와 사고부가 같은 것을 쓴다.
+    `runs_base` 를 주면 회로 차단기도 본다(열려 있으면 quarantined:breaker_open)."""
     ent = registry.get("tools", {}).get(name)
     if ent is None:
         why = registry.get("rejected", {}).get(name)
@@ -64,6 +65,10 @@ def precheck(name, args, registry, src_sha=TL.source_sha) -> "str | None":
         return "args_invalid:" + ",".join(bad[:3])
     if src_sha(name) != ent.get("source_sha"):
         return "quarantined:source_changed"
+    if runs_base is not None:
+        from agentic import breaker as BR
+        if BR.state(runs_base, name, ent.get("source_sha"))["open"]:
+            return "quarantined:breaker_open"
     return None
 
 
@@ -73,11 +78,14 @@ def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, r
     **precheck 를 먼저 통과한 것만** 여기 온다."""
     ent = registry["tools"][name]
     out_box = {}
-    run = executor or TL.execute
+    # 정책 C.1 · D.4: 기본 실행은 sandbox 안에서(HEAD 워크트리 · 고삐 · 비밀 없음 · LLM 차단)
+    run = executor or (lambda n, a: TL.sandbox_execute(n, a, timeout=cfg.budgets["sandbox_seconds"]))
 
     def act(inputs, state, _n=name):
         out = run(_n, dict(inputs))
         out_box["out"] = out
+        if isinstance(out, dict) and isinstance(out.get("sandbox"), dict):
+            L.emit("SANDBOX_EXEC", "executor", {"tool": _n, **out["sandbox"]})
         if isinstance(out, dict) and isinstance(out.get("mcp"), dict):
             # 정책 A.4: 서버가 **이번 연결에서** 말한 버전 셋을 따로 -- 등록 때 값이 아니라
             L.emit("MCP_VERSION", "executor", {**out["mcp"], "tool": _n, "phase": "call"})
@@ -93,6 +101,15 @@ def run_registered(name, args, goal, cfg, L, sink, runs_base, run_id, run_dir, r
     st, reason, summary = chain_in([spec], reg, cfg, checks if checks is not None else {"sandbox": G.sandbox_check},
                                    L, sink, runs_base, run_id, run_dir)
     out = out_box.get("out")
+    if out is not None:
+        from agentic import breaker as BR
+        broken = TL.broken_reason(out)
+        if BR.note(runs_base, name, ent.get("source_sha"), broken, run_id, cfg.repair["trip_after"]):
+            L.emit("TOOL_QUARANTINED", "code", {"tool": name, "reason": broken,
+                                                "trip_after": cfg.repair["trip_after"]})
+            t = BR.request_repair(runs_base, name, ent.get("source_sha"), args, broken, run_id)
+            L.emit("REPAIR_REQUESTED", "code", {"tool": name, "ticket": t["id"], "reproduce": t["reproduce"],
+                                                "hypotheses": len(t["diagnosis"]["hypotheses"])})
     text_out = out.get("result") if st == "DONE" and isinstance(out, dict) else None
     if st == "DONE" and not isinstance(text_out, str):
         return "FAILED", "tool_output_missing", "승인됐는데 출력이 없다", None

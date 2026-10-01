@@ -81,7 +81,7 @@ def cfg_at(d, rag=None):
                         "sandbox_seconds": 60, "react_turns": 6, "tool_output_chars": 4000},
             "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],
             "front": {"walp": False}, "loop": {"same_action": 2, "same_failure": 2, "no_progress": 3},
-            "rag": rag or {"k": 3, "repo_graph": False, "record": True}}
+            "rag": rag or {"k": 3, "repo_graph": False, "record": True}, "repair": {"trip_after": 2}}
     p = Path(d) / f"cfg{len(list(Path(d).glob('cfg*')))}.json"
     p.write_text(json.dumps(base))
     return C.load(p)

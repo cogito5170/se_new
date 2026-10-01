@@ -86,7 +86,8 @@ def think(prompt, cfg, L, sink, M, runs_base, run_id, run_dir, registry, executo
                                                          "args_sha": _sha(json.dumps(args, sort_keys=True,
                                                                                      ensure_ascii=False, default=str))},
                            [r.event_id])
-                    why = (K.precheck(name, args, registry, src_sha) if isinstance(args, dict) else "args_not_object")
+                    why = (K.precheck(name, args, registry, src_sha, runs_base) if isinstance(args, dict)
+                           else "args_not_object")
                     if not why and det.would_repeat([name, args]):
                         why = "repeat_action"          # 같은 (도구, 인자)를 또 -- 돌리기 전에 거절
                     if why:

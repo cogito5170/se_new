@@ -14,6 +14,7 @@
   · `front.walp` 가 켜졌는데 판정기 파일의 sha256 이 없음
   · `loop` 문턱(same_action · same_failure · no_progress)이 2 이상의 정수가 아님
   · `rag` 가 {k: 0~10, repo_graph: bool, record: bool} 꼴이 아님
+  · `repair.trip_after`(회로 차단 문턱)가 1 이상의 정수가 아님
 """
 from __future__ import annotations
 
@@ -46,6 +47,7 @@ class Config:
     front: dict
     loop: dict
     rag: dict
+    repair: dict
     sha256: str
     path: str
 
@@ -99,7 +101,11 @@ def load(path: "str | Path | None" = None) -> Config:
             or not 0 <= rg["k"] <= 10 or not isinstance(rg.get("repo_graph"), bool)
             or not isinstance(rg.get("record"), bool)):
         raise ConfigError("rag_invalid")
+    rp = d.get("repair")
+    if (not isinstance(rp, dict) or not isinstance(rp.get("trip_after"), int) or isinstance(rp.get("trip_after"), bool)
+            or rp["trip_after"] < 1):
+        raise ConfigError("repair_invalid")
     return Config(model=model.strip(), budgets=dict(b), sandbox=str(d.get("sandbox", "")),
                   mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), front=dict(front), loop=dict(lp),
-                  rag=dict(rg),
+                  rag=dict(rg), repair=dict(rp),
                   sha256=hashlib.sha256(raw).hexdigest(), path=str(p))
