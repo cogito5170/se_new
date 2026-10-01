@@ -38,6 +38,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 REGISTRY_PATH = ROOT / "agentic" / "tool_registry.json"
+# sandbox 안에서 띄울 파이썬. **문자 그대로 "python3" 를 쓰지 않는다** -- 실측(2026-10-02, macOS): sandbox 는 의존성을
+# 지금 파이썬(가상환경 3.12)으로 캐시에 까는데, 명령이 "python3"(시스템 3.9)로 떠서 바이너리 패키지가
+# `No module named 'pydantic_core._pydantic_core'` 로 깨졌다. 캐시를 깐 파이썬과 도는 파이썬이 같아야 한다.
+PY = sys.executable or "python3"
 PROBES_PATH = ROOT / "agentic" / "tool_probes.json"
 
 TYPE_MAP = {"str": "STRING", "int": "INTEGER", "float": "NUMBER", "bool": "BOOLEAN"}
@@ -169,7 +173,7 @@ def sandbox_execute(name: str, args: dict, timeout: int = 180, runner=None) -> d
     **도구는 커밋된 나무를 본다** -- 작업 트리에만 있는 파일은 안 보인다(정책 B.4 · B.5: 기존 클론을 안 쓴다)."""
     if runner is None:
         from sandbox.run import 실행 as runner
-    r = runner(["python3", "-m", "agentic.tools", "--exec", name, json.dumps(args, ensure_ascii=False)], 초=timeout)
+    r = runner([PY, "-m", "agentic.tools", "--exec", name, json.dumps(args, ensure_ascii=False)], 초=timeout)
     meta = {"exit": r.get("끝값"), "ran": bool(r.get("돌았나")), "seconds": r.get("걸린초"),
             "tree": (r.get("판") or "")[:80]}
     if not r.get("돌았나"):
@@ -239,7 +243,7 @@ def register(cfg, L, sink, probes: dict, cat=None, runner=None, head_sha=None,
         if not why and s_sha is None:
             why.append("no_source")
         if not why:
-            r = runner(["python3", "-m", "agentic.tools", "--probe", t.name,
+            r = runner([PY, "-m", "agentic.tools", "--probe", t.name,
                         json.dumps(pr["args"], ensure_ascii=False), pr["expect"]],
                        초=cfg.budgets["sandbox_seconds"])
             sink.write(f"probe:{t.name}", f"exit={r.get('끝값')}\n{r.get('stdout', '')}\n{r.get('stderr', '')}")

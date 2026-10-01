@@ -210,10 +210,10 @@ def _demo():
     specs = [
         TaskSpec("config_hash", "설정 파일 해시가 로더가 본 해시와 같은가", "config_hash", "hash_matches_loaded",
                  inputs={"path": "agentic/config.json"},
-                 verify_argv=("python3", "-c", "import agentic.config as c; c.load()")),
+                 verify_argv=(sys.executable, "-c", "import agentic.config as c; c.load()")),
         TaskSpec("design_lines", "설계 문서가 비어 있지 않은가", "count_lines", "has_lines",
                  inputs={"path": "agentic/설계.md"},
-                 verify_argv=("python3", "tests/test_agentic_phase1.py")),
+                 verify_argv=(sys.executable, "tests/test_agentic_phase1.py")),
     ]
     return specs, reg
 

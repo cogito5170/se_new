@@ -109,6 +109,10 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(r["끝값"] == 0 and "오염" in r["stdout"], "sandbox 안에서는 쓰기가 됐다")
     ok(not (ROOT / "agentic" / "_written_in_sandbox.txt").exists() and git_status() == before,
        "그 쓰기는 작업 트리에 안 닿았다")
+    seen_argv = []
+    TL.sandbox_execute("read_file", {"path": "a"}, runner=lambda argv, 초: (seen_argv.append(argv), {"끝값": 3, "돌았나": False})[1])
+    ok(seen_argv and seen_argv[0][0] == sys.executable,
+       "sandbox 안의 명령은 지금 파이썬으로 띄운다 -- 캐시를 깐 파이썬과 같아야 한다(macOS 실측: python3=3.9 로 떠서 깨졌다)")
     bad = TL.sandbox_execute("read_file", {"path": "a"}, runner=lambda argv, 초: {"끝값": 3, "돌았나": False, "메모": "판 못 깜"})
     ok(bad["error"].startswith("sandbox_not_run") and TL.broken_reason(bad) is None,
        "판을 못 깔면 sandbox_not_run -- 인프라라 차단기가 안 센다")
@@ -140,7 +144,10 @@ with tempfile.TemporaryDirectory() as tmp:
     st, rd, txt, f = go(ex_of(infra), root)
     st, rd, txt, f = go(ex_of(infra), root)
     ok(BR.state(base, "read_file", "S1") == {"open": False, "fails": 0}, "시간 초과 둘은 안 센다")
-    st, rd, txt, f = go(ex_of(broken), root)
+    st, rd, txt, f = go(lambda n, a: {**broken, "sandbox": {"exit": 1, "ran": True, "seconds": 0.1, "tree": "HEAD x"}}, root)
+    sxe = [e for e in read_events(rd) if e["type"] == "SANDBOX_EXEC"]
+    ok(sxe and sxe[0]["data"]["error"] == "ValueError: 깨진 도구" and "깨진 도구" in (rd / "diag.log").read_text(),
+       "도구 실패 사유가 원장(SANDBOX_EXEC.error)과 진단 싱크에 남는다")
     ok(st == "RED_RED_STOP" and BR.state(base, "read_file", "S1")["fails"] == 1
        and not any(e["type"] == "TOOL_QUARANTINED" for e in read_events(rd)), "도구 탓 실패 1 -- 아직 격리 안 함")
     st, rd, txt, f = go(ex_of({"ok": True, "result": "x", "llm_attempts": 0}), root)
@@ -153,7 +160,8 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(q and rr and BR.state(base, "read_file", "S1")["open"], "이어서 2번 -> 격리 + 수리 요청")
     ok("격리: read_file" in txt and "repair_queue --fix 1" in txt, "화면에 격리 · 수리 요청 · 보는 법")
     t = BR.tickets(base)[0]
-    ok(t["reproduce"] == "python3 -m agentic.tools --exec read_file '{\"path\": \"agentic/config.json\"}'"
+    import shlex
+    ok(t["reproduce"] == f"{shlex.quote(sys.executable)} -m agentic.tools --exec read_file '{{\"path\": \"agentic/config.json\"}}'"
        and t["error"] == "ValueError: 깨진 도구" and "hypotheses" in t["diagnosis"], "요청: 재현 명령 · 증상 · 모델 없는 진단")
     n0 = len(calls)
     st, rd, txt, f = go(ex_of(broken), root)
@@ -180,7 +188,7 @@ with tempfile.TemporaryDirectory() as tmp:
        "--apply 없으면 계획만 -- fixer 안 불림")
     fac = Fac()
     code, text = RQ.fix(1, apply=True, cfg=cfg, root=root, keys=[("K", "k")], client_factory=fac, fixer=fixer)
-    ok(code == 0 and used and used[0][0].startswith("python3 -m agentic.tools --exec read_file"),
+    ok(code == 0 and used and used[0][0].startswith(f"{shlex.quote(sys.executable)} -m agentic.tools --exec read_file"),
        "--apply 면 재현 명령 · 증상으로 repair 를 돌렸다")
     ok(fac.seen == [MODEL], f"제안기는 설정의 모델 하나만 불렀다 ({fac.seen})")
     ok("--register" in text and BR.tickets(base)[0]["status"] == "fixed_pending_register",
@@ -196,6 +204,13 @@ with tempfile.TemporaryDirectory() as tmp:
         ok(False, "trip_after 0 은 거절")
     except C.ConfigError as e:
         ok(str(e) == "repair_invalid", "trip_after 0 은 거절")
+
+print("[sandbox] 의존성 캐시는 파이썬 버전 · 아키텍처마다 따로")
+import platform  # noqa: E402
+from sandbox import run as SR  # noqa: E402
+d = SR._캐시자리("pydantic>=2")
+ok(sys.implementation.cache_tag in d.name and (platform.machine() or "na") in d.name,
+   f"자리 이름에 {sys.implementation.cache_tag}-{platform.machine()} -- 다른 파이썬이 깐 바이너리를 다시 쓰지 않는다 ({d.name})")
 
 print()
 if fails:

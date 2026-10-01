@@ -86,7 +86,9 @@ def diagnose(error: str) -> dict:
 def request_repair(runs_base: Path, tool: str, source_sha: str, args: dict, error: str, run_id: str) -> dict:
     p = _path(runs_base, "repair_queue.jsonl")
     n = 1 + max([t.get("id", 0) for t in _lines(p)] or [0])
-    reproduce = f"python3 -m agentic.tools --exec {tool} '{json.dumps(args, ensure_ascii=False)}'"
+    import shlex
+    import sys
+    reproduce = f"{shlex.quote(sys.executable)} -m agentic.tools --exec {tool} {shlex.quote(json.dumps(args, ensure_ascii=False))}"
     t = {"id": n, "tool": tool, "source_sha": source_sha, "args": args, "error": error, "reproduce": reproduce,
          "diagnosis": diagnose(error), "status": "open", "run_id": run_id, "ts": round(time.time(), 3)}
     _append(p, t)

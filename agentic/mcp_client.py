@@ -329,7 +329,7 @@ def register(cfg, L, sink, servers: dict, runner=None, list_fn=None) -> "tuple[d
                 if not why:
                     why += [f"probe_{w}" for w in TL.check_args(decl, pr.get("args"))]
             if not why:
-                r = runner(["python3", "-m", "agentic.mcp_client", "--probe", server, t["name"],
+                r = runner([sys.executable or "python3", "-m", "agentic.mcp_client", "--probe", server, t["name"],
                             json.dumps(pr["args"], ensure_ascii=False), pr["expect"]],
                            초=cfg.budgets["sandbox_seconds"])
                 sink.write(f"probe:{gname}", f"exit={r.get('끝값')}\n{r.get('stdout', '')}\n{r.get('stderr', '')}")
