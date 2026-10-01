@@ -3,6 +3,8 @@
     python3 -m agentic.run "물음"           # 그린 글을 찍는다. 끝값 0 = DONE, 1 = 그 밖
     python3 -m agentic.render <run_dir>      # 지난 실행을 원장에서 다시 그린다
 
+맨 앞에 WALP 앞단(`agentic/front.py`)이 있다: 잡담이면 모델을 안 부르고 WALP 가 답한다. `//` 로 시작하면 건너뛴다.
+
 아직 없는 것(2단계 이후): 도구 호출 · Sequencer · Gate01 평가 · 루프 탐지기 · MCP 클라이언트.
 그래서 화면의 그 칸들은 'UNKNOWN / 평가 안 함 / 기록 없음' 으로 나온다 -- **그것이 맞는 답이다.**
 
@@ -24,6 +26,7 @@ if str(ROOT) not in sys.path:
 
 from agentic import config as C                                         # noqa: E402
 from agentic import forgery as F                                        # noqa: E402
+from agentic import front as W                                          # noqa: E402
 from agentic.ledger import DiagnosticSink, Ledger, LoggingFailure, read_events  # noqa: E402
 from agentic.model import Blocked, BudgetExhausted, FixedModel          # noqa: E402
 from agentic.render import render                                       # noqa: E402
@@ -53,7 +56,7 @@ def runs_root(root=None) -> Path:
     return Path(ledgerroot.뿌리(root, ROOT)) / "agentic" / "runs"
 
 
-def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None):
+def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None, small_talk=None):
     """(종료 상태, run_dir, 그린 글). 로깅이 죽으면 원장에서 못 그리므로 그 사실만 그린다."""
     cfg = cfg or C.load()
     run_id = run_id or time.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
@@ -63,7 +66,17 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
         sink = DiagnosticSink(L)
         L.emit("RUN_START", "code", {"config_sha256": cfg.sha256, "model": cfg.model,
                                      "head_sha": _head_sha(), "sandbox": cfg.sandbox})
-        state = _drive(prompt, cfg, L, sink, keys, client_factory)
+        fr = W.judge(prompt, cfg, small_talk)
+        fid = L.emit("WALP_FRONT", "code", {"route": fr.route, **fr.data})
+        if fr.route == "small":
+            # 잡담 -- 모델 호출 0. 답은 WALP 의 고정 문장이다(모델 글이 아니므로 위조 검사 대상이 아니다)
+            aid = L.emit("ANSWER_ADOPTED", "code", {"text": fr.reply, "identity": "walp_front"}, [fid])
+            L.terminal("DONE", "walp_front_smalltalk", f"WALP 앞단이 잡담({fr.act})으로 답했다 · 모델 호출 0", [aid])
+            state = "DONE"
+        else:
+            if fr.route == "bypass":
+                prompt = W.strip_bypass(prompt)
+            state = _drive(prompt, cfg, L, sink, keys, client_factory)
     except LoggingFailure as e:
         text = (f"상태: LOGGING_FAILURE ({e}) -- 원장을 쓰지 못해 이 실행은 검사할 수 없다.\n"
                 f"원장 자리: {run_dir}\n답: (채택된 답 없음)")
