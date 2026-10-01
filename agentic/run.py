@@ -4,6 +4,7 @@
     python3 -m agentic.render <run_dir>      # 지난 실행을 원장에서 다시 그린다
 
 맨 앞에 WALP 앞단(`agentic/front.py`)이 있다: 잡담이면 모델을 안 부르고 WALP 가 답한다. `//` 로 시작하면 건너뛴다.
+그다음 제어부(`agentic/controller.py`): 등록된 도구로 끝낼 수 있으면 모델 없이 끝낸다. 못 하면 모델로.
 
 아직 없는 것(2단계 이후): 도구 호출 · Sequencer · Gate01 평가 · 루프 탐지기 · MCP 클라이언트.
 그래서 화면의 그 칸들은 'UNKNOWN / 평가 안 함 / 기록 없음' 으로 나온다 -- **그것이 맞는 답이다.**
@@ -56,7 +57,8 @@ def runs_root(root=None) -> Path:
     return Path(ledgerroot.뿌리(root, ROOT)) / "agentic" / "runs"
 
 
-def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None, small_talk=None):
+def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None, small_talk=None,
+        controller_opts=None):
     """(종료 상태, run_dir, 그린 글). 로깅이 죽으면 원장에서 못 그리므로 그 사실만 그린다."""
     cfg = cfg or C.load()
     run_id = run_id or time.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
@@ -76,7 +78,21 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
         else:
             if fr.route == "bypass":
                 prompt = W.strip_bypass(prompt)
-            state = _drive(prompt, cfg, L, sink, keys, client_factory)
+            from agentic import controller as K          # 늦게: controller -> sequencer -> run 순환을 피한다
+            ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **(controller_opts or {}))
+            if ctl is None:
+                state = _drive(prompt, cfg, L, sink, keys, client_factory)
+            else:
+                st, reason, summary, tool, out = ctl
+                if st == "DONE":
+                    # 도구 출력은 신뢰하지 않는 데이터다(D.7) -- 답 칸에만, 그렇게 표시해서
+                    aid = L.emit("ANSWER_ADOPTED", "code", {"text": out, "identity": f"tool:{tool}",
+                                                            "untrusted": True})
+                    L.terminal("DONE", "controller_tool", f"제어부가 등록된 도구 {tool} 로 끝냈다 · 모델 호출 0",
+                               [aid])
+                else:
+                    L.terminal(st, reason, summary)
+                state = st
     except LoggingFailure as e:
         text = (f"상태: LOGGING_FAILURE ({e}) -- 원장을 쓰지 못해 이 실행은 검사할 수 없다.\n"
                 f"원장 자리: {run_dir}\n답: (채택된 답 없음)")

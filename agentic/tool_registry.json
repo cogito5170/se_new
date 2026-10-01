@@ -1,0 +1,425 @@
+{
+ "config_sha256": "cf20eb922db5148d84a441165a2b706c291f6b61c932b44958e6ea41e3409c33",
+ "head_sha": "d13f878fb5d1cb1ba1ec361a1bedd29768bb4980",
+ "rejected": {
+  "adc_sweep": [
+   "no_probe"
+  ],
+  "cmd:!search": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!walp": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!경로": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:router/call.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!계획": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!고치기": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!기억": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!논문": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!렌더": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!반례": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!소설": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!수집": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!연구": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:research/run.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!열쇠": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!자가개선": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!점검": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!조사": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:investigate/run.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!중계": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!코드화": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!평가": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "cmd:!회사": [
+   "name_invalid_for_gemini",
+   "kind_not_allowed:shell",
+   "tool_uses_llm:house/arch.py,house/discord_cmd.py,house/gen.py",
+   "source_not_bot_tools:dispatch"
+  ],
+  "codify_paper": [
+   "tool_uses_llm:relay.py,router/call.py"
+  ],
+  "create_pr": [
+   "kind_not_allowed:write",
+   "tool_uses_llm:relay.py"
+  ],
+  "delegate": [
+   "tool_uses_llm:delegate/run.py,relay.py,router/call.py"
+  ],
+  "dispatch_command": [
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py"
+  ],
+  "draw_circuit": [
+   "tool_uses_llm:imageread.py"
+  ],
+  "edit_file": [
+   "kind_not_allowed:write",
+   "tool_uses_llm:relay.py"
+  ],
+  "eq_area": [
+   "no_probe"
+  ],
+  "ip_signoff": [
+   "no_probe"
+  ],
+  "lint_rtl": [
+   "no_probe"
+  ],
+  "loss_sweep": [
+   "no_probe"
+  ],
+  "monte_carlo": [
+   "no_probe"
+  ],
+  "nn_equalizer": [
+   "no_probe"
+  ],
+  "orchestrator_resume": [
+   "no_probe"
+  ],
+  "orchestrator_solve": [
+   "no_probe"
+  ],
+  "orchestrator_status": [
+   "no_probe"
+  ],
+  "orchestrator_stop": [
+   "no_probe"
+  ],
+  "place_rtl": [
+   "no_probe"
+  ],
+  "prove_rtl": [
+   "no_probe"
+  ],
+  "quant_sweep": [
+   "no_probe"
+  ],
+  "read_image": [
+   "tool_uses_llm:imageread.py"
+  ],
+  "read_pdf": [
+   "param_name_invalid_for_gemini:모드",
+   "param_name_invalid_for_gemini:쪽",
+   "param_name_invalid_for_gemini:물음",
+   "tool_uses_llm:imageread.py"
+  ],
+  "recon_make": [
+   "param_name_invalid_for_gemini:산출물",
+   "param_name_invalid_for_gemini:대상",
+   "kind_not_allowed:shell"
+  ],
+  "recon_rover": [
+   "param_name_invalid_for_gemini:무엇",
+   "param_name_invalid_for_gemini:시나리오"
+  ],
+  "render_space": [
+   "param_name_invalid_for_gemini:대상",
+   "param_name_invalid_for_gemini:시점"
+  ],
+  "repair": [
+   "kind_not_allowed:shell",
+   "tool_uses_llm:diagnose.py,relay.py,router/call.py"
+  ],
+  "report_pdf": [
+   "param_name_invalid_for_gemini:제목",
+   "kind_not_allowed:write"
+  ],
+  "research": [
+   "tool_uses_llm:relay.py,research/run.py,router/call.py"
+  ],
+  "ruh2_battery": [
+   "param_name_invalid_for_gemini:무엇"
+  ],
+  "ruh2_make": [
+   "param_name_invalid_for_gemini:산출물",
+   "param_name_invalid_for_gemini:장면",
+   "kind_not_allowed:shell"
+  ],
+  "run_experiment": [
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py"
+  ],
+  "run_probes": [
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py"
+  ],
+  "run_rtl": [
+   "no_probe"
+  ],
+  "run_shell": [
+   "kind_not_allowed:shell",
+   "tool_uses_llm:relay.py"
+  ],
+  "run_spice": [
+   "no_probe"
+  ],
+  "save_memory": [
+   "kind_not_allowed:write"
+  ],
+  "security_audit": [
+   "tool_uses_llm:relay.py"
+  ],
+  "send_email": [
+   "kind_not_allowed:net",
+   "tool_uses_llm:relay.py"
+  ],
+  "serdes_link": [
+   "no_probe"
+  ],
+  "set_key": [
+   "kind_not_allowed:write",
+   "tool_uses_llm:relay.py"
+  ],
+  "simulate_formation": [
+   "param_name_invalid_for_gemini:메일"
+  ],
+  "simulate_inspection": [
+   "param_name_invalid_for_gemini:정책"
+  ],
+  "synth_rtl": [
+   "no_probe"
+  ],
+  "write_public_answer": [
+   "kind_not_allowed:write"
+  ]
+ },
+ "tools": {
+  "concept": {
+   "decl_sha": "8b617b874d642fad257abfa4f1b03ef7575f48843198bf4427c9d6ff3d584334",
+   "declaration": {
+    "description": "**Look up an IC design concept** — the defining equation, what it governs, and the\nexample you can actually run for it.",
+    "name": "concept",
+    "parameters": {
+     "properties": {
+      "domain": {
+       "description": "domain (기본 '')",
+       "type": "STRING"
+      },
+      "level": {
+       "description": "level (기본 '')",
+       "type": "STRING"
+      },
+      "name": {
+       "description": "name (기본 '')",
+       "type": "STRING"
+      },
+      "track": {
+       "description": "track (기본 '')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "name": "CTLE"
+    },
+    "expect": "CTLE"
+   },
+   "source_sha": "8eab9385a7e98fcf26478e4439668112658132faa7ea706d78fb94d25b6eeac7"
+  },
+  "read_file": {
+   "decl_sha": "8ea07bf724330cdfdfea743623137d109c8976a9d19ab2d6ed426751d56082bd",
+   "declaration": {
+    "description": "저장소 파일을 줄 번호를 붙여 읽는다. edit_file 의 old 를 정확히 짚으려면 실제 글자\n(들여쓰기·줄바꿈 포함)를 봐야 하므로, 고치기 전에 반드시 이걸로 그 자리를 봐라.\npath 는 저장소 기준 상대경로. start/lines 로 잘라 읽는다(한 번에 최대 400줄).\n.env 는 못 읽는다(비밀값).",
+    "name": "read_file",
+    "parameters": {
+     "properties": {
+      "lines": {
+       "description": "lines (기본 400)",
+       "type": "INTEGER"
+      },
+      "path": {
+       "description": "path",
+       "type": "STRING"
+      },
+      "start": {
+       "description": "start (기본 1)",
+       "type": "INTEGER"
+      }
+     },
+     "required": [
+      "path"
+     ],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "read",
+   "probe": {
+    "args": {
+     "lines": 5,
+     "path": "agentic/config.json"
+    },
+    "expect": "gemini-3.1-flash-lite"
+   },
+   "source_sha": "2466491cf25f988e356fd56d0dd3987b2ebf3e75e232f67612c68228cd44adfc"
+  },
+  "search_memory": {
+   "decl_sha": "259dacb9fd1f8c7dcd206178607b17234793eb85df71041e2962ecefd3d6d6b2",
+   "declaration": {
+    "description": "저장된 장기 기억에서 query와 관련된 내용을 찾는다.",
+    "name": "search_memory",
+    "parameters": {
+     "properties": {
+      "query": {
+       "description": "query",
+       "type": "STRING"
+      }
+     },
+     "required": [
+      "query"
+     ],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "read",
+   "probe": {
+    "args": {
+     "query": "gemini"
+    },
+    "expect": "gemini"
+   },
+   "source_sha": "46498340380fa4ea076d405f9a9e97a38dfe520705c9393de0b4fca07c99133c"
+  },
+  "spice_example": {
+   "decl_sha": "e1f6f10d43577e099de533a49e857cc2653b899564f0d575a46cc9eb64c6be64",
+   "declaration": {
+    "description": "**List or fetch a ready-made, verified analog netlist** for `run_spice`.",
+    "name": "spice_example",
+    "parameters": {
+     "properties": {
+      "name": {
+       "description": "name (기본 '')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "read",
+   "probe": {
+    "args": {
+     "name": ""
+    },
+    "expect": "rc_lowpass"
+   },
+   "source_sha": "7d4fc12443caf5594b89ba6d6198c89b4c7df8c6bb2198adf7e8905cdd41c1b7"
+  },
+  "textbook": {
+   "decl_sha": "8b9e4de74e70ff5f851e63389a9256be8dce9006fba7d72e7073f8aa56e8e102",
+   "declaration": {
+    "description": "**Answer from the textbook, not from memory** — search the 170-chapter IP design\nbook in `edu/` and get back the exact sections that bear on the question.",
+    "name": "textbook",
+    "parameters": {
+     "properties": {
+      "question": {
+       "description": "question",
+       "type": "STRING"
+      },
+      "section_id": {
+       "description": "section_id (기본 '')",
+       "type": "STRING"
+      },
+      "sections": {
+       "description": "sections (기본 5)",
+       "type": "INTEGER"
+      }
+     },
+     "required": [
+      "question"
+     ],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "question": "CTLE peaking"
+    },
+    "expect": "Retrieved from the textbook"
+   },
+   "source_sha": "e112bfc0617cf389458cbb44f9b982cff9d3c2a4a5187bd702ec8bfb6238e500"
+  }
+ }
+}

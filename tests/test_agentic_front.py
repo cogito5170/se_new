@@ -106,7 +106,7 @@ with tempfile.TemporaryDirectory() as tmp:
                  "4. gemini-3.1-flash-lite. VM 안쓸거야 sandbox/로 정책 인정할게. 바로 1단계 시작해",
                  "Walp래포애서 Walp-front를 너의 앞단에 적용해줘", "다음 주 회의 잡아줘"]:
         st, rd, txt, f = go(text)
-        ok(st == "DONE" and f.seen == [MODEL] and "-> 모델" in txt, f"{text[:30]!r} -> 모델")
+        ok(st == "DONE" and f.seen == [MODEL] and "WALP 가 넘겼다" in txt, f"{text[:30]!r} -> 모델")
 
     print("[앞단] '//' 는 건너뛴다")
     st, rd, txt, f = go("//고마워")

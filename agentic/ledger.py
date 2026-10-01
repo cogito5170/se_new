@@ -45,6 +45,11 @@ EVENT_TYPES = frozenset({
     "CHECK_EVAL",           # 필수 검사(sandbox 등) 하나의 판정
     "GATE_DECISION",        # Gate01 최종 판정 + 승인 ID
     "TASK_COMPLETED",       # TOOL_END 와 승인 뒤에만
+    # 3단계 -- 도구 등록 · 제어부 (정책 D)
+    "TOOL_REGISTERED",      # 선언 · 원문 해시 · sandbox 탐침 통과
+    "TOOL_REJECTED",        # 사유 목록(선언 불가 · 권한 밖 · LLM 사용 · 탐침 실패 · 탐침 없음)
+    "CONTROLLER_ROUTE",     # LLM 없는 라우터의 판정
+    "CONTROLLER_MISS",      # 제어부가 못 한 것 -- 디스패치 전이므로 모델로 넘어간다
     "TERMINAL",
 })
 ACTORS = frozenset({"code", "model", "executor"})

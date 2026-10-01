@@ -38,6 +38,9 @@ class TaskSpec:
     followup: "str | None" = None
     post_followup: "str | None" = None
     verify_argv: "tuple | None" = None
+    # 이 작업을 낳은 사건(사용자 메시지 하나 = 사건 하나). 멱등키에 섞인다 -- 같은 사건이 두 번 오면
+    # 한 번만 돌고, **다른 사건이 같은 일을 시키면** 다시 돈다(읽기 도구의 답은 그때마다 새로 읽어야 한다)
+    event: str = ""
 
     def canonical(self) -> str:
         d = asdict(self)
