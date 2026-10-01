@@ -43,9 +43,9 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
         out.append({
             "small": f"앞단: WALP 가 잡담({d.get('act')})으로 답했다 · 모델 호출 0 · {d.get('ms')} ms -- "
                      f"일이 담긴 말이었다면 앞에 '//' 를 붙여 다시 보내라",
-            "model": f"앞단: WALP 가 넘겼다(판정 {d.get('act')}{', 모름' if d.get('unknown') else ''}) -> 모델",
-            "bypass": "앞단: '//' 로 건너뛰었다 -> 모델",
-            "disabled": f"앞단: 꺼짐 ({d.get('reason')}) -> 모델",
+            "model": f"앞단: WALP 가 넘겼다(판정 {d.get('act')}{', 모름' if d.get('unknown') else ''}) -> 다음",
+            "bypass": "앞단: '//' 로 건너뛰었다 -> 다음",
+            "disabled": f"앞단: 꺼짐 ({d.get('reason')}) -> 다음",
         }.get(d.get("route"), f"앞단: {d.get('route')}"))
     cr, cm = _last(events, "CONTROLLER_ROUTE"), _last(events, "CONTROLLER_MISS")
     if cm:
