@@ -159,9 +159,12 @@ with tempfile.TemporaryDirectory() as tmp:
     st, rd, txt, f = go(ex_of(broken), root)
     ok(len(calls) == n0 and "quarantined:breaker_open" in txt and f.seen == [MODEL],
        "격리된 도구는 돌리지 않고 놓친 것으로 -> 모델로")
+    n0 = len(calls)
     st, rd, txt, f = go(ex_of({"ok": True, "result": "y", "llm_attempts": 0}), root, src="S2",
                         reg={"tools": {"read_file": {**R["tools"]["read_file"], "source_sha": "S2"}}, "rejected": {}})
-    ok(st == "DONE", "고쳐서 재등록(새 원문 해시)하면 새 셈 -- 다시 쓰인다")
+    ok(st == "DONE" and len(calls) == n0 + 1 and "controller_tool" in txt and f.seen == [],
+       "고쳐서 재등록(새 원문 해시)하면 새 셈 -- 도구가 다시 돌고 제어부가 끝낸다(모델 0)")
+    ok(BR.state(base, "read_file", "S1")["open"], "옛 해시의 격리는 그대로 남는다(지우지 않는다)")
     go(ex_of({"ok": True, "result": "z", "llm_attempts": 1}), T / "llm")
     ok(BR.state(T / "llm" / "agentic" / "runs", "read_file", "S1")["fails"] == 1, "LLM 을 부르려 한 도구는 도구 탓으로 센다")
 
