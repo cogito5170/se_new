@@ -10,5 +10,9 @@
   },
   "sandbox": "sandbox/",
   "mandatory_checks": ["sandbox"],
-  "allowed_kinds": ["read", "compute"]
+  "allowed_kinds": ["read", "compute"],
+  "front": {
+    "walp": true,
+    "model_sha256": "fe2ae986afe55bd60c5e46e98f5207047d062b52f11a3835cafdc9427fa5d4bb"
+  }
 }
