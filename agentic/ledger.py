@@ -21,7 +21,6 @@ from secret_filter import redact_secrets
 
 EVENT_TYPES = frozenset({
     "RUN_START",            # 설정 해시 · 모델 · HEAD SHA
-    "WALP_FRONT",           # 앞단 판정: small | model | bypass | disabled (+ 까닭)
     "MODEL_CALL_START",
     "MODEL_CALL_END",       # ok | error(상태·이름만. 본문은 diag 로)
     "MODEL_IDENTITY",       # 설정한 모델 · 응답이 밝힌 모델 · verified|unreported|mismatch

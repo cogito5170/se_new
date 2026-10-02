@@ -100,7 +100,8 @@ with tempfile.TemporaryDirectory() as tmp:
                       "budget_invalid:model_calls"),
                      ({"mandatory_checks": []}, "mandatory_checks_must_include_sandbox"),
                      ({"mandatory_checks": ["lint"]}, "mandatory_checks_must_include_sandbox"),
-                     ({"allowed_kinds": ["read", "root"]}, "allowed_kinds_invalid")]:
+                     ({"allowed_kinds": ["read", "root"]}, "allowed_kinds_invalid"),
+                     ({"front": {"walp": False}}, "front_removed")]:
         try:
             C.load(cfg_file(T, **bad))
             ok(False, f"{bad} 를 거절한다")

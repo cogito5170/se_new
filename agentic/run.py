@@ -3,8 +3,7 @@
     python3 -m agentic.run "물음"           # 그린 글을 찍는다. 끝값 0 = DONE, 1 = 그 밖
     python3 -m agentic.render <run_dir>      # 지난 실행을 원장에서 다시 그린다
 
-맨 앞에 WALP 앞단(`agentic/front.py`)이 있다: 잡담이면 모델을 안 부르고 WALP 가 답한다. `//` 로 시작하면 건너뛴다.
-그다음 제어부(`agentic/controller.py`): 등록된 도구로 끝낼 수 있으면 모델 없이 끝낸다.
+맨 앞이 제어부(`agentic/controller.py`): 등록된 도구로 끝낼 수 있으면 모델 없이 끝낸다.
 못 하면 사고부(`agentic/thinker.py`): Gemini 가 등록된 도구를 부르며 ReAct 로 푼다(루프 탐지기 · 예산).
 
 아직 없는 것(2단계 이후): 도구 호출 · Sequencer · Gate01 평가 · 루프 탐지기 · MCP 클라이언트.
@@ -27,7 +26,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agentic import config as C                                         # noqa: E402
-from agentic import front as W                                          # noqa: E402
 from agentic.ledger import DiagnosticSink, Ledger, LoggingFailure, read_events  # noqa: E402
 from agentic.model import FixedModel                                    # noqa: E402
 from agentic.render import render                                       # noqa: E402
@@ -46,7 +44,7 @@ def runs_root(root=None) -> Path:
     return Path(ledgerroot.뿌리(root, ROOT)) / "agentic" / "runs"
 
 
-def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None, small_talk=None,
+def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id=None,
         controller_opts=None):
     """(종료 상태, run_dir, 그린 글). 로깅이 죽으면 원장에서 못 그리므로 그 사실만 그린다."""
     cfg = cfg or C.load()
@@ -57,45 +55,35 @@ def run(prompt: str, cfg=None, root=None, keys=None, client_factory=None, run_id
         sink = DiagnosticSink(L)
         L.emit("RUN_START", "code", {"config_sha256": cfg.sha256, "model": cfg.model,
                                      "head_sha": _head_sha(), "sandbox": cfg.sandbox})
-        fr = W.judge(prompt, cfg, small_talk)
-        fid = L.emit("WALP_FRONT", "code", {"route": fr.route, **fr.data})
-        if fr.route == "small":
-            # 잡담 -- 모델 호출 0. 답은 WALP 의 고정 문장이다(모델 글이 아니므로 위조 검사 대상이 아니다)
-            aid = L.emit("ANSWER_ADOPTED", "code", {"text": fr.reply, "identity": "walp_front"}, [fid])
-            L.terminal("DONE", "walp_front_smalltalk", f"WALP 앞단이 잡담({fr.act})으로 답했다 · 모델 호출 0", [aid])
-            state = "DONE"
+        fin = _finisher(prompt, cfg, L, runs_root(root), run_id)
+        from agentic import controller as K          # 늦게: controller -> sequencer -> run 순환을 피한다
+        kopts = {k: v for k, v in (controller_opts or {}).items()
+                 if k in ("registry", "route_fn", "executor", "checks", "src_sha")}
+        ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **kopts)
+        if ctl is None:
+            from agentic import thinker as TH
+            from agentic import tools as TL
+            o = dict(controller_opts or {})
+            M = FixedModel(cfg, L, sink, keys=keys, client_factory=client_factory)
+            from agentic import memory as MEM
+            base = runs_root(root)
+            recall = None
+            if cfg.rag["k"] > 0:
+                recall = (lambda q: MEM.recall(q, base, cfg.rag["k"], cfg.rag["repo_graph"],
+                                               o.get("repo_graph_root") or ROOT))
+            state = TH.think(prompt, cfg, L, sink, M, base, run_id, run_dir,
+                             o.get("registry") if o.get("registry") is not None else TL.load_registry(),
+                             o.get("executor"), o.get("checks"), o.get("src_sha"), fin=fin, recall=recall)
         else:
-            if fr.route == "bypass":
-                prompt = W.strip_bypass(prompt)
-            fin = _finisher(prompt, cfg, L, runs_root(root), run_id)
-            from agentic import controller as K          # 늦게: controller -> sequencer -> run 순환을 피한다
-            kopts = {k: v for k, v in (controller_opts or {}).items()
-                     if k in ("registry", "route_fn", "executor", "checks", "src_sha")}
-            ctl = K.try_tools(prompt, cfg, L, sink, runs_root(root), run_id, run_dir, **kopts)
-            if ctl is None:
-                from agentic import thinker as TH
-                from agentic import tools as TL
-                o = dict(controller_opts or {})
-                M = FixedModel(cfg, L, sink, keys=keys, client_factory=client_factory)
-                from agentic import memory as MEM
-                base = runs_root(root)
-                recall = None
-                if cfg.rag["k"] > 0:
-                    recall = (lambda q: MEM.recall(q, base, cfg.rag["k"], cfg.rag["repo_graph"],
-                                                   o.get("repo_graph_root") or ROOT))
-                state = TH.think(prompt, cfg, L, sink, M, base, run_id, run_dir,
-                                 o.get("registry") if o.get("registry") is not None else TL.load_registry(),
-                                 o.get("executor"), o.get("checks"), o.get("src_sha"), fin=fin, recall=recall)
+            st, reason, summary, tool, out = ctl
+            if st == "DONE":
+                # 도구 출력은 신뢰하지 않는 데이터다(D.7) -- 답 칸에만, 그렇게 표시해서
+                aid = L.emit("ANSWER_ADOPTED", "code", {"text": out, "identity": f"tool:{tool}",
+                                                        "untrusted": True})
+                fin("DONE", "controller_tool", f"제어부가 등록된 도구 {tool} 로 끝냈다 · 모델 호출 0", [aid])
             else:
-                st, reason, summary, tool, out = ctl
-                if st == "DONE":
-                    # 도구 출력은 신뢰하지 않는 데이터다(D.7) -- 답 칸에만, 그렇게 표시해서
-                    aid = L.emit("ANSWER_ADOPTED", "code", {"text": out, "identity": f"tool:{tool}",
-                                                            "untrusted": True})
-                    fin("DONE", "controller_tool", f"제어부가 등록된 도구 {tool} 로 끝냈다 · 모델 호출 0", [aid])
-                else:
-                    fin(st, reason, summary)
-                state = st
+                fin(st, reason, summary)
+            state = st
     except LoggingFailure as e:
         text = (f"상태: LOGGING_FAILURE ({e}) -- 원장을 쓰지 못해 이 실행은 검사할 수 없다.\n"
                 f"원장 자리: {run_dir}\n답: (채택된 답 없음)")
@@ -118,7 +106,7 @@ def _finisher(prompt, cfg, L, runs_base, run_id):
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="agentic: 앞단 · 제어부 · 사고부 · 원장 렌더")
+    ap = argparse.ArgumentParser(description="agentic: 제어부 · 사고부 · 원장 렌더")
     ap.add_argument("prompt")
     ap.add_argument("--config", default=None)
     a = ap.parse_args(argv)
