@@ -1,10 +1,7 @@
 {
- "config_sha256": "febf06904dc4bdca07d31b1048562183786eaf0f90d89983b5f561d9d38e5b8b",
- "head_sha": "b0d83d0470ac94f4b704098277c1befd6126ccc9",
+ "config_sha256": "8daafb40573bed1fd94989f3926ecb38200b609e41b23e341eafd40267d234b8",
+ "head_sha": "176675864b05b27de145874297a00f8598ef6574",
  "rejected": {
-  "adc_sweep": [
-   "no_probe"
-  ],
   "cmd:!search": [
    "name_invalid_for_gemini",
    "kind_not_allowed:shell",
@@ -172,9 +169,6 @@
   "monte_carlo": [
    "no_probe"
   ],
-  "nn_equalizer": [
-   "no_probe"
-  ],
   "orchestrator_resume": [
    "no_probe"
   ],
@@ -193,48 +187,29 @@
   "prove_rtl": [
    "no_probe"
   ],
-  "quant_sweep": [
-   "no_probe"
-  ],
   "read_image": [
    "tool_uses_llm:imageread.py"
   ],
   "read_pdf": [
-   "param_name_invalid_for_gemini:모드",
-   "param_name_invalid_for_gemini:쪽",
-   "param_name_invalid_for_gemini:물음",
    "tool_uses_llm:imageread.py"
   ],
   "recon_make": [
-   "param_name_invalid_for_gemini:산출물",
-   "param_name_invalid_for_gemini:대상",
    "kind_not_allowed:shell"
   ],
-  "recon_rover": [
-   "param_name_invalid_for_gemini:무엇",
-   "param_name_invalid_for_gemini:시나리오"
-  ],
   "render_space": [
-   "param_name_invalid_for_gemini:대상",
-   "param_name_invalid_for_gemini:시점"
+   "no_probe"
   ],
   "repair": [
    "kind_not_allowed:shell",
    "tool_uses_llm:diagnose.py,relay.py,router/call.py"
   ],
   "report_pdf": [
-   "param_name_invalid_for_gemini:제목",
    "kind_not_allowed:write"
   ],
   "research": [
    "tool_uses_llm:relay.py,research/run.py,router/call.py"
   ],
-  "ruh2_battery": [
-   "param_name_invalid_for_gemini:무엇"
-  ],
   "ruh2_make": [
-   "param_name_invalid_for_gemini:산출물",
-   "param_name_invalid_for_gemini:장면",
    "kind_not_allowed:shell"
   ],
   "run_experiment": [
@@ -265,18 +240,15 @@
    "kind_not_allowed:net",
    "tool_uses_llm:relay.py"
   ],
-  "serdes_link": [
-   "no_probe"
-  ],
   "set_key": [
    "kind_not_allowed:write",
    "tool_uses_llm:relay.py"
   ],
   "simulate_formation": [
-   "param_name_invalid_for_gemini:메일"
+   "no_probe"
   ],
   "simulate_inspection": [
-   "param_name_invalid_for_gemini:정책"
+   "no_probe"
   ],
   "synth_rtl": [
    "no_probe"
@@ -286,6 +258,69 @@
   ]
  },
  "tools": {
+  "adc_sweep": {
+   "decl_sha": "5f8379146a1785c89e2684cd132214220b3c8d1ab43888e87ce85ebb2b8aaa43",
+   "declaration": {
+    "description": "**BER versus ADC resolution AND full scale** -- the two cannot be chosen apart.",
+    "name": "adc_sweep",
+    "parameters": {
+     "properties": {
+      "bits": {
+       "description": "bits (기본 300000)",
+       "type": "INTEGER"
+      },
+      "coef_bits": {
+       "description": "coef_bits (기본 0)",
+       "type": "INTEGER"
+      },
+      "dfe_taps": {
+       "description": "dfe_taps (기본 8)",
+       "type": "INTEGER"
+      },
+      "ffe_taps": {
+       "description": "ffe_taps (기본 11)",
+       "type": "INTEGER"
+      },
+      "full_scales": {
+       "description": "full_scales (기본 '2.0,2.5,3.0,4.0')",
+       "type": "STRING"
+      },
+      "loss_db": {
+       "description": "loss_db (기본 25.0)",
+       "type": "NUMBER"
+      },
+      "seed": {
+       "description": "seed (기본 7)",
+       "type": "INTEGER"
+      },
+      "snr_db": {
+       "description": "snr_db (기본 30.0)",
+       "type": "NUMBER"
+      },
+      "sps": {
+       "description": "sps (기본 8)",
+       "type": "INTEGER"
+      },
+      "widths": {
+       "description": "widths (기본 '4,5,6,7,8')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "bits": 20000,
+     "full_scales": "2.5",
+     "widths": "5,7"
+    },
+    "expect": "ADC resolution"
+   },
+   "source_sha": "8aa54468afa90fc6b6e4e594c389b3af1099a791c3f971b859effb30ed3fa999"
+  },
   "concept": {
    "decl_sha": "8b617b874d642fad257abfa4f1b03ef7575f48843198bf4427c9d6ff3d584334",
    "declaration": {
@@ -346,6 +381,138 @@
    "tool": "walp_se_catalog",
    "via": "mcp"
   },
+  "nn_equalizer": {
+   "decl_sha": "80c820232ed53dfb9fb781bfecdab77a019b089dfce2adbe268d5500893b36b7",
+   "declaration": {
+    "description": "**Neural-network equaliser** -- and the control that says when it is allowed to win.",
+    "name": "nn_equalizer",
+    "parameters": {
+     "properties": {
+      "adc_bits": {
+       "description": "adc_bits (기본 0)",
+       "type": "INTEGER"
+      },
+      "bits": {
+       "description": "bits (기본 300000)",
+       "type": "INTEGER"
+      },
+      "compression": {
+       "description": "compression (기본 1.0)",
+       "type": "NUMBER"
+      },
+      "dfe_taps": {
+       "description": "dfe_taps (기본 0)",
+       "type": "INTEGER"
+      },
+      "epochs": {
+       "description": "epochs (기본 12)",
+       "type": "INTEGER"
+      },
+      "hidden": {
+       "description": "hidden (기본 16)",
+       "type": "INTEGER"
+      },
+      "keep_fraction": {
+       "description": "keep_fraction (기본 1.0)",
+       "type": "NUMBER"
+      },
+      "loss_db": {
+       "description": "loss_db (기본 25.0)",
+       "type": "NUMBER"
+      },
+      "reflections": {
+       "description": "reflections (기본 '')",
+       "type": "STRING"
+      },
+      "seed": {
+       "description": "seed (기본 7)",
+       "type": "INTEGER"
+      },
+      "snr_db": {
+       "description": "snr_db (기본 30.0)",
+       "type": "NUMBER"
+      },
+      "sps": {
+       "description": "sps (기본 8)",
+       "type": "INTEGER"
+      },
+      "weight_bits": {
+       "description": "weight_bits (기본 0)",
+       "type": "INTEGER"
+      },
+      "window": {
+       "description": "window (기본 10)",
+       "type": "INTEGER"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "bits": 20000,
+     "epochs": 2
+    },
+    "expect": "NN equaliser"
+   },
+   "source_sha": "a3d60bb92bd8191dc592d64e55f405d70b019f711f312ec7317ca945f1034d9b"
+  },
+  "quant_sweep": {
+   "decl_sha": "db16513fa270ceee102aa674a1f3b4b12659efed2197d3a4bde15aa2384af7a2",
+   "declaration": {
+    "description": "**BER versus tap word length** -- the quantisation trade-off curve, measured.",
+    "name": "quant_sweep",
+    "parameters": {
+     "properties": {
+      "bits": {
+       "description": "bits (기본 150000)",
+       "type": "INTEGER"
+      },
+      "dfe_taps": {
+       "description": "dfe_taps (기본 8)",
+       "type": "INTEGER"
+      },
+      "ffe_taps": {
+       "description": "ffe_taps (기본 11)",
+       "type": "INTEGER"
+      },
+      "loss_db": {
+       "description": "loss_db (기본 20.0)",
+       "type": "NUMBER"
+      },
+      "seed": {
+       "description": "seed (기본 7)",
+       "type": "INTEGER"
+      },
+      "snr_db": {
+       "description": "snr_db (기본 26.0)",
+       "type": "NUMBER"
+      },
+      "sps": {
+       "description": "sps (기본 8)",
+       "type": "INTEGER"
+      },
+      "widths": {
+       "description": "widths (기본 '2,3,4,6,8,12')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "bits": 20000,
+     "widths": "4,8"
+    },
+    "expect": "float baseline"
+   },
+   "source_sha": "710eaf17395897ffd9bd1db75260730e84ef2989400d449f658469cd9d04655e"
+  },
   "read_file": {
    "decl_sha": "8ea07bf724330cdfdfea743623137d109c8976a9d19ab2d6ed426751d56082bd",
    "declaration": {
@@ -382,6 +549,76 @@
    },
    "source_sha": "2466491cf25f988e356fd56d0dd3987b2ebf3e75e232f67612c68228cd44adfc"
   },
+  "recon_rover": {
+   "decl_sha": "8f371df210d4bcb6dc6061325a8378a84b5641166ad80c9ead60c31a7265e6f1",
+   "declaration": {
+    "description": "**자율 정찰·정보수집 로버 RECON-R1 설계와 시뮬레이션 결과를 글로 돌려준다** (2026-09-29 세션, recon/).",
+    "name": "recon_rover",
+    "parameters": {
+     "properties": {
+      "scenario": {
+       "description": "scenario (= 시나리오) (기본 '')",
+       "type": "STRING"
+      },
+      "what": {
+       "description": "what (= 무엇) (기본 '요약')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "what": "사양"
+    },
+    "expect": "RECON-R1 사양"
+   },
+   "source_sha": "bbc40884d4d0fcf9433a2ba1157359b72d5ce129d322caf03cd0a1b9d2e85240"
+  },
+  "ruh2_battery": {
+   "decl_sha": "ce3b799a06b608d35e2fe66486ec2fbe6cecc3e5040f4f825f4897697ad539cf",
+   "declaration": {
+    "description": "**Ru 수소 전극 니켈–수소(Ni–H₂) 배터리 프로토타입 RuH2-P1 의 모델 분석을 글로 돌려준다.**",
+    "name": "ruh2_battery",
+    "parameters": {
+     "properties": {
+      "c_rate": {
+       "description": "c_rate (기본 0.5)",
+       "type": "NUMBER"
+      },
+      "precharge": {
+       "description": "precharge (기본 True)",
+       "type": "BOOLEAN"
+      },
+      "protect": {
+       "description": "protect (기본 True)",
+       "type": "BOOLEAN"
+      },
+      "temp_c": {
+       "description": "temp_c (기본 25.0)",
+       "type": "NUMBER"
+      },
+      "what": {
+       "description": "what (= 무엇) (기본 '사이클')",
+       "type": "STRING"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "what": "사이클"
+    },
+    "expect": "쿨롱효율"
+   },
+   "source_sha": "67d50fffe99bb0059742237cbd8807b098f740b89efd94acf6405b3848e865e0"
+  },
   "search_memory": {
    "decl_sha": "259dacb9fd1f8c7dcd206178607b17234793eb85df71041e2962ecefd3d6d6b2",
    "declaration": {
@@ -408,6 +645,84 @@
     "expect": "gemini"
    },
    "source_sha": "46498340380fa4ea076d405f9a9e97a38dfe520705c9393de0b4fca07c99133c"
+  },
+  "serdes_link": {
+   "decl_sha": "80d76e3c10e72f88371f0e5c9fae71a6ee8fb3afeae2bd53792a177c91d8ffd1",
+   "declaration": {
+    "description": "**Actually simulate a wireline SerDes link and measure BER** (channel/CTLE/FFE/DFE).",
+    "name": "serdes_link",
+    "parameters": {
+     "properties": {
+      "bits": {
+       "description": "bits (기본 100000)",
+       "type": "INTEGER"
+      },
+      "ctle_peaking_db": {
+       "description": "ctle_peaking_db (기본 0.0)",
+       "type": "NUMBER"
+      },
+      "dfe_positions": {
+       "description": "dfe_positions (기본 '')",
+       "type": "STRING"
+      },
+      "dfe_taps": {
+       "description": "dfe_taps (기본 0)",
+       "type": "INTEGER"
+      },
+      "eye": {
+       "description": "eye (기본 True)",
+       "type": "BOOLEAN"
+      },
+      "ffe_taps": {
+       "description": "ffe_taps (기본 0)",
+       "type": "INTEGER"
+      },
+      "ideal_decision": {
+       "description": "ideal_decision (기본 False)",
+       "type": "BOOLEAN"
+      },
+      "keep_fraction": {
+       "description": "keep_fraction (기본 1.0)",
+       "type": "NUMBER"
+      },
+      "loss_db": {
+       "description": "loss_db (기본 20.0)",
+       "type": "NUMBER"
+      },
+      "reflections": {
+       "description": "reflections (기본 '')",
+       "type": "STRING"
+      },
+      "seed": {
+       "description": "seed (기본 0)",
+       "type": "INTEGER"
+      },
+      "snr_db": {
+       "description": "snr_db (기본 26.0)",
+       "type": "NUMBER"
+      },
+      "sps": {
+       "description": "sps (기본 8)",
+       "type": "INTEGER"
+      },
+      "tap_bits": {
+       "description": "tap_bits (기본 0)",
+       "type": "INTEGER"
+      }
+     },
+     "required": [],
+     "type": "OBJECT"
+    }
+   },
+   "kind": "compute",
+   "probe": {
+    "args": {
+     "bits": 20000,
+     "eye": false
+    },
+    "expect": "BER"
+   },
+   "source_sha": "8642f4b2f5281e1011fd1ad68e441970f0718325326d55995ed36229466e241d"
   },
   "spice_example": {
    "decl_sha": "e1f6f10d43577e099de533a49e857cc2653b899564f0d575a46cc9eb64c6be64",
