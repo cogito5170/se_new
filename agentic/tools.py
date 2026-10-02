@@ -48,6 +48,11 @@ TYPE_MAP = {"str": "STRING", "int": "INTEGER", "float": "NUMBER", "bool": "BOOLE
 PY_OF = {"STRING": str, "INTEGER": int, "NUMBER": (int, float), "BOOLEAN": bool}
 NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]{0,63}$")
 KIND_ALIAS = {"network": "net"}           # se_tools 의 이름 -> 설정의 이름
+# Gemini 는 인자 이름에 한글을 못 받는다(NAME_RE). bot_tools 의 한글 인자를 **사람이 적은** 아스키 이름으로 선언하고,
+# 실행 직전(execute)에 원래 이름으로 되돌린다. 기계로 음역하지 않는다 -- 모델이 읽는 이름이라 뜻이 맞아야 한다.
+PARAM_ALIAS = {"무엇": "what", "시나리오": "scenario", "대상": "target", "시점": "views", "메일": "mail",
+               "정책": "policy", "모드": "mode", "쪽": "pages", "물음": "question", "산출물": "output",
+               "장면": "scene", "제목": "title"}
 
 
 def _canon(obj) -> str:
@@ -90,17 +95,22 @@ def to_declaration(t) -> "tuple[dict | None, list]":
     if not desc:
         why.append("no_description")
     props, required = {}, []
+    names = {p.name for p in t.params}
     for p in t.params:
         typ = TYPE_MAP.get(p.type)
         if typ is None:
             why.append(f"unsupported_param_type:{p.name}:{p.type}")
             continue
+        key, label = p.name, p.name
         if not NAME_RE.match(p.name):
-            why.append(f"param_name_invalid_for_gemini:{p.name}")
-            continue
-        props[p.name] = {"type": typ, "description": p.name + ("" if p.default is None else f" (기본 {p.default})")}
+            key = PARAM_ALIAS.get(p.name, "")
+            if not key or key in names or key in props:
+                why.append(f"param_name_invalid_for_gemini:{p.name}")
+                continue
+            label = f"{key} (= {p.name})"
+        props[key] = {"type": typ, "description": label + ("" if p.default is None else f" (기본 {p.default})")}
         if p.default is None:
-            required.append(p.name)
+            required.append(key)
     if why:
         return None, why
     decl = {"name": t.name, "description": desc[:1000],
@@ -152,13 +162,38 @@ def check_output(out) -> list:
     return why
 
 
+def param_map(name: str, cat=None) -> dict:
+    """{선언에 쓴 아스키 이름: bot_tools 의 원래 이름} -- 별명이 붙은 인자만. MCP 도구 · 모르는 도구는 {}."""
+    for t in (cat if cat is not None else catalog()):
+        if t.name == name:
+            return {PARAM_ALIAS[p.name]: p.name for p in t.params
+                    if not NAME_RE.match(p.name) and p.name in PARAM_ALIAS}
+    return {}
+
+
+def to_alias(name: str, args: dict, cat=None) -> dict:
+    """원래 이름(제어부의 라우터가 뽑은 것) -> 선언의 이름."""
+    if not isinstance(args, dict) or all(k not in PARAM_ALIAS for k in args):
+        return args                       # 별명 붙을 인자가 없으면 카탈로그를 안 읽는다
+    back = {v: k for k, v in param_map(name, cat).items()}
+    return {back.get(k, k): v for k, v in args.items()} if back and isinstance(args, dict) else args
+
+
+def from_alias(name: str, args: dict, cat=None) -> dict:
+    """선언의 이름(모델 · 탐침이 준 것) -> 원래 이름. 실행 직전에만 부른다."""
+    if not isinstance(args, dict) or all(k not in PARAM_ALIAS.values() for k in args):
+        return args
+    m = param_map(name, cat)
+    return {m.get(k, k): v for k, v in args.items()} if m and isinstance(args, dict) else args
+
+
 def execute(name: str, args: dict, timeout: int = 120) -> dict:
     from agentic import mcp_client as MC
     if MC.split_name(name):
         ent = load_registry().get("tools", {}).get(name) or {}
         return MC.run_tool(name, args, expected_sha=ent.get("source_sha"), timeout=timeout)
     from walp import se_router
-    return se_router.execute(name, args, timeout=timeout)
+    return se_router.execute(name, from_alias(name, args), timeout=timeout)
 
 
 INFRA_ERRORS = ("sandbox_not_run", "timeout", "no_output", "server_unavailable", "protocol_unsupported",
