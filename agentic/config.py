@@ -11,7 +11,7 @@
   · `mandatory_checks` 에 `sandbox` 가 없음 -- 정책 C 의 필수 검증을 설정으로 끌 길을 두지 않는다
     (빈 목록이면 "필수 검사 전부 통과" 가 **아무것도 안 재고** 참이 된다)
   · `allowed_kinds` 가 모르는 부작용 종류를 담음
-  · `front.walp` 가 켜졌는데 판정기 파일의 sha256 이 없음
+  · `front` 칸이 있음 -- WALP 앞단은 2026-10-02 에 뺐다. 남아 있으면 켜진 줄 알게 되므로 거절한다
   · `loop` 문턱(same_action · same_failure · no_progress)이 2 이상의 정수가 아님
   · `rag` 가 {k: 0~10, repo_graph: bool, record: bool} 꼴이 아님
   · `repair.trip_after`(회로 차단 문턱)가 1 이상의 정수가 아님
@@ -44,7 +44,6 @@ class Config:
     sandbox: str
     mandatory_checks: tuple
     allowed_kinds: frozenset
-    front: dict
     loop: dict
     rag: dict
     repair: dict
@@ -83,11 +82,8 @@ def load(path: "str | Path | None" = None) -> Config:
     ak = d.get("allowed_kinds")
     if not isinstance(ak, list) or not ak or any(k not in ACTION_KINDS for k in ak):
         raise ConfigError("allowed_kinds_invalid")
-    front = d.get("front", {"walp": False})
-    if not isinstance(front, dict) or not isinstance(front.get("walp", False), bool):
-        raise ConfigError("front_invalid")
-    if front.get("walp") and not (isinstance(front.get("model_sha256"), str) and len(front["model_sha256"]) == 64):
-        raise ConfigError("front_model_sha256_required")   # 판정기를 해시에 안 묶고 켜는 길은 없다
+    if "front" in d:
+        raise ConfigError("front_removed")               # WALP 앞단은 없다 -- 칸이 남아 있으면 켜진 줄 안다
     lp = d.get("loop")
     if not isinstance(lp, dict):
         raise ConfigError("loop_missing")
@@ -106,6 +102,6 @@ def load(path: "str | Path | None" = None) -> Config:
             or rp["trip_after"] < 1):
         raise ConfigError("repair_invalid")
     return Config(model=model.strip(), budgets=dict(b), sandbox=str(d.get("sandbox", "")),
-                  mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), front=dict(front), loop=dict(lp),
+                  mandatory_checks=tuple(mc), allowed_kinds=frozenset(ak), loop=dict(lp),
                   rag=dict(rg), repair=dict(rp),
                   sha256=hashlib.sha256(raw).hexdigest(), path=str(p))

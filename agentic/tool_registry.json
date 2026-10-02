@@ -1,6 +1,6 @@
 {
- "config_sha256": "8daafb40573bed1fd94989f3926ecb38200b609e41b23e341eafd40267d234b8",
- "head_sha": "176675864b05b27de145874297a00f8598ef6574",
+ "config_sha256": "0438a5db59cb3d70ddb62d1323c61ad839506f17ae154428cfa7a6924f8ad6ec",
+ "head_sha": "6a92b57fcd2117c64b8a7f135951d95a50f20d06",
  "rejected": {
   "cmd:!search": [
    "name_invalid_for_gemini",

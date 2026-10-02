@@ -37,16 +37,6 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
         out.append(f"실행: {start['run_id']} · 설정 sha256 {s.get('config_sha256', '?')[:12]} · "
                    f"HEAD {s.get('head_sha') or '기록 없음'}")
 
-    wf = _last(events, "WALP_FRONT")
-    if wf:
-        d = wf["data"]
-        out.append({
-            "small": f"앞단: WALP 가 잡담({d.get('act')})으로 답했다 · 모델 호출 0 · {d.get('ms')} ms -- "
-                     f"일이 담긴 말이었다면 앞에 '//' 를 붙여 다시 보내라",
-            "model": f"앞단: WALP 가 넘겼다(판정 {d.get('act')}{', 모름' if d.get('unknown') else ''}) -> 다음",
-            "bypass": "앞단: '//' 로 건너뛰었다 -> 다음",
-            "disabled": f"앞단: 꺼짐 ({d.get('reason')}) -> 다음",
-        }.get(d.get("route"), f"앞단: {d.get('route')}"))
     cr, cm = _last(events, "CONTROLLER_ROUTE"), _last(events, "CONTROLLER_MISS")
     if cm:
         out.append(f"제어부: 못 함 ({cm['data']['reason']}) -> 모델")
@@ -54,8 +44,7 @@ def render(events: list, run_dir: "str | Path | None" = None) -> str:
         out.append(f"제어부: 등록된 도구 {cr['data']['tool']} 를 바로 실행(LLM 없는 라우팅)")
     ident = _last(events, "MODEL_IDENTITY")
     called = any(e["type"] == "MODEL_CALL_START" for e in events)
-    if not ident and not called and (not wf or wf["data"].get("route") == "small" or _last(events, "CHAIN_START")
-                                       or (cr and not cm)):
+    if not ident and not called:
         conf = start["data"].get("model") if start else None
         out.append(f"모델: 설정 {conf or '기록 없음'} · 이 실행은 모델을 부르지 않았다")
     elif ident:
