@@ -72,10 +72,22 @@ with tempfile.TemporaryDirectory() as tmp:
     ok(d["parameters"]["required"] == ["path"], "기본값 없는 인자만 required")
     for t, w in [(tool(name="cmd:!소설"), "name_invalid_for_gemini"),
                  (tool(params=[Param("xs", "list", None)]), "unsupported_param_type:xs:list"),
-                 (tool(params=[Param("정책", "str", "'pi'")]), "param_name_invalid_for_gemini:정책"),
+                 (tool(params=[Param("무게", "str", "'1'")]), "param_name_invalid_for_gemini:무게"),
+                 (tool(params=[Param("정책", "str", "'pi'"), Param("policy", "str", "''")]),
+                  "param_name_invalid_for_gemini:정책"),
                  (tool(doc=""), "no_description")]:
         d, why = TL.to_declaration(t)
         ok(d is None and w in why, f"거절: {w}")
+    print("[D.1] 한글 인자 -> 사람이 적은 아스키 이름, 실행 직전에 되돌린다")
+    kt = tool(name="kr_x", params=[Param("무엇", "str", None), Param("시나리오", "str", "''"), Param("bits", "int", "8")])
+    d, why = TL.to_declaration(kt)
+    ok(not why and list(d["parameters"]["properties"]) == ["what", "scenario", "bits"]
+       and d["parameters"]["required"] == ["what"] and "(= 무엇)" in d["parameters"]["properties"]["what"]["description"],
+       "무엇 -> what (required 도 별명으로) · 설명에 원래 이름")
+    ok(TL.from_alias("kr_x", {"what": "사양", "bits": 4}, [kt]) == {"무엇": "사양", "bits": 4}, "실행 직전: what -> 무엇")
+    ok(TL.to_alias("kr_x", {"무엇": "사양"}, [kt]) == {"what": "사양"}, "라우터가 뽑은 원래 이름 -> 선언 이름")
+    ok(TL.check_args(d, TL.to_alias("kr_x", {"무엇": "사양"}, [kt])) == [], "되돌린 인자가 선언 검사를 통과")
+    ok(TL.from_alias("read_x", {"what": 1}, [kt, tool()]) == {"what": 1}, "별명이 없는 도구의 인자는 그대로")
     cat = TL.catalog()
     res = [TL.to_declaration(t) for t in cat]
     ok(all((d is None) != (not w) for d, w in res), f"진짜 카탈로그 {len(cat)}개 전부 선언 또는 사유 (말 없이 빠지는 것 없음)")

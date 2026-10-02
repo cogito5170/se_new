@@ -29,5 +29,46 @@
    "question": "CTLE peaking"
   },
   "expect": "Retrieved from the textbook"
+ },
+ "recon_rover": {
+  "args": {
+   "what": "사양"
+  },
+  "expect": "RECON-R1 사양"
+ },
+ "ruh2_battery": {
+  "args": {
+   "what": "사이클"
+  },
+  "expect": "쿨롱효율"
+ },
+ "serdes_link": {
+  "args": {
+   "bits": 20000,
+   "eye": false
+  },
+  "expect": "BER"
+ },
+ "quant_sweep": {
+  "args": {
+   "widths": "4,8",
+   "bits": 20000
+  },
+  "expect": "float baseline"
+ },
+ "adc_sweep": {
+  "args": {
+   "widths": "5,7",
+   "full_scales": "2.5",
+   "bits": 20000
+  },
+  "expect": "ADC resolution"
+ },
+ "nn_equalizer": {
+  "args": {
+   "bits": 20000,
+   "epochs": 2
+  },
+  "expect": "NN equaliser"
  }
 }

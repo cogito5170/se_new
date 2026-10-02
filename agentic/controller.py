@@ -44,7 +44,7 @@ def try_tools(text, cfg, L, sink, runs_base, run_id, run_dir,
 
     if status != "TOOL":
         return miss(f"route:{status}:{r.get('why')}")
-    args = r.get("args") or {}
+    args = TL.to_alias(name, r.get("args") or {})
     why = precheck(name, args, registry, src_sha, runs_base)
     if why:
         return miss(why)
