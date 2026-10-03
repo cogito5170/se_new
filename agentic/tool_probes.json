@@ -4,7 +4,7 @@
    "path": "agentic/config.json",
    "lines": 5
   },
-  "expect": "gemini-3.1-flash-lite"
+  "expect": "gemini-3-flash-preview"
  },
  "spice_example": {
   "args": {

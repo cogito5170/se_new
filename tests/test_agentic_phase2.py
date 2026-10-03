@@ -37,7 +37,7 @@ def ok(cond, label):
 
 
 def cfg_at(d, **over):
-    base = {"model": "gemini-3.1-flash-lite", "model_fallback": False,
+    base = {"model": "gemini-3-flash-preview", "model_fallback": False,
             "budgets": {"model_calls": 4, "forgery_retries": 1, "wall_seconds": 180, "tasks": 20,
                         "sandbox_seconds": 120, "react_turns": 6, "tool_output_chars": 4000},
             "sandbox": "sandbox/", "mandatory_checks": ["sandbox"], "allowed_kinds": ["read", "compute"],

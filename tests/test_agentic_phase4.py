@@ -33,7 +33,7 @@ def ok(cond, label):
         fails.append(label)
 
 
-MODEL = "gemini-3.1-flash-lite"
+MODEL = "gemini-3-flash-preview"
 
 
 def cfg_at(d, budgets=None, loop=None, rag=None):
