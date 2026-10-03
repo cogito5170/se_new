@@ -140,6 +140,16 @@ with tempfile.TemporaryDirectory() as tmp:
     ok({m for m, _ in fac.seen} == {MODEL}, f"폴백 없음: 부른 모델이 {MODEL} 하나뿐 ({fac.seen})")
     ok([k for _, k in fac.seen] == ["k1", "k2"], "키만 돌렸다")
 
+    # CMD-WUG1 S7: 모든 키가 429 면 실패가 아니라 '기다릴 일' -- 분당이면 가장 긴 retryDelay, 하루면 day
+    rpm = '{"error": {"code": 429, "details": [{"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "%ss"}]}}'
+    fac = FakeFactory(("err", 429, "RESOURCE_EXHAUSTED", rpm % 12), ("err", 429, "RESOURCE_EXHAUSTED", rpm % 37))
+    st, _, txt = run("q", cfg, root=T, keys=KEYS, client_factory=fac, run_id="rpm")
+    ok(st == "BLOCKED" and "quota_wait:minute:37" in txt, "키가 다 분당 한도면 BLOCKED(quota_wait:minute:37) -- 가장 긴 대기")
+    day = '{"error": {"code": 429, "details": [{"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}'
+    fac = FakeFactory(("err", 429, "RESOURCE_EXHAUSTED", rpm % 5), ("err", 429, "RESOURCE_EXHAUSTED", day))
+    st, _, txt = run("q", cfg, root=T, keys=KEYS, client_factory=fac, run_id="rpd")
+    ok("quota_wait:day:" in txt, "하루 한도가 하나라도 있으면 day")
+
     st, _, txt = run("q", cfg, root=T, keys=[], client_factory=FakeFactory(), run_id="nokey")
     ok(st == "BLOCKED" and "no_api_key" in txt, "키가 없으면 BLOCKED(no_api_key) -- 다른 모델로 대신하지 않는다")
 

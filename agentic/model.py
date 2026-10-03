@@ -75,6 +75,15 @@ def identity_of(configured: str, reported: "str | None") -> str:
     return "mismatch"
 
 
+def _quota_of(e, status) -> "tuple[str, float] | None":
+    """429 면 (minute|day, retryDelay 초), 아니면 None. 분류는 orchestrator/llm_pool 의 것을 그대로 쓴다."""
+    t = str(e)
+    if status != 429 and "RESOURCE_EXHAUSTED" not in t and " 429" not in t:
+        return None
+    import llm_pool
+    return ("day" if "PerDay" in t else "minute"), llm_pool._retry_delay(e)
+
+
 def _default_keys() -> list:
     import llm_pool
     return llm_pool.api_keys()
@@ -113,6 +122,7 @@ class FixedModel:
             raise Blocked("no_api_key")
         model = self.cfg.model
         last = ""
+        quota = []                                       # 키마다 429 였나 -- 전부 429 면 '기다릴 일' 로 끝낸다
         for name, key in keys:
             self._check_budget()
             self.calls += 1
@@ -134,6 +144,7 @@ class FixedModel:
                 self.ledger.emit("MODEL_CALL_END", "code", {
                     "result": "error", "status": status, "name": str(ename)[:80], "key_name": name})
                 last = f"{status} {ename}"
+                quota.append(_quota_of(e, status))
                 continue                                 # 같은 모델, 다음 키. 다른 모델은 없다
             reported = getattr(reply, "model_version", None)
             ident = identity_of(model, reported)
@@ -147,4 +158,9 @@ class FixedModel:
                 raise Blocked("model_mismatch")
             return TurnResult(parts, reported, ident, eid)
         self.sink.write("model_unavailable", f"keys tried: {len(keys)} · last: {last}")
+        if quota and all(q is not None for q in quota):
+            # CMD-WUG1 S7: 한도는 실패가 아니라 기다릴 일. 하루 한도가 하나라도 있으면 day, 아니면 가장 긴 retryDelay
+            scope = "day" if any(q[0] == "day" for q in quota) else "minute"
+            secs = max(q[1] for q in quota)
+            raise Blocked(f"quota_wait:{scope}:{int(secs)}")
         raise Blocked("model_unavailable")
