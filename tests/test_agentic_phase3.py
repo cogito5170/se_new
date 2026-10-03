@@ -37,7 +37,7 @@ def ok(cond, label):
         fails.append(label)
 
 
-MODEL = "gemini-3.1-flash-lite"
+MODEL = "gemini-3-flash-preview"
 
 
 def cfg_at(d, **over):
@@ -239,7 +239,7 @@ with tempfile.TemporaryDirectory() as tmp:
     f = Fac()
     st, rd, txt = run("agentic/config.json 파일 읽어줘", cfg, root=T / "real", keys=[("K", "k")], client_factory=f,
                       run_id="real1")
-    ok(st == "DONE" and f.n == 0 and "gemini-3.1-flash-lite" in txt, f"DONE · 모델 0 · 진짜 파일 내용 ({st})")
+    ok(st == "DONE" and f.n == 0 and "gemini-3-flash-preview" in txt, f"DONE · 모델 0 · 진짜 파일 내용 ({st})")
     ok(any(e["type"] == "CHECK_EVAL" and e["data"]["result"] == "TRUE" for e in read_events(rd)),
        "sandbox 안에서 `agentic.tools --verify read_file` 가 통과했다")
 

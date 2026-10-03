@@ -41,7 +41,7 @@ def ok(cond, label):
         fails.append(label)
 
 
-MODEL = "gemini-3.1-flash-lite"
+MODEL = "gemini-3-flash-preview"
 
 
 def cfg_at(d, trip=2):
@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory() as tmp:
                       client_factory=Fac(), run_id="s1")
     es = read_events(rd)
     sx = [e for e in es if e["type"] == "SANDBOX_EXEC"]
-    ok(st == "DONE" and "gemini-3.1-flash-lite" in txt, f"DONE · 진짜 파일 내용 ({st})")
+    ok(st == "DONE" and "gemini-3-flash-preview" in txt, f"DONE · 진짜 파일 내용 ({st})")
     ok(sx and sx[0]["data"]["ran"] and sx[0]["data"]["exit"] == 0 and sx[0]["data"]["tree"].startswith("HEAD "),
        f"SANDBOX_EXEC: 판 HEAD · 끝값 0 ({sx[0]['data'] if sx else None})")
     ok("sandbox: 도구 실행 1번 · 판 HEAD" in txt, "화면 sandbox 줄")
@@ -183,7 +183,7 @@ with tempfile.TemporaryDirectory() as tmp:
         proposer("수리 제안을 내라")            # 제안기가 실제로 모델을 부르는지
         return {"해결": True, "바퀴": 1, "남은것": ""}
     code, text = RQ.fix(1, apply=False, cfg=cfg, root=root, fixer=fixer)
-    ok(code == 0 and used == [] and "아무것도 바꾸지 않았다" in text and "제안기: gemini-3.1-flash-lite (폴백 없음)" in text,
+    ok(code == 0 and used == [] and "아무것도 바꾸지 않았다" in text and "제안기: gemini-3-flash-preview (폴백 없음)" in text,
        "--apply 없으면 계획만 -- fixer 안 불림")
     fac = Fac()
     code, text = RQ.fix(1, apply=True, cfg=cfg, root=root, keys=[("K", "k")], client_factory=fac, fixer=fixer)
