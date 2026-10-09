@@ -121,6 +121,16 @@ class Build(Base):
         self.assertIn("재배포 금지", page)
         self.assertIn("공유하지 마세요", page)
 
+    def test_single_file_embeds_images(self):
+        self.write_ann([])
+        out = self.tmp / "one" / "magazine_catalog.html"
+        r = C.build([self.pd], self.ann, out, True, single_file=True)
+        page = out.read_text(encoding="utf-8")
+        self.assertEqual(page.count('src="data:image/jpeg;base64,'), 2)
+        self.assertTrue(page.startswith("<!doctype html>"))
+        self.assertFalse((self.tmp / "one" / "images").exists())
+        self.assertEqual(r["waiting"], 2)
+
     def test_originals_untouched(self):
         before = (self.pd / "met_1.jpg").read_bytes()
         self.write_ann([])

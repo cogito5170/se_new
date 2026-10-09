@@ -4,6 +4,7 @@
 
     python3 magazine_catalog.py --images magazine_pd/images --out catalog_public --public-only
     python3 magazine_catalog.py --images inbox --out catalog_local
+    python3 magazine_catalog.py --images magazine_pd/images --public-only --single-file --out magazine_catalog.html
 
 Inputs
   --images DIR          real images (repeatable). If DIR/../manifests/collection_manifest.jsonl exists
@@ -12,6 +13,7 @@ Inputs
                         from catalog_vocab.py. Colour is measured from the pixels, not annotated.
 Output
   OUT/index.html and OUT/images/*.jpg (web-size copies). Originals are never changed.
+  --single-file writes one self-contained OUT .html with the web-size images embedded in it.
   --public-only keeps only public-domain records, so OUT can be published.
 
 Python 3.9+, Pillow.
@@ -19,6 +21,8 @@ Python 3.9+, Pillow.
 from __future__ import annotations
 
 import argparse
+import base64
+import io
 import html
 import json
 import sys
@@ -68,15 +72,20 @@ def met_records(images_dir: Path) -> "dict[str, dict]":
     return recs
 
 
-def web_copy(src: Path, out_dir: Path) -> "tuple[str, int, int]":
-    out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{src.stem}.jpg"
+def web_copy(src: Path, out_dir: "Path | None") -> "tuple[str, int, int]":
+    """Web-size JPEG. Returns (URL for <img src>, original width, height). out_dir None -> data: URI."""
     with Image.open(src) as im:
         im = im.convert("RGB")
         w, h = im.size
         im.thumbnail((WEB_SIZE, WEB_SIZE))
+        if out_dir is None:
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=80, optimize=True, progressive=True)
+            return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii"), w, h
+        out_dir.mkdir(parents=True, exist_ok=True)
+        name = f"{src.stem}.jpg"
         im.save(out_dir / name, "JPEG", quality=84, optimize=True, progressive=True)
-    return name, w, h
+    return "images/" + name, w, h
 
 
 def collect(image_dirs, annotations, public_only):
@@ -113,13 +122,13 @@ def tag_html(comp, t):
             f'<span>{e(en)}</span></button>')
 
 
-def build(image_dirs, annotations_path, out_dir: Path, public_only: bool) -> dict:
+def build(image_dirs, annotations_path, out_dir: Path, public_only: bool, single_file: bool = False) -> dict:
     annotations = load_annotations(annotations_path)
     refs, skipped = collect(image_dirs, annotations, public_only)
     e = html.escape
     cards, waiting = [], []
     for a in refs:
-        web, w, h = web_copy(a["path"], out_dir / "images")
+        web, w, h = web_copy(a["path"], None if single_file else out_dir / "images")
         col = catalog_measure.measure(a["path"])
         swatches = "".join(f'<span class="sw" style="background:{c["hex"]}" title="{c["hex"]} · {round(c["share"] * 100)}%"></span>'
                            for c in col["palette"])
@@ -138,8 +147,8 @@ def build(image_dirs, annotations_path, out_dir: Path, public_only: bool) -> dic
         sub = " · ".join(x for x in (a.get("issue"), a.get("page_type"), a.get("creator")) if x)
         src = f'<a href="{e(a["source_url"])}" target="_blank" rel="noopener">출처</a>' if a.get("source_url") else ""
         card = (f'<article class="ref" data-tags="{e("|".join(all_tags))}">'
-                f'<a class="photo" href="images/{e(web)}" target="_blank" rel="noopener">'
-                f'<img src="images/{e(web)}" alt="{e(title)}" loading="lazy" width="{w}" height="{h}"></a>'
+                f'<a class="photo" href="{e(web)}" target="_blank" rel="noopener">'
+                f'<img src="{e(web)}" alt="{e(title)}" loading="lazy" width="{w}" height="{h}"></a>'
                 f'<header><h3>{e(title)}</h3><p class="sub">{e(sub)}</p></header>'
                 f'<dl>{"".join(rows)}</dl>'
                 f'<p class="foot">{e(V.RIGHTS[a["rights"]])} {src}'
@@ -147,10 +156,17 @@ def build(image_dirs, annotations_path, out_dir: Path, public_only: bool) -> dic
                 f'{"<br>분석: " + e(a.get("annotated_by", "")) if a.get("annotated_by") else ""}</p></article>')
         (cards if a["complete"] else waiting).append(card)
     page = render(cards, waiting, public_only)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "index.html").write_text(page, encoding="utf-8")
-    return {"complete": len(cards), "waiting": len(waiting), "skipped_not_public": skipped,
-            "out": str(out_dir / "index.html")}
+    if single_file:
+        target = out_dir
+        target.parent.mkdir(parents=True, exist_ok=True)
+        page = ('<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' + page + "</body></html>")
+    else:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        target = out_dir / "index.html"
+    target.write_text(page, encoding="utf-8")
+    return {"complete": len(cards), "waiting": len(waiting), "skipped_not_public": skipped, "out": str(target),
+            "bytes": target.stat().st_size}
 
 
 def render(cards, waiting, public_only) -> str:
@@ -233,10 +249,11 @@ def main(argv=None) -> int:
     ap.add_argument("--annotations", type=Path, default=DEFAULT_ANNOTATIONS)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--public-only", action="store_true")
+    ap.add_argument("--single-file", action="store_true", help="one .html with images embedded")
     a = ap.parse_args(argv)
-    r = build(a.images, a.annotations, a.out, a.public_only)
+    r = build(a.images, a.annotations, a.out, a.public_only, a.single_file)
     print(f"complete {r['complete']} · waiting for analysis {r['waiting']} · not public (left out) "
-          f"{len(r['skipped_not_public'])} -> {r['out']}")
+          f"{len(r['skipped_not_public'])} -> {r['out']} ({r['bytes'] // 1024} KB)")
     return 0
 
 
