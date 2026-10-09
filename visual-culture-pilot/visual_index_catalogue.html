@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="시각문화와 에디토리얼 디자인을 위한 이미지 카탈로그">
+<title>VISUAL INDEX — Magazine Image Catalogue</title>
+<style>
+  :root {
+    --paper: #f3f0e8;
+    --ink: #1e211e;
+    --muted: #73766e;
+    --line: #c9c7bd;
+    --accent: #c64c32;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: Arial, Helvetica, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+  a { color: inherit; }
+  .masthead { padding: 22px 5vw 16px; border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .masthead strong { font-size: 12px; letter-spacing: .2em; }
+  .hero { padding: 7vw 5vw 5vw; display: grid; grid-template-columns: 1.25fr .75fr; gap: 5vw; align-items: end; }
+  .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; }
+  h1 { font-family: var(--serif); font-size: clamp(58px, 10vw, 150px); font-weight: 400; line-height: .82; letter-spacing: -.075em; margin: 22px 0 26px; }
+  .hero-copy { max-width: 390px; font-family: var(--serif); font-size: clamp(18px, 2vw, 25px); line-height: 1.35; }
+  .hero-meta { margin-top: 26px; color: var(--muted); font-size: 10px; line-height: 1.8; letter-spacing: .08em; text-transform: uppercase; }
+  .hero-image { margin: 0 5vw 5vw; position: relative; height: min(65vw, 680px); overflow: hidden; background: #d6d0c4; }
+  .hero-image img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.78); }
+  .hero-image figcaption { position: absolute; bottom: 18px; left: 20px; color: white; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 1px 8px #0008; }
+  .section-head { margin: 0 5vw; padding: 22px 0 16px; border-top: 1px solid var(--ink); display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+  .section-head h2 { margin: 0; font: 400 clamp(27px, 4vw, 48px)/1 var(--serif); letter-spacing: -.04em; }
+  .section-head span { color: var(--muted); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
+  .catalogue { padding: 12px 5vw 7vw; display: grid; grid-template-columns: repeat(12, 1fr); gap: 42px 18px; }
+  .item { margin: 0; min-width: 0; }
+  .item:nth-child(1), .item:nth-child(4) { grid-column: span 7; }
+  .item:nth-child(2), .item:nth-child(3) { grid-column: span 5; }
+  .item:nth-child(5), .item:nth-child(6) { grid-column: span 6; }
+  .image-wrap { background: #ded9ce; overflow: hidden; aspect-ratio: 4 / 5; }
+  .item:nth-child(1) .image-wrap, .item:nth-child(4) .image-wrap { aspect-ratio: 5 / 3.6; }
+  .item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+  .item:hover img { transform: scale(1.035); }
+  .caption-line { border-top: 1px solid var(--ink); margin-top: 11px; padding-top: 9px; display: flex; justify-content: space-between; gap: 12px; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+  .item h3 { font: 400 clamp(22px, 3vw, 36px)/1.02 var(--serif); letter-spacing: -.035em; margin: 10px 0 8px; }
+  .item p { max-width: 480px; color: #555850; font-size: 12px; line-height: 1.6; margin: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+  .tags span { border: 1px solid var(--line); border-radius: 99px; padding: 5px 8px; font-size: 9px; letter-spacing: .04em; color: #555850; }
+  .manifesto { margin: 0 5vw 7vw; padding: 5vw 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; gap: 5vw; }
+  .manifesto h2 { margin: 0; font: 400 clamp(34px, 5vw, 68px)/.95 var(--serif); letter-spacing: -.05em; }
+  .manifesto p { margin: 0; max-width: 500px; font: 17px/1.55 var(--serif); }
+  .specs { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 10px; }
+  .specs div { border-top: 1px solid var(--line); padding-top: 8px; }
+  .specs b { display: block; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+  footer { background: var(--ink); color: var(--paper); padding: 25px 5vw; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  footer a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  @media (max-width: 700px) {
+    .masthead { align-items: flex-start; }
+    .hero { grid-template-columns: 1fr; padding-top: 14vw; }
+    .hero-copy { max-width: 520px; }
+    .hero-image { margin-top: 0; height: 100vw; }
+    .catalogue { grid-template-columns: 1fr; gap: 36px; }
+    .item:nth-child(n) { grid-column: auto; }
+    .item:nth-child(n) .image-wrap { aspect-ratio: 4 / 5; }
+    .manifesto { grid-template-columns: 1fr; padding: 9vw 0; }
+    .section-head { align-items: flex-end; }
+  }
+
+  .photo-link { display: block; width: 100%; height: 100%; }
+  .photo-link:focus-visible, .source:focus-visible, .tags a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .source { display: inline-flex; gap: 8px; align-items: baseline; margin: 2px 0 10px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 2px; }
+  .source span { color: var(--muted); text-transform: none; letter-spacing: 0; }
+  .source:hover { color: var(--ink); border-color: var(--ink); }
+  .tags a { border: 1px solid var(--line); border-radius: 99px; padding: 5px 8px; font-size: 9px; letter-spacing: .04em; color: #555850; text-decoration: none; }
+  .tags a:hover { border-color: var(--ink); color: var(--ink); }
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <strong>VISUAL INDEX</strong>
+    <span>Independent Image Catalogue · Vol. 01</span>
+    <span>Seoul / 2026</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="main-title">
+      <div>
+        <div class="eyebrow">Editorial research / Issue 001</div>
+        <h1 id="main-title">Images<br>in Context.</h1>
+      </div>
+      <div>
+        <p class="hero-copy">시각문화의 단면을 수집하고, 이미지와 편집 디자인이 의미를 만드는 방식을 탐색하는 이미지 카탈로그.</p>
+        <div class="hero-meta">Visual culture / Materiality / Art direction<br>6 selected references · Image-led editorial<br>사진을 누르면 원본 사진, 태그를 누르면 Unsplash 검색으로 이동</div>
+      </div>
+    </section>
+
+    <figure class="hero-image">
+      <a class="photo-link" href="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=2000&q=85" alt="미술관의 회화 작품과 전시 공간" fetchpriority="high"></a>
+      <figcaption>Fig. 00 — Exhibition view / Image as environment</figcaption>
+    </figure>
+
+    <div class="section-head">
+      <h2>Selected references</h2>
+      <span>Catalogue / 001—006</span>
+    </div>
+
+    <section class="catalogue" aria-label="이미지 카탈로그">
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1513364776144-60967b0f800f" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=85" alt="작업 도구와 물감이 놓인 아티스트 작업 공간" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>01 / Studio practice</span><span>Still life</span></div>
+          <h3>The Material<br>of Making</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1513364776144-60967b0f800f" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>작업 도구와 재료의 물성을 중심으로 구성한 정물 이미지. 표면 질감과 색채 대비를 활용해 시각적 밀도를 형성한다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/materiality" target="_blank" rel="noopener noreferrer">Materiality</a><a href="https://unsplash.com/s/photos/still-life" target="_blank" rel="noopener noreferrer">Still life</a><a href="https://unsplash.com/s/photos/texture" target="_blank" rel="noopener noreferrer">Texture</a></div>
+        </figcaption>
+      </figure>
+
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1541961017774-22349e4a1262" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1541961017774-22349e4a1262?auto=format&fit=crop&w=1200&q=85" alt="강렬한 색채와 추상적 형태가 돋보이는 회화" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>02 / Abstract form</span><span>Painting</span></div>
+          <h3>Chromatic<br>Tension</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1541961017774-22349e4a1262" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>색상 간 상호작용과 형태의 리듬을 관찰하는 레퍼런스. 강한 색면은 페이지의 시각적 앵커로 기능할 수 있다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/color-theory" target="_blank" rel="noopener noreferrer">Color theory</a><a href="https://unsplash.com/s/photos/composition" target="_blank" rel="noopener noreferrer">Composition</a><a href="https://unsplash.com/s/photos/art-direction" target="_blank" rel="noopener noreferrer">Art direction</a></div>
+        </figcaption>
+      </figure>
+
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1577083552431-6e5fd01aa342" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1200&q=85" alt="갤러리에 전시된 현대 미술 작품" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>03 / Exhibition</span><span>Installation</span></div>
+          <h3>Space for<br>Looking</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1577083552431-6e5fd01aa342" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>작품과 전시 공간의 관계를 보여주는 이미지. 주변 여백과 오브젝트의 배치가 감상자의 시선을 조율한다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/spatial-design" target="_blank" rel="noopener noreferrer">Spatial design</a><a href="https://unsplash.com/s/photos/negative-space" target="_blank" rel="noopener noreferrer">Negative space</a><a href="https://unsplash.com/s/photos/exhibition" target="_blank" rel="noopener noreferrer">Exhibition</a></div>
+        </figcaption>
+      </figure>
+
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=1500&q=85" alt="책과 인쇄물을 배치한 조용한 독서 공간" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>04 / Printed matter</span><span>Editorial</span></div>
+          <h3>The Printed<br>Object</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>인쇄물과 독서 환경을 다루는 레퍼런스. 종이의 물성과 책의 오브젝트성은 편집물의 촉각적 정체성을 강화한다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/print-culture" target="_blank" rel="noopener noreferrer">Print culture</a><a href="https://unsplash.com/s/photos/book-design" target="_blank" rel="noopener noreferrer">Book design</a><a href="https://unsplash.com/s/photos/editorial" target="_blank" rel="noopener noreferrer">Editorial</a></div>
+        </figcaption>
+      </figure>
+
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1518998053901-5348d3961a04" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1400&q=85" alt="미술 작품이 걸린 갤러리 내부" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>05 / Art institution</span><span>Gallery</span></div>
+          <h3>Framing the<br>Experience</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1518998053901-5348d3961a04" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>작품 자체뿐 아니라 전시 동선과 벽면의 프레이밍을 함께 관찰한다. 이미지의 맥락은 해석의 방향을 바꾼다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/framing" target="_blank" rel="noopener noreferrer">Framing</a><a href="https://unsplash.com/s/photos/visual-hierarchy" target="_blank" rel="noopener noreferrer">Visual hierarchy</a><a href="https://unsplash.com/s/photos/context" target="_blank" rel="noopener noreferrer">Context</a></div>
+        </figcaption>
+      </figure>
+
+      <figure class="item">
+        <div class="image-wrap">
+          <a class="photo-link" href="https://images.unsplash.com/photo-1577083288073-40892c0860a4" target="_blank" rel="noopener noreferrer" aria-label="원본 사진 열기"><img src="https://images.unsplash.com/photo-1577083288073-40892c0860a4?auto=format&fit=crop&w=1400&q=85" alt="현대적인 전시 공간의 작품과 색채" loading="lazy"></a>
+        </div>
+        <figcaption>
+          <div class="caption-line"><span>06 / Visual research</span><span>Contemporary art</span></div>
+          <h3>Reading the<br>Visual Field</h3>
+          <a class="source" href="https://images.unsplash.com/photo-1577083288073-40892c0860a4" target="_blank" rel="noopener noreferrer">원본 보기 ↗ <span>images.unsplash.com</span></a>
+          <p>시각 요소가 프레임 안에서 차지하는 비중과 관계를 분석한다. 크롭, 대비, 리듬은 이미지 편집의 핵심 변수다.</p>
+          <div class="tags"><a href="https://unsplash.com/s/photos/image-analysis" target="_blank" rel="noopener noreferrer">Image analysis</a><a href="https://unsplash.com/s/photos/cropping" target="_blank" rel="noopener noreferrer">Cropping</a><a href="https://unsplash.com/s/photos/visual-rhythm" target="_blank" rel="noopener noreferrer">Visual rhythm</a></div>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="manifesto">
+      <h2>A catalogue is<br>a point of view.</h2>
+      <div>
+        <p>카탈로그는 이미지를 단순히 모아두는 저장소가 아니다. 분류 체계, 캡션, 시퀀싱(sequence), 여백은 각각 편집자의 관점을 드러낸다. 이미지를 어떤 순서로 제시하고 어떤 맥락을 부여하는지가 전체적인 서사를 만든다.</p>
+        <div class="specs">
+          <div><b>Format</b>Digital editorial / Responsive HTML</div>
+          <div><b>Grid</b>12-column desktop / Single-column mobile</div>
+          <div><b>Typography</b>Serif display + sans-serif metadata</div>
+          <div><b>Image treatment</b>Aspect ratio / Crop / Caption / Alt text</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>VISUAL INDEX — Issue 001</span>
+    <span>Photography via <a href="https://unsplash.com/" target="_blank" rel="noreferrer">Unsplash</a></span>
+    <a href="#main-title">Back to top ↑</a>
+  </footer>
+</body>
+</html>
