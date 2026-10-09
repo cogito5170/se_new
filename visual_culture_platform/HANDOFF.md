@@ -8,11 +8,37 @@ needed is in this directory of the repository, which is transferred through git 
 
 > Claude has **not** observed any Antigravity run. Results in TEST_RESULTS.md are Claude's runs.
 
+## 0. Get the code (do this first)
+
+The project is **not** a separate repository. It is the directory `visual_culture_platform/` on
+the `main` branch of `https://github.com/cogito5170/se_new`. Do not substitute another workspace
+or another project's test suite (e.g. a `visual-culture-pilot` / `tests/test_collector.py`): its
+results say nothing about this project.
+
+```bash
+# new checkout (a private repo needs GitHub credentials on the VM)
+git clone https://github.com/cogito5170/se_new.git
+cd se_new
+
+# or an existing checkout of se_new
+git fetch origin main && git checkout main && git pull origin main
+
+# sanity check: all three must print a path; if not, stop and report "code not present"
+ls visual_culture_platform/tests/run_tests.py visual_culture_platform/HANDOFF.md \
+   visual_culture_platform/scripts/acceptance.sh
+```
+
+If the VM cannot reach GitHub, copy the `visual_culture_platform/` directory over by any other
+means. It is self-contained.
+
 ## 1. First command
 
 ```bash
 cd visual_culture_platform && python3 tests/run_tests.py
 ```
+
+The runner prints one `PASS`/`FAIL` line per test (73 lines), followed by a summary line. The
+summary must read `73 passed, 0 failed`. A different count means a different or incomplete tree.
 
 Expected: the last line is `73 passed, 0 failed in …s` and the exit status is 0.
 It needs only Python ≥ 3.11 with no packages installed, and it uses no network.
