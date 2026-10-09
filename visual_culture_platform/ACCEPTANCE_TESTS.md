@@ -6,8 +6,8 @@ Run from `visual_culture_platform/`. `$W` is any empty working directory, for ex
 ## Level 1: automated tests
 
 ```bash
-python3 tests/run_tests.py          # stdlib runner; expected last line: "73 passed, 0 failed in …"
-python3 -m pytest -q                # if pytest is installed; expected: 73 passed
+python3 tests/run_tests.py          # stdlib runner; expected last line: "78 passed, 0 failed in …"
+python3 -m pytest -q                # if pytest is installed; expected: 78 passed
 ```
 
 Pass condition: exit status 0 and zero failures. Without Pillow, two tests print that their
@@ -17,7 +17,7 @@ skipped. That is expected; both still count as passes.
 ## Level 2: scripted end-to-end run
 
 ```bash
-bash scripts/acceptance.sh "$W"     # expected last line: "42 passed, 0 failed  (work dir: …)"; exit 0
+bash scripts/acceptance.sh "$W"     # expected last line: "47 passed, 0 failed  (work dir: …)"; exit 0
 ```
 
 | ID | Command (via `magref --data-dir $W/data --fixtures fixtures/web`) | Expected exit | Expected evidence |
@@ -49,6 +49,9 @@ bash scripts/acceptance.sh "$W"     # expected last line: "42 passed, 0 failed  
 | AT27–29 | `project create …`, `project add-context …`, `project report … -o $W/report.md` | 0 | report with sections 1–9 |
 | AT30 | `status` | 0 | counts and a "recent errors" list (404, 403, robots, jsonld, host_not_allowed) |
 | AT31 | `show --id mi_00000000000000000000` | **3** | "not found" |
+| AT32 | `ingest-html fixtures/local_html/saved_quiet_volume.html --source atelier` | 0 | `pages new 0, updated 1` (or new 1 on an empty DB), origin "saved-from comment", 1 local image copy not imported; no HTTP request |
+| AT33 | `ingest-html fixtures/local_html --source atelier --links` | **6** | `wrong_site.html` and `not_html.html` fail with reasons; the report document adds same-site links and lists other hosts (`unknown-zine.test`, ...) |
+| AT34 | `ingest-html fixtures/local_html --source restricted-demo` | **4** | refused: restricted source |
 
 ## Level 3: manual checks
 

@@ -92,6 +92,11 @@ check "AT29 generate report"                      0 -- mr project report --proje
 check "AT30 status"                               0 -- mr status
 contains "AT30 recent errors section"             "recent errors"
 check "AT31 unknown id -> not found"              3 -- mr show --id mi_00000000000000000000
+check "AT32 ingest a saved HTML page (no fetch)"  0 -- mr ingest-html "$here/fixtures/local_html/saved_quiet_volume.html" --source atelier
+contains "AT32 origin from saved-from comment"    "saved-from comment"
+check "AT33 ingest a folder (2 bad files fail)"   6 -- mr ingest-html "$here/fixtures/local_html" --source atelier --links
+contains "AT33 other hosts reported"              "unknown-zine.test"
+check "AT34 ingest into restricted source"        4 -- mr ingest-html "$here/fixtures/local_html" --source restricted-demo
 
 echo
 echo "$pass passed, $fail failed  (work dir: $work)"

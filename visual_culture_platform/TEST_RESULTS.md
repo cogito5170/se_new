@@ -1,5 +1,9 @@
 # Test results
 
+> **Update 2026-10-09 (ingest-html added):** `python3 tests/run_tests.py` → **78 passed, 0 failed**
+> (Python 3.13; adds `tests/test_ingest_html.py`, 5 tests). `bash scripts/acceptance.sh` →
+> **47 passed, 0 failed** (adds AT32–AT34). The rest of this file is the earlier run of 73 tests and 42 checks.
+
 Recorded by Claude in the development container on **2026-10-09**. This environment differs
 from the target VM. Antigravity's own runs are the results that count for acceptance.
 
