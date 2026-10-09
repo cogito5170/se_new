@@ -351,8 +351,9 @@ class Http(unittest.TestCase):
         self.assertEqual(ok.full_url, "https://images.metmuseum.org/other.jpg")
 
     def test_search_response_parsing(self):
-        self.assertEqual(c.parse_search_response({"total": 0, "objectIDs": None}), [])
-        self.assertEqual(c.parse_search_response({"total": 2, "objectIDs": [5, 3]}), [5, 3])
+        self.assertEqual(c.parse_search_response({"total": 0, "objectIDs": None}), ([], 0))
+        self.assertEqual(c.parse_search_response({"total": 1423, "objectIDs": [5, 3]}), ([5, 3], 1423))
+        self.assertEqual(c.parse_search_response({"objectIDs": [5]}), ([5], None))   # total not guessed
         for bad in ({"total": 1}, {"objectIDs": ["5"]}, [1, 2]):
             with self.assertRaises(c.FetchError):
                 c.parse_search_response(bad)
@@ -566,6 +567,73 @@ class Validator(TmpDirCase):
         self.assertEqual(code, 3)
 
 
+# --------------------------------------------------------------------------- search (v1.1, mocked; no Pillow needed)
+
+def search_url(term, offset, limit):
+    return f"{SEARCH}?q={term}&hasImages=true&offset={offset}&limit={limit}"
+
+
+class Search(TmpDirCase):
+    def _collector(self, routes, per_term=8, terms=("poster",)):
+        client, opener, _ = make_client(routes)
+        col = c.Collector(self.archive, client, terms=list(terms), per_term=per_term, seed_objects=[],
+                          log=QUIET, plan_only=True)
+        return col, opener
+
+    def test_v11_url_with_filters_and_explicit_paging(self):
+        url = search_url("poster", 0, 3)
+        self.assertTrue(url.startswith("https://collectionapi.metmuseum.org/public/collection/v1.1/search?"))
+        col, opener = self._collector({url: json_ok({"total": 1423, "objectIDs": [9, 8, 7]})}, per_term=3)
+        self.assertEqual(col.search("poster"), [9, 8, 7])
+        self.assertEqual(opener.calls, [url])                 # enough IDs: no second page
+        self.assertEqual(col.stats.search_totals, {"poster": 1423})
+        self.assertTrue((self.archive / "metadata" / "api_snapshots" / col.stats.snapshot_run_id
+                         / "search" / "poster.json").is_file())
+
+    def test_follows_offset_when_a_page_is_short(self):
+        routes = {search_url("poster", 0, 5): json_ok({"total": 9, "objectIDs": [1, 2]}),
+                  search_url("poster", 2, 3): json_ok({"total": 9, "objectIDs": [3, 4, 5]})}
+        col, opener = self._collector(routes, per_term=5)
+        self.assertEqual(col.search("poster"), [1, 2, 3, 4, 5])
+        self.assertEqual(opener.calls, [search_url("poster", 0, 5), search_url("poster", 2, 3)])
+
+    def test_stops_at_total_and_at_page_cap(self):
+        col, opener = self._collector({search_url("poster", 0, 8): json_ok({"total": 2, "objectIDs": [1, 2]})})
+        self.assertEqual(col.search("poster"), [1, 2])
+        self.assertEqual(len(opener.calls), 1)                # offset 2 >= total 2
+        routes = {search_url("poster", 0, 50): json_ok({"objectIDs": [1]}),          # no total reported
+                  search_url("poster", 1, 49): json_ok({"objectIDs": [2]}),
+                  search_url("poster", 2, 48): json_ok({"objectIDs": [3]})}
+        col, opener = self._collector(routes, per_term=50)
+        self.assertEqual(col.search("poster"), [1, 2, 3])
+        self.assertEqual(len(opener.calls), c.SEARCH_MAX_PAGES)
+
+    def test_page_longer_than_limit_is_cut(self):
+        col, _ = self._collector({search_url("poster", 0, 4): json_ok({"total": 900, "objectIDs": list(range(100))})},
+                                 per_term=4)
+        self.assertEqual(col.search("poster"), [0, 1, 2, 3])
+
+    def test_empty_results(self):
+        col, opener = self._collector({search_url("poster", 0, 8): json_ok({"total": 0, "objectIDs": None})})
+        self.assertEqual(col.search("poster"), [])
+        self.assertEqual(len(opener.calls), 1)
+
+    def test_410_on_one_term_is_recorded_and_others_continue(self):
+        routes = {search_url("poster", 0, 8): http_error(410),
+                  search_url("print", 0, 8): json_ok({"total": 0, "objectIDs": None})}
+        col, opener = self._collector(routes, terms=("poster", "print"))
+        stats = col.run()
+        self.assertEqual([(f["category"], f["url"]) for f in stats.failures], [("endpoint_gone", "search:poster")])
+        self.assertEqual(stats.search_hits, {"print": 0})
+        self.assertEqual(sum(1 for u in opener.calls if "q=poster" in u), 1)   # 410 not retried
+
+    def test_other_http_failures_on_search(self):
+        routes = {search_url("poster", 0, 8): http_error(500), search_url("print", 0, 8): http_error(403)}
+        col, _ = self._collector(routes, terms=("poster", "print"))
+        stats = col.run()
+        self.assertEqual(sorted(f["category"] for f in stats.failures), ["http_error", "server_error"])
+
+
 # --------------------------------------------------------------------------- end to end (mocked)
 
 @needs_pil
@@ -636,15 +704,33 @@ class MockedRun(TmpDirCase):
         with self.assertRaises(ValueError):
             c.Collector(self.archive, client, max_images=11, log=QUIET)
 
-    def test_search_uses_v11_first_page_only(self):
-        url = f"{SEARCH}?q=poster&hasImages=true&offset=0&limit=3"
-        client, opener, _ = make_client({url: json_ok({"total": 1423, "objectIDs": [9, 8, 7]})})
-        col = c.Collector(self.archive, client, terms=["poster"], per_term=3, seed_objects=[], log=QUIET,
-                          plan_only=True)
-        self.assertEqual(col.search("poster"), [9, 8, 7])
-        self.assertEqual(opener.calls, [url])
-        self.assertTrue((self.archive / "metadata" / "api_snapshots" / col.stats.snapshot_run_id
-                         / "search" / "poster.json").is_file())
+    def test_same_id_in_several_terms_downloaded_once(self):
+        r = {search_url("poster", 0, 8): json_ok({"total": 2, "objectIDs": [12, 13]}),
+             search_url("print", 0, 8): json_ok({"total": 2, "objectIDs": [13, 12]}),
+             f"{API}/objects/12": json_ok(met_object(12, title="A")),
+             f"{API}/objects/13": json_ok(met_object(13, title="B")),
+             IMG.format(12): img_ok(image_bytes(size=(21, 9))),
+             IMG.format(13): img_ok(image_bytes(size=(22, 9)))}
+        client, opener, _ = make_client(r)
+        stats = c.Collector(self.archive, client, terms=["poster", "print"], seed_objects=[], log=QUIET).run()
+        self.assertEqual(stats.downloaded, 2)
+        for oid in (12, 13):
+            self.assertEqual(opener.calls.count(f"{API}/objects/{oid}"), 1)
+            self.assertEqual(opener.calls.count(IMG.format(oid)), 1)
+
+    def test_cap_counts_images_already_in_manifest(self):
+        client, _, _ = make_client(self.routes())
+        c.Collector(self.archive, client, terms=[], log=QUIET).run()          # saves 436121
+        r = {search_url("print", 0, 8): json_ok({"total": 3, "objectIDs": [101, 102, 103]})}
+        for oid in (101, 102, 103):
+            r[f"{API}/objects/{oid}"] = json_ok(met_object(oid, title=f"P{oid}", classification=f"C{oid}"))
+            r[IMG.format(oid)] = img_ok(image_bytes(size=(30 + oid % 10, 9)))
+        client2, _, _ = make_client(r)
+        stats = c.Collector(self.archive, client2, terms=["print"], seed_objects=[], max_images=2, log=QUIET).run()
+        self.assertEqual((stats.manifest_records_before, stats.image_budget, stats.downloaded), (1, 1, 1))
+        client3, opener3, _ = make_client(r)
+        stats = c.Collector(self.archive, client3, terms=["print"], seed_objects=[], max_images=2, log=QUIET).run()
+        self.assertEqual((stats.status, stats.downloaded, opener3.calls), ("limit_reached", 0, []))
 
     def test_plan_is_deterministic_round_robin(self):
         res = {"a": [1, 2, 3], "b": [2, 4], "c": []}

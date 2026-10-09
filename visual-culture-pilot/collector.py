@@ -51,6 +51,7 @@ API_ROOT = "https://collectionapi.metmuseum.org"
 SEARCH_URL = API_ROOT + "/public/collection/v1.1/search"
 SEARCH_ENDPOINT_NAME = "v1.1/search"
 SEARCH_MAX_LIMIT = 500
+SEARCH_MAX_PAGES = 3   # per term; the plan never needs more than --per-term IDs
 OBJECT_URL = API_ROOT + "/public/collection/v1/objects/{object_id}"
 DOCS_URL = "https://metmuseum.github.io/"
 RIGHTS_POLICY_URL = "https://www.metmuseum.org/about-the-met/policies-and-documents/open-access"
@@ -294,17 +295,21 @@ class HttpClient:
 
 # --------------------------------------------------------------------------- API parsing
 
-def parse_search_response(data) -> "list[int]":
-    """Return objectIDs from a search response. ``objectIDs: null`` means no hits."""
+def parse_search_response(data) -> "tuple[list[int], int | None]":
+    """Return (objectIDs of this page, total). ``objectIDs: null`` means no hits; a missing or
+    non-integer ``total`` is returned as None rather than guessed."""
     if not isinstance(data, dict) or "objectIDs" not in data:
         keys = sorted(data) if isinstance(data, dict) else type(data).__name__
         raise FetchError("unexpected_schema", f"search response lacks objectIDs (keys: {keys})")
+    total = data.get("total")
+    if not isinstance(total, int) or isinstance(total, bool):
+        total = None
     ids = data["objectIDs"]
     if ids is None:
-        return []
+        return [], total
     if not isinstance(ids, list) or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids):
         raise FetchError("unexpected_schema", "objectIDs is not a list of integers")
-    return ids
+    return ids, total
 
 
 def plan_candidates(results: "dict[str, list[int]]", terms, per_term: int) -> "list[tuple[str, int]]":
@@ -682,6 +687,9 @@ class RunStats:
     finished_at: "str | None" = None
     status: str = "running"
     search_hits: dict = field(default_factory=dict)
+    search_totals: dict = field(default_factory=dict)
+    manifest_records_before: int = 0
+    image_budget: int = 0
     candidates_planned: int = 0
     api_requests: int = 0
     api_requests_failed: int = 0
@@ -858,13 +866,24 @@ class Collector:
                       got["size"], got["sha256"][:12])
 
     def search(self, term: str) -> "list[int]":
-        # One page only: the first per_term IDs are all the plan can use, so nothing more is fetched.
-        limit = max(1, min(self.per_term, SEARCH_MAX_LIMIT))
-        query = urllib.parse.urlencode({"q": term, "hasImages": "true", "offset": 0, "limit": limit})
-        data, _, _ = self._api_json("search", term, f"{SEARCH_URL}?{query}")
-        ids = parse_search_response(data)[:limit]
-        self.log.info("search %r: %d ids (response keys: %s)", term, len(ids),
-                      sorted(data) if isinstance(data, dict) else "-")
+        """Page through v1.1/search with explicit offset/limit until --per-term IDs are collected,
+        the results run out (empty page or offset >= total), or SEARCH_MAX_PAGES is reached.
+        A page is never assumed to hold every match; a page longer than ``limit`` is cut to it."""
+        want = max(1, self.per_term)
+        ids, offset, total = [], 0, None
+        for page_no in range(SEARCH_MAX_PAGES):
+            limit = min(want - len(ids), SEARCH_MAX_LIMIT)
+            query = urllib.parse.urlencode({"q": term, "hasImages": "true", "offset": offset, "limit": limit})
+            key = term if offset == 0 else f"{term}@{offset}"
+            data, _, _ = self._api_json("search", key, f"{SEARCH_URL}?{query}")
+            page, total = parse_search_response(data)
+            page = page[:limit]
+            self.log.info("search %r offset=%d limit=%d: %d ids (total %s)", term, offset, limit, len(page), total)
+            ids.extend(page)
+            offset += len(page)
+            if not page or len(ids) >= want or (total is not None and offset >= total):
+                break
+        self.stats.search_totals[term] = total
         return ids
 
     def run(self) -> RunStats:
@@ -877,17 +896,23 @@ class Collector:
         self._seen_keys = set()
         self._per_class = {}
         self._blocked = False
+        # --max-images caps the archive, not just this run: images already in the manifest count.
+        s.manifest_records_before = len(existing)
+        s.image_budget = budget = max(0, self.max_images - len(existing))
+        if budget == 0:
+            self.log.info("manifest already holds %d records (max %d); nothing to collect",
+                          len(existing), self.max_images)
 
         # 1. Known seed objects first (e.g. 436121), so the whole path is proven on a known record.
         for oid in self.seed_objects:
-            if self._blocked or s.downloaded >= self.max_images:
+            if self._blocked or s.downloaded >= budget:
                 break
             self._process("seed", oid)
 
         # 2. Bounded search, deterministic round-robin plan.
         results = {}
         for term in self.terms:
-            if self._blocked or s.downloaded >= self.max_images:
+            if self._blocked or s.downloaded >= budget:
                 break
             try:
                 results[term] = self.search(term)
@@ -903,7 +928,7 @@ class Collector:
         s.candidates_planned = len(plan) + len(self.seed_objects)
         self.log.info("planned %d search candidates", len(plan))
         for term, oid in plan:
-            if self._blocked or s.downloaded >= self.max_images:
+            if self._blocked or s.downloaded >= budget:
                 break
             self._process(term, oid)
 
@@ -913,6 +938,8 @@ class Collector:
         blocked = any(f["category"] == "network_blocked" for f in s.failures)
         if s.downloaded:
             s.status = "completed"
+        elif s.image_budget == 0:
+            s.status = "limit_reached"
         elif blocked:
             s.status = "blocked"
         elif self.plan_only:
@@ -957,7 +984,11 @@ def write_reports(archive_dir: Path, stats: RunStats) -> Path:
         f"- Searches completed: {len(stats.search_hits)} of {len(stats.terms)}"
         + ("" if len(stats.search_hits) == len(stats.terms) else
            " (search stops early once the image limit is reached or a host is blocked)"),
-        f"- Search hits per term: {stats.search_hits or 'none'}",
+        f"- IDs taken per term: {stats.search_hits or 'none'}",
+        f"- Total matches reported by the API per term: {stats.search_totals or 'none'}",
+        f"- Failed search terms: {[f['url'][7:] for f in stats.failures if str(f['url']).startswith('search:')] or 'none'}",
+        f"- Manifest records before this run: {stats.manifest_records_before}; image budget for this run: "
+        f"{stats.image_budget} (cap {HARD_MAX_IMAGES} for the whole archive)",
         f"- Manifest records in total after this run: {total_records}",
         "",
         "## Counts (this run)",
@@ -1082,7 +1113,7 @@ def main(argv=None) -> int:
     report = write_reports(archive, stats)
     print(json.dumps({"run_id": stats.run_id, "status": stats.status, "downloaded": stats.downloaded,
                       "failures": len(stats.failures), "report": str(report)}, ensure_ascii=False))
-    return {"completed": 0, "planned": 0}.get(stats.status, 1)
+    return {"completed": 0, "planned": 0, "limit_reached": 0}.get(stats.status, 1)
 
 
 if __name__ == "__main__":

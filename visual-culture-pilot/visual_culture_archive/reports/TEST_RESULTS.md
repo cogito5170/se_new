@@ -156,3 +156,26 @@ this container, and none of the results above rely on it.
 
 The validator never passes a record on the signature check alone. Without Pillow it emits
 `image_decode_not_run`, and the record does not pass (see `Validator.test_no_decoder_means_no_pass`).
+
+## Update: v1.1 search migration (2026-10-09)
+
+The trigger was the Mac live run (user-reported output). Seed 436121 was saved and validated
+(1 record, 1 valid image, Pillow 11.3.0, 0 errors). All five `v1/search` requests returned
+HTTP 410. Search now uses `v1.1/search` with explicit `offset`/`limit` paging. The
+10-image cap now counts records already in the manifest.
+
+Mocked unit tests, re-run in the cloud container:
+
+```
+$ python3 -m unittest discover -s tests            # Python 3.13.16, Pillow 12.3.0
+Ran 62 tests in 0.234s
+
+OK
+
+$ .venv/bin/python -m unittest discover -s tests   # Python 3.9.25, no Pillow
+Ran 62 tests in 0.035s
+
+OK (skipped=22)
+```
+
+These mocked tests do **not** show that live v1.1 search works. That needs a live run on the Mac.
