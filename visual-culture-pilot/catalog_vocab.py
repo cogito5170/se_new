@@ -15,6 +15,7 @@ LAYOUT = [
     ("패널 분할", "panel division"), ("텍스트 오버레이", "text overlay"), ("캡션 배치", "caption placement"),
     ("장식 테두리", "ornamental border"), ("비네트", "vignette"), ("대각선 구도", "diagonal composition"),
     ("삼분할 구도", "rule of thirds"), ("Z 패턴", "Z-pattern"), ("여백 하단 배치", "bottom margin weight"),
+    ("넓은 마진", "wide margins"), ("미니멀 레이아웃", "minimal layout"), ("텍스트 중심 지면", "text-led pages"),
 ]
 
 TYPOGRAPHY = [
@@ -26,6 +27,8 @@ TYPOGRAPHY = [
     ("넓은 트래킹", "wide tracking"), ("좁은 트래킹", "tight tracking"), ("좁은 레딩", "tight leading"),
     ("고대비 획", "high stroke contrast"), ("타이포그래피 위계", "typographic hierarchy"),
     ("캡션 타이포그래피", "caption typography"), ("텍스트 없음", "no text"),
+    ("실험적 타이포그래피", "experimental typography"), ("볼드 웨이트", "bold weight"),
+    ("모노그램 마스트헤드", "monogram masthead"),
 ]
 
 IMAGE = [
@@ -38,11 +41,15 @@ IMAGE = [
     ("실루엣 강조", "silhouette emphasis"), ("단색 배경", "plain background"), ("패턴 배경", "patterned background"),
     ("장식적 배경", "decorative background"), ("실내 장면", "interior scene"), ("평면적 원근", "flattened perspective"),
     ("콜라주", "collage"), ("듀오톤", "duotone"), ("하프톤", "halftone"), ("그레인", "grain"), ("컷아웃", "cut-out"),
+    ("셀러브리티 커버", "celebrity cover"), ("플래시", "direct flash"), ("스냅숏 미학", "snapshot aesthetic"),
+    ("자연광", "natural light"), ("정물", "still life"), ("포트레이트", "portrait"), ("콘셉추얼 화보", "conceptual editorial"),
+    ("스트리트 스타일", "street style"), ("윙크 커버", "wink cover"),
 ]
 
 COLOUR = [  # optional manual tags; the measured values are added automatically
     ("제한 팔레트", "limited palette"), ("스폿 컬러", "spot colour"), ("원색 액센트", "primary accent"),
     ("파스텔", "pastel"), ("어스톤", "earth tones"), ("메탈릭", "metallic"), ("톤온톤", "tone-on-tone"),
+    ("시그니처 레드", "signature red"), ("무채색 위주", "achromatic-led"),
 ]
 
 COMPONENTS = {"layout": LAYOUT, "typography": TYPOGRAPHY, "image": IMAGE, "colour_tags": COLOUR}
