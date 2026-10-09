@@ -1,0 +1,78 @@
+{
+  "comment": "Offline fixture sources. Hosts use the reserved .test TLD; content is synthetic.",
+  "sources": [
+    {
+      "id": "atelier",
+      "name": "Atelier Journal (fixture)",
+      "base_url": "https://atelier-journal.test/",
+      "discovery_method": "sitemap",
+      "policy_status": "allowed",
+      "license": "CC0-1.0 (fixture)",
+      "evidence_url": "https://atelier-journal.test/terms.html",
+      "policy_note": "synthetic fixture content owned by this project"
+    },
+    {
+      "id": "northlight",
+      "name": "Northlight (fixture)",
+      "base_url": "https://northlight-mag.test/",
+      "discovery_method": "rss",
+      "entry_urls": [
+        "https://northlight-mag.test/feed.xml"
+      ]
+    },
+    {
+      "id": "folio",
+      "name": "Folio Review (fixture)",
+      "base_url": "https://folio-review.test/",
+      "discovery_method": "html",
+      "policy_status": "review_required",
+      "policy_note": "terms page not yet read"
+    },
+    {
+      "id": "open-archive",
+      "name": "Open Archive (fixture catalog)",
+      "base_url": "https://open-archive.test/",
+      "discovery_method": "json_catalog",
+      "entry_urls": [
+        "https://open-archive.test/api/catalog.json"
+      ],
+      "allowed_asset_hosts": [
+        "media.open-archive.test"
+      ],
+      "catalog_mapping": {
+        "items": "items",
+        "image_url": "image.url",
+        "page_url": "page",
+        "title": "title",
+        "creator": "creator",
+        "publication_date": "date",
+        "year": "year",
+        "country": "country",
+        "region": "region",
+        "genres": "genres",
+        "media_type": "medium",
+        "license": "license",
+        "width": "image.width",
+        "height": "image.height"
+      },
+      "policy_status": "allowed",
+      "license": "CC0-1.0",
+      "evidence_url": "https://open-archive.test/terms.html"
+    },
+    {
+      "id": "restricted-demo",
+      "name": "Restricted demo (fixture)",
+      "base_url": "https://atelier-journal.test/",
+      "discovery_method": "sitemap",
+      "policy_status": "restricted",
+      "policy_note": "demonstrates refusal"
+    },
+    {
+      "id": "disabled-demo",
+      "name": "Disabled demo (fixture)",
+      "base_url": "https://atelier-journal.test/",
+      "discovery_method": "sitemap",
+      "enabled": false
+    }
+  ]
+}

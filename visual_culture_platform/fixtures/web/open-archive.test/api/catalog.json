@@ -1,0 +1,567 @@
+{
+ "meta": {
+  "note": "SYNTHETIC FIXTURE CATALOG"
+ },
+ "items": [
+  {
+   "id": "OA-001",
+   "title": "Synthetic poster study 1",
+   "creator": "Fictional Studio 1",
+   "date": null,
+   "year": 1980,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-001.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-001",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-002",
+   "title": "Synthetic poster study 2",
+   "creator": "Fictional Studio 2",
+   "date": null,
+   "year": 1981,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-002.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-002",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-003",
+   "title": "Synthetic poster study 3",
+   "creator": "Fictional Studio 3",
+   "date": null,
+   "year": 1982,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-003.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-003",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-004",
+   "title": "Synthetic poster study 4",
+   "creator": "Fictional Studio 4",
+   "date": null,
+   "year": 1983,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-004.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-004",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-005",
+   "title": "Synthetic poster study 5",
+   "creator": "Fictional Studio 1",
+   "date": null,
+   "year": 1984,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-005.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-005",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-006",
+   "title": "Synthetic poster study 6",
+   "creator": "Fictional Studio 2",
+   "date": null,
+   "year": 1985,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-006.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-006",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-007",
+   "title": "Synthetic poster study 7",
+   "creator": "Fictional Studio 3",
+   "date": null,
+   "year": 1986,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-007.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-007",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-008",
+   "title": "Synthetic poster study 8",
+   "creator": "Fictional Studio 4",
+   "date": null,
+   "year": 1987,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-008.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-008",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-009",
+   "title": "Synthetic poster study 9",
+   "creator": "Fictional Studio 1",
+   "date": null,
+   "year": 1988,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-009.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-009",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-010",
+   "title": "Synthetic poster study 10",
+   "creator": "Fictional Studio 2",
+   "date": null,
+   "year": 1989,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-010.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-010",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-011",
+   "title": "Synthetic poster study 11",
+   "creator": "Fictional Studio 3",
+   "date": null,
+   "year": 1980,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-011.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-011",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-012",
+   "title": "Synthetic poster study 12",
+   "creator": "Fictional Studio 4",
+   "date": null,
+   "year": 1981,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-012.png",
+    "width": 40,
+    "height": 56
+   },
+   "page": "https://open-archive.test/works/OA-012",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-013",
+   "title": "Synthetic magazine cover 13",
+   "creator": "Fictional Studio 1",
+   "date": "2010-01-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-013.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-013",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-014",
+   "title": "Synthetic magazine cover 14",
+   "creator": "Fictional Studio 2",
+   "date": "2011-02-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-014.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-014",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-015",
+   "title": "Synthetic magazine cover 15",
+   "creator": "Fictional Studio 3",
+   "date": "2012-03-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-015.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-015",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-016",
+   "title": "Synthetic magazine cover 16",
+   "creator": "Fictional Studio 4",
+   "date": "2013-04-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-016.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-016",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-017",
+   "title": "Synthetic magazine cover 17",
+   "creator": "Fictional Studio 1",
+   "date": "2014-05-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-017.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-017",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-018",
+   "title": "Synthetic magazine cover 18",
+   "creator": "Fictional Studio 2",
+   "date": "2015-06-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-018.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-018",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-019",
+   "title": "Synthetic magazine cover 19",
+   "creator": "Fictional Studio 3",
+   "date": "2016-07-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-019.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-019",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-020",
+   "title": "Synthetic magazine cover 20",
+   "creator": "Fictional Studio 4",
+   "date": "2017-08-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-020.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-020",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-021",
+   "title": "Synthetic magazine cover 21",
+   "creator": "Fictional Studio 1",
+   "date": "2018-09-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-021.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-021",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-022",
+   "title": "Synthetic magazine cover 22",
+   "creator": "Fictional Studio 2",
+   "date": "2019-01-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-022.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-022",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-023",
+   "title": "Synthetic magazine cover 23",
+   "creator": "Fictional Studio 3",
+   "date": "2010-02-15",
+   "year": null,
+   "country": "JP",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-023.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-023",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-024",
+   "title": "Synthetic magazine cover 24",
+   "creator": "Fictional Studio 4",
+   "date": "2011-03-15",
+   "year": null,
+   "country": "KR",
+   "region": "East Asia",
+   "genres": [
+    "editorial design/magazine cover"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://media.open-archive.test/work-024.png",
+    "width": 56,
+    "height": 40
+   },
+   "page": "https://open-archive.test/works/OA-024",
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-025",
+   "title": "Undated photograph 25",
+   "creator": null,
+   "date": null,
+   "year": "c. 1990s?",
+   "country": null,
+   "region": null,
+   "genres": [
+    "photography"
+   ],
+   "medium": "photograph",
+   "image": {
+    "url": "https://open-archive.test/media/work-025.png"
+   },
+   "page": null,
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-026",
+   "title": "Undated photograph 26",
+   "creator": null,
+   "date": null,
+   "year": "c. 1990s?",
+   "country": null,
+   "region": null,
+   "genres": [
+    "photography"
+   ],
+   "medium": "photograph",
+   "image": {
+    "url": "https://open-archive.test/media/work-026.png"
+   },
+   "page": null,
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-027",
+   "title": "Undated photograph 27",
+   "creator": null,
+   "date": null,
+   "year": "c. 1990s?",
+   "country": null,
+   "region": null,
+   "genres": [
+    "photography"
+   ],
+   "medium": "photograph",
+   "image": {
+    "url": "https://open-archive.test/media/work-027.png"
+   },
+   "page": null,
+   "license": "CC0-1.0"
+  },
+  {
+   "id": "OA-900",
+   "title": "Externally hosted image",
+   "year": 2001,
+   "genres": [
+    "photography"
+   ],
+   "image": {
+    "url": "https://cdn.unrelated.test/x.png"
+   },
+   "license": "unknown"
+  },
+  {
+   "id": "OA-901",
+   "title": "Duplicate scan of poster study 1",
+   "year": 1980,
+   "country": "JP",
+   "genres": [
+    "graphic design/poster"
+   ],
+   "medium": "graphic_design",
+   "image": {
+    "url": "https://open-archive.test/media/work-001-copy.png"
+   },
+   "license": "CC0-1.0"
+  }
+ ]
+}

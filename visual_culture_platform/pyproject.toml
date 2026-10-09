@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magref"
+version = "0.1.0"
+description = "Magazine reference discovery, metadata extraction, keyword search and JSON export (MVP)"
+readme = "README.md"
+requires-python = ">=3.11"
+# The core has NO third-party runtime dependencies (stdlib: sqlite3, urllib,
+# html.parser, xml.etree). Optional extras are listed below.
+dependencies = []
+
+[project.optional-dependencies]
+# Dominant-colour measurement of downloaded images (opt-in: MAGREF_IMAGE_MODE=colors).
+images = ["Pillow>=9.0"]
+# Test runner. The tests also run without pytest via `python tests/run_tests.py`.
+# jsonschema is used (if present) to cross-check exports against schema/*.json.
+dev = ["pytest>=7.0", "jsonschema>=4.0"]
+
+[project.scripts]
+magref = "magref.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]

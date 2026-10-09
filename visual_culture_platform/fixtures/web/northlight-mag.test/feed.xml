@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Northlight (fixture)</title>
+  <item><title>Neon Type</title><link>https://northlight-mag.test/features/neon-type.html</link>
+    <pubDate>Mon, 01 Sep 2025 10:00:00 +0000</pubDate>
+    <enclosure url="https://northlight-mag.test/img/neon-type.png" type="image/png" length="100"/></item>
+  <item><title>Paper Cuts</title><link>https://northlight-mag.test/features/paper-cuts.html</link>
+    <pubDate>Mon, 02 Sep 2025 10:00:00 +0000</pubDate>
+    <enclosure url="https://northlight-mag.test/img/paper-cuts.png" type="image/png" length="100"/></item>
+  <item><title>Studio Light</title><link>https://northlight-mag.test/features/studio-light.html</link>
+    <pubDate>Mon, 03 Sep 2025 10:00:00 +0000</pubDate>
+    <enclosure url="https://northlight-mag.test/img/studio-light.png" type="image/png" length="100"/></item>
+</channel></rss>
