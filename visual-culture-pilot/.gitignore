@@ -1,2 +1,6 @@
 .venv/
 *.tar.gz
+# Copyrighted magazine material: personal reference only, never committed.
+inbox/
+magazine_archive/
+probe_fashion/
