@@ -1,0 +1,7 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.env
+magref_data/
+visual_culture_archive/
+*.sqlite3

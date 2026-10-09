@@ -1,0 +1,31 @@
+{
+  "/stories/forbidden.html": {
+    "status": 403,
+    "body": "<h1>Forbidden</h1>"
+  },
+  "/media/fake.jpg": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "image/jpeg"
+    },
+    "body": "<!DOCTYPE html><html><body>Not found</body></html>"
+  },
+  "/media/moved-hero.png": {
+    "status": 301,
+    "headers": {
+      "Location": "/media/quiet-volume-hero.png"
+    }
+  },
+  "/media/to-metadata.png": {
+    "status": 302,
+    "headers": {
+      "Location": "http://169.254.169.254/latest/meta-data/"
+    }
+  },
+  "/media/rate-limited.png": {
+    "status": 429,
+    "headers": {
+      "Retry-After": "1"
+    }
+  }
+}

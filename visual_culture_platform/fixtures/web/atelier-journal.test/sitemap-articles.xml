@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url><loc>https://atelier-journal.test/stories/quiet-volume.html</loc><image:image><image:loc>https://atelier-journal.test/media/quiet-volume-hero.png</image:loc><image:title>Quiet Volume cover</image:title></image:image></url>
+  <url><loc>https://atelier-journal.test/stories/quiet-volume.html?utm_source=newsletter&amp;utm_medium=email</loc></url>
+  <url><loc>https://atelier-journal.test/stories/quiet-volume-amp.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/serif-season.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/gallery-blue-hour.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/bare-page.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/broken-jsonld.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/noindex.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/gone.html</loc></url>
+  <url><loc>https://atelier-journal.test/stories/forbidden.html</loc></url>
+  <url><loc>https://atelier-journal.test/private/draft.html</loc></url>
+  <url><loc>https://elsewhere.test/not-ours.html</loc></url>
+</urlset>
