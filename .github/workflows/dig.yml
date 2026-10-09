@@ -12,6 +12,7 @@ on:
   push:
     paths:
       - 'dig/requests/**.json'
+      - '.github/workflows/dig.yml'
   workflow_dispatch: {}
 
 permissions:
@@ -31,7 +32,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: pdftotext
-        run: sudo apt-get install -y -qq poppler-utils
+        # apt 목록을 먼저 새로 한다 -- 안 하면 옛 목록의 .deb 가 404 다(실측 run #1).
+        # 못 깔아도 멈추지 않는다: pdf 만 '못 받음' 으로 남고 나머지는 돈다.
+        run: (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils) || echo "poppler 못 깜 -- pdf 는 건너뛴다"
       - name: 요청마다 dig
         run: |
           set -u
