@@ -43,7 +43,7 @@ The defaults are deliberately conservative:
 |---|---|---|
 | `--max-images` | 10 | Hard cap 10; counts only images that were saved *and* validated |
 | `--seed-objects` | 436121 | Objects processed before any search |
-| `--terms` | poster print typography textile photograph | One `v1/search?q=…&hasImages=true` request per term |
+| `--terms` | poster print typography textile photograph | One `v1.1/search?q=…&hasImages=true&offset=0&limit=<per-term>` request per term (first page only) |
 | `--per-term` | 8 | Candidates taken from each term's result list |
 | `--max-inspect` | 40 | Upper bound on object-detail requests |
 | `--per-class-cap` | 3 | At most 3 picks per Met `classification` (a variety heuristic) |

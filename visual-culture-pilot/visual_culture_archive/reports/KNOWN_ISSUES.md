@@ -21,9 +21,14 @@ further attempts were made.
   snippets: `objectIDs`, `isPublicDomain`, `primaryImage`, `objectURL`, `objectDate`,
   `artistDisplayName`, `classification`, `medium`, `country`, `region` and `creditLine`. The
   parser fails closed (`unexpected_schema`) if the shape differs.
-- **`v1.1/search`** (named in the first brief) could not be confirmed in any source. It is not
-  used. The collector uses `v1/search?q=…&hasImages=true` and does not paginate. It takes the
-  first `--per-term` IDs locally.
+- **Search endpoint.** On the Mac run of 2026-10-09 (user-reported output), every
+  `v1/search` request returned **HTTP 410**. Met documentation, seen only as search-result
+  snippets, says v1/search was retired on 2026-10-01. It also says `v1.1/search` takes the same
+  filters plus `offset` (0-based) and `limit` (default 100, max 500), and returns `total` and
+  this page's `objectIDs`. The collector now uses `v1.1/search` with `offset=0&limit=<per-term>`
+  (one page per term). It has **not yet been observed live**. If the response shape differs,
+  the parser fails closed with `unexpected_schema`. HTTP 410 is now its own category
+  (`endpoint_gone`) and is not retried.
 - **The CC0 inference links two statements.** The first is the object-level `isPublicDomain: true`
   from the API. The second is the general Open Access policy
   (https://www.metmuseum.org/about-the-met/policies-and-documents/open-access). That policy page

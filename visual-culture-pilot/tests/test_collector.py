@@ -32,6 +32,7 @@ QUIET.addHandler(logging.NullHandler())
 QUIET.propagate = False
 
 API = "https://collectionapi.metmuseum.org/public/collection/v1"
+SEARCH = "https://collectionapi.metmuseum.org/public/collection/v1.1/search"
 IMG = "https://images.metmuseum.org/CRDImages/test/original/{}.jpg"
 
 
@@ -316,6 +317,14 @@ class Http(unittest.TestCase):
         self.assertEqual(cm.exception.category, "network_blocked")
         self.assertEqual(len(opener.calls), 1)
 
+    def test_410_gone_not_retried(self):
+        url = f"{API}/search?q=poster&hasImages=true"
+        client, opener, _ = make_client({url: http_error(410)})
+        with self.assertRaises(c.FetchError) as cm:
+            client.get_json(url)
+        self.assertEqual(cm.exception.category, "endpoint_gone")
+        self.assertEqual(len(opener.calls), 1)
+
     def test_invalid_json(self):
         url = f"{API}/objects/7"
         client, _, _ = make_client({url: (200, {"Content-Type": "text/html"}, b"<html>oops</html>")})
@@ -565,7 +574,7 @@ class MockedRun(TmpDirCase):
         r = {
             f"{API}/objects/436121": json_ok(met_object(436121, classification="Paintings")),
             IMG.format(436121): img_ok(image_bytes(size=(20, 10))),
-            f"{API}/search?q=poster&hasImages=true": json_ok({"total": 6, "objectIDs": [436121, 10, 11, 12, 13, 14]}),
+            f"{SEARCH}?q=poster&hasImages=true&offset=0&limit=8": json_ok({"total": 6, "objectIDs": [436121, 10, 11, 12, 13, 14]}),
             f"{API}/objects/10": json_ok(met_object(10, pd=False)),
             f"{API}/objects/11": json_ok(met_object(11, image=False)),
             f"{API}/objects/12": json_ok(met_object(12, title="Poster A")),
@@ -612,7 +621,7 @@ class MockedRun(TmpDirCase):
         self.assertEqual([d[:2] for d in replay.decisions], [d[:2] for d in first.decisions])
 
     def test_max_images_bound(self):
-        r = {f"{API}/search?q=print&hasImages=true": json_ok({"total": 15, "objectIDs": list(range(100, 115))})}
+        r = {f"{SEARCH}?q=print&hasImages=true&offset=0&limit=20": json_ok({"total": 15, "objectIDs": list(range(100, 115))})}
         for i, oid in enumerate(range(100, 115)):
             r[f"{API}/objects/{oid}"] = json_ok(met_object(oid, title=f"P{oid}", classification=f"C{oid}"))
             r[IMG.format(oid)] = img_ok(image_bytes(size=(8 + i, 8)))   # distinct sizes -> distinct bytes
@@ -626,6 +635,16 @@ class MockedRun(TmpDirCase):
         self.assertEqual(len(list((self.archive / "images").iterdir())), 10)
         with self.assertRaises(ValueError):
             c.Collector(self.archive, client, max_images=11, log=QUIET)
+
+    def test_search_uses_v11_first_page_only(self):
+        url = f"{SEARCH}?q=poster&hasImages=true&offset=0&limit=3"
+        client, opener, _ = make_client({url: json_ok({"total": 1423, "objectIDs": [9, 8, 7]})})
+        col = c.Collector(self.archive, client, terms=["poster"], per_term=3, seed_objects=[], log=QUIET,
+                          plan_only=True)
+        self.assertEqual(col.search("poster"), [9, 8, 7])
+        self.assertEqual(opener.calls, [url])
+        self.assertTrue((self.archive / "metadata" / "api_snapshots" / col.stats.snapshot_run_id
+                         / "search" / "poster.json").is_file())
 
     def test_plan_is_deterministic_round_robin(self):
         res = {"a": [1, 2, 3], "b": [2, 4], "c": []}

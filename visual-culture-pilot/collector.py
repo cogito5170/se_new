@@ -45,7 +45,12 @@ PROJECT_DIR = Path(__file__).resolve().parent
 ARCHIVE_DIR = PROJECT_DIR / "visual_culture_archive"
 
 API_ROOT = "https://collectionapi.metmuseum.org"
-SEARCH_URL = API_ROOT + "/public/collection/v1/search"
+# v1/search was retired on 2026-10-01 and now answers HTTP 410 (observed on the Mac run 2026-10-09).
+# v1.1/search takes the same filters plus offset (0-based) and limit (default 100, max 500) and
+# returns {"total", "objectIDs"} for that page only.
+SEARCH_URL = API_ROOT + "/public/collection/v1.1/search"
+SEARCH_ENDPOINT_NAME = "v1.1/search"
+SEARCH_MAX_LIMIT = 500
 OBJECT_URL = API_ROOT + "/public/collection/v1/objects/{object_id}"
 DOCS_URL = "https://metmuseum.github.io/"
 RIGHTS_POLICY_URL = "https://www.metmuseum.org/about-the-met/policies-and-documents/open-access"
@@ -85,6 +90,7 @@ REMEDIATION = {
     "rate_limited": "Server asked us to slow down (429/Retry-After). Wait, then re-run with a larger --interval.",
     "server_error": "Server returned 5xx after retries. Re-run later.",
     "http_error": "Non-retryable HTTP status. Check the URL/endpoint against the current API docs.",
+    "endpoint_gone": "HTTP 410: the endpoint has been retired. Check https://metmuseum.github.io/ for its replacement.",
     "not_found": "Endpoint or object not found (404). Check the endpoint path against the current API docs.",
     "invalid_json": "Response was not JSON. Inspect the saved snapshot/log; the endpoint may have changed.",
     "unexpected_schema": "JSON lacked expected fields. Re-check the API documentation for the response format.",
@@ -221,7 +227,8 @@ class HttpClient:
                     self.sleep(delay)
                     continue
                 self.requests_failed[kind] += 1
-                raise FetchError("not_found" if code == 404 else "http_error", f"HTTP {code}: {url}", code)
+                category = {404: "not_found", 410: "endpoint_gone"}.get(code, "http_error")
+                raise FetchError(category, f"HTTP {code}: {url}", code)
             except FetchError:
                 self.requests_failed[kind] += 1
                 raise
@@ -832,7 +839,7 @@ class Collector:
             local_file_path=got["path"].relative_to(self.dir).as_posix(),
             sha256=got["sha256"], file_size_bytes=got["size"], image_info=got["image_info"],
             collected_at=utc_now(), snapshot_path=Path(snap_path).relative_to(self.dir).as_posix(),
-            snapshot_sha256=snap_sha, search_term=term, search_endpoint="seed" if term == "seed" else "v1/search",
+            snapshot_sha256=snap_sha, search_term=term, search_endpoint="seed" if term == "seed" else SEARCH_ENDPOINT_NAME,
         )
         try:
             append_manifest(self.manifest, record)
@@ -851,9 +858,11 @@ class Collector:
                       got["size"], got["sha256"][:12])
 
     def search(self, term: str) -> "list[int]":
-        query = urllib.parse.urlencode({"q": term, "hasImages": "true"})
+        # One page only: the first per_term IDs are all the plan can use, so nothing more is fetched.
+        limit = max(1, min(self.per_term, SEARCH_MAX_LIMIT))
+        query = urllib.parse.urlencode({"q": term, "hasImages": "true", "offset": 0, "limit": limit})
         data, _, _ = self._api_json("search", term, f"{SEARCH_URL}?{query}")
-        ids = parse_search_response(data)
+        ids = parse_search_response(data)[:limit]
         self.log.info("search %r: %d ids (response keys: %s)", term, len(ids),
                       sorted(data) if isinstance(data, dict) else "-")
         return ids
@@ -944,7 +953,7 @@ def write_reports(archive_dir: Path, stats: RunStats) -> Path:
         f"- Status: **{stats.status}**",
         f"- Started / finished (UTC): {stats.started_at} / {stats.finished_at}",
         f"- Seed objects (processed first): {stats.seed_objects}",
-        f"- Search terms: {', '.join(stats.terms)} (endpoint `/public/collection/v1/search`, `hasImages=true`)",
+        f"- Search terms: {', '.join(stats.terms)} (endpoint `/public/collection/{SEARCH_ENDPOINT_NAME}`, `hasImages=true`, first page only)",
         f"- Searches completed: {len(stats.search_hits)} of {len(stats.terms)}"
         + ("" if len(stats.search_hits) == len(stats.terms) else
            " (search stops early once the image limit is reached or a host is blocked)"),
