@@ -1,0 +1,2 @@
+# Image validation (full decode). Pillow 11.x is the last line that supports Python 3.9.
+Pillow>=10.0,<12
