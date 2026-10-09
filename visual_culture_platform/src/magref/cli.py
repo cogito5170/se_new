@@ -177,6 +177,33 @@ def cmd_crawl(app, args):
     return EXIT_OK if status == "ok" else EXIT_PARTIAL if status == "partial" else EXIT_FAIL
 
 
+def cmd_ingest_html(app, args):
+    from .ingest import IngestError, Ingester
+    src = usable_source(app, args.source, "ingest")
+    try:
+        res = Ingester(app.conn, app.settings, app.fetcher).run(
+            src, args.paths, url=args.url, links=args.links, probe=args.probe_images)
+    except IngestError as exc:
+        raise CliError(str(exc), EXIT_USAGE) from exc
+    lines = [f"ingest-html {src.id}: files {res.files}, pages new {res.pages_new}, updated "
+             f"{res.pages_updated}, duplicate {res.pages_duplicate}, without origin URL "
+             f"{res.without_origin}, failed {res.failed}; image candidates {res.images_found} "
+             f"(new {res.images_new}); links added for crawl {res.links_added}; local image copies "
+             f"not imported {res.skipped_local_images}"]
+    for it in res.items:
+        lines.append(f"  {it['status']:<10} {it['file']}  "
+                     + (f"-> {it.get('reference_id')} ({it['origin']}, from {it['origin_from']})"
+                        if it.get("origin") else it.get("reason", "")))
+    if res.other_hosts:
+        lines.append("  links/images on other hosts (register and review a source to use them):")
+        lines += [f"    {h}: {n}" for h, n in list(res.other_hosts.items())[:20]]
+    out(args, res.as_dict(), "\n".join(lines))
+    ok = res.pages_new + res.pages_updated + res.pages_duplicate + res.without_origin
+    if res.failed:
+        return EXIT_PARTIAL if ok else EXIT_FAIL
+    return EXIT_OK
+
+
 def _job_exit(res) -> int:
     if res.failed_transient or res.failed_permanent or res.blocked:
         return EXIT_PARTIAL if (res.downloaded or res.duplicates) else EXIT_FAIL
@@ -697,6 +724,14 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--limit", type=int)
     c.add_argument("--retry-failed", action="store_true")
 
+    ih = sub.add_parser("ingest-html", help="process local HTML files like crawled pages (no fetching)")
+    ih.add_argument("paths", nargs="+", help="HTML files or directories (*.html, *.htm)")
+    ih.add_argument("--source", required=True, help="source the pages belong to (its policy applies)")
+    ih.add_argument("--url", help="original URL of the page (only with a single file)")
+    ih.add_argument("--links", action="store_true", help="add same-site links as discovered URLs")
+    ih.add_argument("--probe-images", action="store_true",
+                    help="fetch up to 64 KB of the first images to measure them (network)")
+
     dl = sub.add_parser("download", help="download image files whose policy is 'allowed'")
     dl.add_argument("--approved", action="store_true", help="required: confirm policy-approved only")
     dl.add_argument("--limit", type=int)
@@ -928,7 +963,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 HANDLERS = {
     "init": cmd_init, "source": cmd_source, "policy-review": cmd_policy_review, "discover": cmd_discover,
-    "crawl": cmd_crawl, "download": cmd_download, "retry": cmd_retry, "reset": cmd_reset,
+    "crawl": cmd_crawl, "ingest-html": cmd_ingest_html, "download": cmd_download, "retry": cmd_retry, "reset": cmd_reset,
     "search": cmd_search, "show": cmd_show, "verify": cmd_verify, "repair": cmd_repair,
     "deduplicate": cmd_dedup, "clean-temp": cmd_clean_temp, "export": cmd_export, "import": cmd_import,
     "validate": cmd_validate, "schema": cmd_schema, "status": cmd_status, "analyze": cmd_analyze,

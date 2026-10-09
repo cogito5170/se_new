@@ -13,8 +13,8 @@ It covers three specifications that build on each other:
 | Magazine Reference Image Collector | policy review, SSRF-safe streaming downloads, SHA-256 storage/dedup, verify/repair | `registry.py`, `netsafe.py`, `http.py`, `downloader.py`, `storage.py`, `maintenance.py` |
 | Visual Culture Research Platform | genres, measured vs semantic features, context records, sources and claims, trends, design projects, web UI | `research.py`, `analysis.py`, `trends.py`, `projects.py`, `web.py` |
 
-**Status in one line:** it runs offline against bundled synthetic fixtures. 73 automated tests and
-42 acceptance checks pass in this environment. **No real website has been contacted:** outbound
+**Status in one line:** it runs offline against bundled synthetic fixtures. 78 automated tests and
+47 acceptance checks pass in this environment. **No real website has been contacted:** outbound
 web access was blocked here. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) and [TEST_RESULTS.md](TEST_RESULTS.md).
 
 ## Install
@@ -40,7 +40,7 @@ python3 -m magref --version
 ## Quick start (offline, bundled fixtures)
 
 ```bash
-bash scripts/acceptance.sh /tmp/magref-acceptance     # 42 checks, prints PASS/FAIL per step
+bash scripts/acceptance.sh /tmp/magref-acceptance     # 47 checks, prints PASS/FAIL per step
 python3 tests/run_tests.py                            # unit/integration tests without pytest
 python3 -m pytest -q                                  # same tests with pytest, if installed
 ```
@@ -64,6 +64,27 @@ $M export --format json --kind images -o /tmp/vc-demo/exports/images.json
 $M serve                                   # web UI on http://127.0.0.1:8765/
 ```
 
+## Using local HTML files as input
+
+Saved web pages, or HTML documents such as a generated reference list, can be processed without
+fetching anything:
+
+```bash
+magref ingest-html saved_page.html --source atelier             # origin from canonical / og:url / "saved from url"
+magref ingest-html page.html --source atelier --url https://...  # origin given explicitly (one file)
+magref ingest-html ./folder --source atelier --links             # every *.html; same-site links -> crawl queue
+```
+
+- **Pages with an origin URL.** A page whose origin URL is known (and belongs to the source's
+  site) goes through the same extraction, features, dedup and storage as a crawled page. Its
+  provenance records "local HTML file" with a null `fetched_url`.
+- **Documents without an origin.** No page record is created, because there is no URL to cite.
+  With `--links`, the same-site links are queued for `crawl`. Links and images on other hosts
+  are listed per host, so you can register and review those sources.
+- **Local image copies.** Copies saved next to a page (`page_files/...`) are not imported,
+  because their original URL is lost.
+- **No network.** Nothing is fetched unless `--probe-images` is given.
+
 ## Using it with real sources
 
 1. Register the source with `magref source add --id ... --name ... --base-url ... --method sitemap|rss|html|json_catalog`,
@@ -80,7 +101,7 @@ $M serve                                   # web UI on http://127.0.0.1:8765/
 |---|---|
 | setup | `init`, `status`, `schema` |
 | sources & rights | `source list/add/show/enable/disable/import`, `policy-review --pending/--history/--source X --set S/--image ID --set S` |
-| collection | `discover --source`, `crawl --source [--retry-failed]`, `download --approved [--limit --max-bytes --source --id]`, `retry --failed [--include-missing]`, `reset --id` |
+| collection | `ingest-html FILE_OR_DIR... --source ID [--url URL] [--links] [--probe-images]` (local HTML files, no fetching), `discover --source`, `crawl --source [--retry-failed]`, `download --approved [--limit --max-bytes --source --id]`, `retry --failed [--include-missing]`, `reset --id` |
 | integrity | `verify --all [--orphans --relocate]`, `repair`, `deduplicate [--dry-run / --apply]`, `clean-temp` |
 | retrieval | `search -q ... [--kind images/pages] [--years --country --region --genre --feature type=value --image-type --source ...]`, `show --id`, `export`, `import`, `validate` |
 | research | `analyze`, `asset set/genre`, `genre list/add`, `feature add/review/list`, `research source-add/claim-add/claim-link/claim-review/context-add/context-review/relate/...` |
