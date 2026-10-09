@@ -1,0 +1,3582 @@
+{
+ "요청": "magazine2026",
+ "때": "2026-10-09T06:52:34Z",
+ "줄": [
+  {
+   "갈래": "url",
+   "무엇": "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play",
+   "끝값": 0,
+   "바이트": 3017227,
+   "초": 6.7,
+   "파일": "url-de3b5dccea.json.gz",
+   "꼬리": "",
+   "쪽": 21,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/oembed?url=https%3A%2F%2Fwww.dandad.org%2Fwork%2Fd-ad-awards-archive%2Fgamepop-the-culture-of-play&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.dandad.org%2Fwork%2Fd-ad-awards-archive%2Fgamepop-the-culture-of-play",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.dandad.org/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.dandad.org/work/d-ad-awards-archive/gamepop-the-culture-of-play",
+     200,
+     ""
+    ],
+    [
+     "https://web.archive.org/web/*/https://www.dandad.org/work/d-ad-awards-archive/*",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/account/claim-credit/V29ya1BhZ2U6MTIzODk4",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/creative-community/rankings-2025",
+     200,
+     ""
+    ],
+    [
+     "https://www.dandad.org/work/annual-2026",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://magculture.com/products/gamepop-1",
+   "끝값": 0,
+   "바이트": 1468353,
+   "초": 27.1,
+   "파일": "url-4465d18adc.json.gz",
+   "꼬리": "",
+   "쪽": 14,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://magculture.com/products/gamepop-1",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/amp",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1?format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/products/gamepop-1?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/oembed?url=https%3A%2F%2Fmagculture.com%2Fproducts%2Fgamepop-1&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fmagculture.com%2Fproducts%2Fgamepop-1",
+     400,
+     "HTTP 400 -- 그 쪽이 거절했다"
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/feed",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/rss",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/products/gamepop-1/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://magculture.com/products/gamepop-1",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/.well-known/ucp",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/dazed-vol-vi-293",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/another-magazine-51",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/the-paris-review-257",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/",
+   "끝값": 0,
+   "바이트": 820295,
+   "초": 16.7,
+   "파일": "url-eee9321a02.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/amp",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.yankodesign.com/oembed?url=https%3A%2F%2Fwww.yankodesign.com%2F2026%2F03%2F16%2Fred-bull-just-put-a-playable-tetris-game-on-a-magazine-cover%2F&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.yankodesign.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.yankodesign.com%2F2026%2F03%2F16%2Fred-bull-just-put-a-playable-tetris-game-on-a-magazine-cover%2F",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/feed",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/rss",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.yankodesign.com/feed",
+     200,
+     ""
+    ],
+    [
+     "http://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/?format=json&amp",
+     200,
+     ""
+    ],
+    [
+     "https://www.yankodesign.com/2026/03/16/red-bull-just-put-a-playable-tetris-game-on-a-magazine-cover/?output=json&amp",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.kittl.com/blogs/?p=10191",
+   "끝값": 1,
+   "바이트": 0,
+   "초": 17.3,
+   "파일": "url-0e543edc8e.json.gz",
+   "꼬리": "^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/parse.py\", line 514, in urlsplit\n    raise ValueError(\"Invalid IPv6 URL\")\nValueError: Invalid IPv6 URL",
+   "쪽": 0
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026",
+   "끝값": 0,
+   "바이트": 842370,
+   "초": 6.7,
+   "파일": "url-bcc3c9fa7b.json.gz",
+   "꼬리": "",
+   "쪽": 23,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/oembed?url=https%3A%2F%2Fwww.istitutomarangoni.com%2Fen%2Fmaze35%2Fdesign%2Fwhy-independent-graphic-typography-magazines-are-the-print-trend-of-2026&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.istitutomarangoni.com%2Fen%2Fmaze35%2Fdesign%2Fwhy-independent-graphic-typography-magazines-are-the-print-trend-of-2026",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.istitutomarangoni.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.istitutomarangoni.com/en/maze35/design/why-independent-graphic-typography-magazines-are-the-print-trend-of-2026",
+     200,
+     ""
+    ],
+    [
+     "https://web.archive.org/web/*/https://www.istitutomarangoni.com/en/maze35/design/*",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/fashion/shenzhen-fashion-milan-fashion-week-ss27",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/fashion/milan-fashion-week-ss27-fashion-spectacle",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/beauty/penhaligons-portraits-regent-street-boutique",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/lifestyle/apple-music-hall-live-venue-production-hub",
+     200,
+     ""
+    ],
+    [
+     "https://www.istitutomarangoni.com/en/maze35/lifestyle/uk-garage-forever-10-genre-defining-tracks-you-need-to-hear",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://unanswered.io/guide/fashion-magazines-still-in-print",
+   "끝값": 0,
+   "바이트": 625309,
+   "초": 2.9,
+   "파일": "url-503ddd8f90.json.gz",
+   "꼬리": "",
+   "쪽": 19,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/oembed?url=https%3A%2F%2Funanswered.io%2Fguide%2Ffashion-magazines-still-in-print&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/wp-json/oembed/1.0/embed?url=https%3A%2F%2Funanswered.io%2Fguide%2Ffashion-magazines-still-in-print",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/guide/fashion-magazines-still-in-print/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://unanswered.io/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://unanswered.io/guide/fashion-magazines-still-in-print",
+     429,
+     "HTTP 429 -- 너무 자주 불렀다 -- 쉬었다 다시"
+    ],
+    [
+     "http://unanswered.io/guide/fashion-magazines-still-in-print",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/feed.xml",
+     200,
+     ""
+    ],
+    [
+     "https://unanswered.io/guide/are-jeans-smart-casual-guide",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines",
+   "끝값": 0,
+   "바이트": 1127546,
+   "초": 30.9,
+   "파일": "url-ceb4eecc4d.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines.json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/oembed?url=https%3A%2F%2Fwww.pearlacademy.com%2Fblog%2Ffashion%2Fprint-reborn-fashion-magazines&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.pearlacademy.com%2Fblog%2Ffashion%2Fprint-reborn-fashion-magazines",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pearlacademy.com/feed",
+     200,
+     ""
+    ],
+    [
+     "http://www.pearlacademy.com/blog/fashion/print-reborn-fashion-magazines",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/fashion-designing-courses-after-12th",
+     200,
+     ""
+    ],
+    [
+     "https://www.pearlacademy.com/blog/fashion/how-will-social-media-trends-shape-2024",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php",
+   "끝값": 0,
+   "바이트": 208825,
+   "초": 18.0,
+   "파일": "url-a340718307.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/amp",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.cjr.org/oembed?url=https%3A%2F%2Fwww.cjr.org%2Fanalysis%2Fsomething-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.cjr.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.cjr.org%2Fanalysis%2Fsomething-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php",
+     401,
+     "HTTP 401 -- 인증이 필요하다 -- 열쇠 없이는 못 간다"
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/feed",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/rss",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.cjr.org/feed",
+     200,
+     ""
+    ],
+    [
+     "http://www.cjr.org/analysis/something-novel-teens-print-renaissance-teen-vogue-cuqui-conde-nast-glamour-cosmo-girl-hearst-layoffs-social-media-void.php",
+     200,
+     ""
+    ],
+    [
+     "https://www.cjr.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.cjr.org%2Feconomic_crisis%2Famplifying_the_drumbeat_on_the.php",
+     401,
+     "HTTP 401 -- 인증이 필요하다 -- 열쇠 없이는 못 간다"
+    ],
+    [
+     "https://www.cjr.org/xmlrpc.php?rsd",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin",
+   "끝값": 0,
+   "바이트": 334909,
+   "초": 28.5,
+   "파일": "url-724577b035.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin",
+     200,
+     ""
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/oembed?url=https%3A%2F%2Fwww.wuv.de%2Fthemen%2Fmedia%2Fprint-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.wuv.de%2Fthemen%2Fmedia%2Fprint-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.wuv.de/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin",
+     200,
+     ""
+    ],
+    [
+     "http://www.wuv.de/themen/media/print-auflagen-die-gewinner-verkaufen-mehr-als-nur-ein-magazin",
+     200,
+     ""
+    ],
+    [
+     "https://web.archive.org/web/20261003222347/https://www.wuv.de/feed/rss",
+     0,
+     "안 닿는다 -- [Errno 111] Connection refused"
+    ],
+    [
+     "https://www.wuv.de/feed/rss",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.turi2.de/?p=4066904",
+   "끝값": 0,
+   "바이트": 277176,
+   "초": 21.4,
+   "파일": "url-58805531ad.json.gz",
+   "꼬리": "",
+   "쪽": 17,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.turi2.de/?p=4066904",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/amp?p=4066904",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/?p=4066904&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/?p=4066904&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/?p=4066904&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/.json?p=4066904",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/oembed?url=https%3A%2F%2Fwww.turi2.de%2F%3Fp%3D4066904&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.turi2.de/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.turi2.de%2F%3Fp%3D4066904",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/feed",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/rss",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.turi2.de/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.turi2.de/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.turi2.de/?p=4066904",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/wp-includes/wlwmanifest.xml",
+     200,
+     ""
+    ],
+    [
+     "https://www.turi2.de/xmlrpc.php?rsd",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://magculture.com/blogs/journal",
+   "끝값": 0,
+   "바이트": 1098654,
+   "초": 21.8,
+   "파일": "url-98e9e970d7.json.gz",
+   "꼬리": "",
+   "쪽": 27,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://magculture.com/blogs/journal",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/oembed?url=https%3A%2F%2Fmagculture.com%2Fblogs%2Fjournal&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fmagculture.com%2Fblogs%2Fjournal",
+     400,
+     "HTTP 400 -- 그 쪽이 거절했다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/blogs/journal/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://magculture.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://magculture.com/blogs/journal",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/.well-known/ucp",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal.atom",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/blogs/journal/tagged/page-23",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/pages/faqs-1",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/dazed-vol-vi-293",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/another-magazine-51",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/the-paris-review-257",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/electronic-sound-141",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/25-token",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/50-token",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/100-token",
+     200,
+     ""
+    ],
+    [
+     "https://magculture.com/products/partners-4",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026",
+   "끝값": 0,
+   "바이트": 41295,
+   "초": 15.9,
+   "파일": "url-cf0a0aba79.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/amp",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026?format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026?output=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026?_format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026.json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/oembed?url=https%3A%2F%2Fwww.adobe.com%2Fexpress%2Flearn%2Fblog%2Fgraphic-design-trends-2026&format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.adobe.com%2Fexpress%2Flearn%2Fblog%2Fgraphic-design-trends-2026",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/feed",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/feed/",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/rss",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/rss.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/atom.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/graphic-design-trends-2026/index.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/feed",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "http://www.adobe.com/express/learn/blog/graphic-design-trends-2026",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/design-trends-2025",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.adobe.com/express/learn/blog/build-creative-confidence-adobe-express-ambassador-katrina-torrijos",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://digitalsynopsis.com/design/graphic-design-trends-2026/",
+   "끝값": 0,
+   "바이트": 1762446,
+   "초": 16.7,
+   "파일": "url-056fd3045d.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/oembed?url=https%3A%2F%2Fdigitalsynopsis.com%2Fdesign%2Fgraphic-design-trends-2026%2F&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fdigitalsynopsis.com%2Fdesign%2Fgraphic-design-trends-2026%2F",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/feed",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/rss",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/design/graphic-design-trends-2026/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://digitalsynopsis.com/feed",
+     200,
+     ""
+    ],
+    [
+     "http://digitalsynopsis.com/design/graphic-design-trends-2026/",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/xmlrpc.php?rsd",
+     200,
+     ""
+    ],
+    [
+     "https://digitalsynopsis.com/wp-json/",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.designrush.com/trends/state-of-design",
+   "끝값": 0,
+   "바이트": 13913,
+   "초": 15.5,
+   "파일": "url-ed098a9610.json.gz",
+   "꼬리": "",
+   "쪽": 16,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.designrush.com/trends/state-of-design",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/amp",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design?format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design?output=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design?_format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design.json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/oembed?url=https%3A%2F%2Fwww.designrush.com%2Ftrends%2Fstate-of-design&format=json",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.designrush.com%2Ftrends%2Fstate-of-design",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/feed",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/feed/",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/rss",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/rss.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/atom.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/trends/state-of-design/index.xml",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://www.designrush.com/feed",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "http://www.designrush.com/trends/state-of-design",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.pantone.com/color-of-the-year/2026",
+   "끝값": 0,
+   "바이트": 9801662,
+   "초": 17.4,
+   "파일": "url-ad168f0260.json.gz",
+   "꼬리": "",
+   "쪽": 20,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.pantone.com/color-of-the-year/2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/oembed?url=https%3A%2F%2Fwww.pantone.com%2Fcolor-of-the-year%2F2026&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.pantone.com%2Fcolor-of-the-year%2F2026",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/color-of-the-year/2026/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.pantone.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.pantone.com/color-of-the-year/2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/na/en-us/color-of-the-year/2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/about/california-consumer-privacy-act",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/customer-service/product-registration",
+     200,
+     ""
+    ],
+    [
+     "https://www.pantone.com/color-systems/pantone-color-systems-explained",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/",
+   "끝값": 0,
+   "바이트": 2053407,
+   "초": 17.8,
+   "파일": "url-3d85397b81.json.gz",
+   "꼬리": "",
+   "쪽": 19,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/oembed?url=https%3A%2F%2Fguitar.com%2Fnews%2Fmagazine%2Fguitar-magazine-september-october-2026-issue-how-to-buy%2F&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fguitar.com%2Fnews%2Fmagazine%2Fguitar-magazine-september-october-2026-issue-how-to-buy%2F",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/feed",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/rss",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://guitar.com/feed",
+     200,
+     ""
+    ],
+    [
+     "https://web.archive.org/web/2/https://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/",
+     200,
+     ""
+    ],
+    [
+     "http://guitar.com/news/magazine/guitar-magazine-september-october-2026-issue-how-to-buy/",
+     200,
+     ""
+    ],
+    [
+     "https://guitar.com/xmlrpc.php?rsd",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://web.archive.org/web/20261005165432/https://guitar.us17.list-manage.com/subscribe?u=ef022a16fe50d3bbd267296e6&id=f890f83bb6",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://view.asiae.co.kr/en/article/2026090913565383809",
+   "끝값": 0,
+   "바이트": 410633,
+   "초": 21.1,
+   "파일": "url-f448dc898f.json.gz",
+   "꼬리": "",
+   "쪽": 17,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/amp",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809.json",
+     500,
+     "HTTP 500 -- 그 쪽 탈"
+    ],
+    [
+     "https://view.asiae.co.kr/oembed?url=https%3A%2F%2Fview.asiae.co.kr%2Fen%2Farticle%2F2026090913565383809&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://view.asiae.co.kr/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fview.asiae.co.kr%2Fen%2Farticle%2F2026090913565383809",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/feed",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/rss",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/en/article/2026090913565383809/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://view.asiae.co.kr/en/article/2026090913565383809",
+     200,
+     ""
+    ],
+    [
+     "https://view.asiae.co.kr/my-news/",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026",
+   "끝값": 0,
+   "바이트": 2455515,
+   "초": 17.5,
+   "파일": "url-dfcfc9c516.json.gz",
+   "꼬리": "",
+   "쪽": 18,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/oembed?url=https%3A%2F%2Fwww.commpro.biz%2Fnews%2Fmr-magazine-data-signals-what-new-magazine-growth-means-for-2026&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.commpro.biz%2Fnews%2Fmr-magazine-data-signals-what-new-magazine-growth-means-for-2026",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.commpro.biz/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.commpro.biz/news/mr-magazine-data-signals-what-new-magazine-growth-means-for-2026",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news?format=rss",
+     200,
+     ""
+    ],
+    [
+     "https://www.commpro.biz/news/edelman-trust-barometer-2026-signals-rising-insularity-and-a-new-trust-crisis",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://pandologic.com/?p=18129",
+   "끝값": 0,
+   "바이트": 1693611,
+   "초": 19.8,
+   "파일": "url-7945cdc2df.json.gz",
+   "꼬리": "",
+   "쪽": 17,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://pandologic.com/?p=18129",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/amp?p=18129",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/?p=18129&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/?p=18129&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/?p=18129&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/.json?p=18129",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/oembed?url=https%3A%2F%2Fpandologic.com%2F%3Fp%3D18129&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://pandologic.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fpandologic.com%2F%3Fp%3D18129",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/feed",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/rss",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://pandologic.com/atom.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://pandologic.com/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://pandologic.com/?p=18129",
+     200,
+     ""
+    ],
+    [
+     "https://pandologic.com/xmlrpc.php?rsd",
+     403,
+     "HTTP 403 -- 막았다 -- 헤더를 바꾸거나 곁문을 보라"
+    ],
+    [
+     "https://pandologic.com/wp-json/",
+     200,
+     ""
+    ]
+   ]
+  },
+  {
+   "갈래": "url",
+   "무엇": "https://www.spd.org/spd-61-medal-finalists",
+   "끝값": 0,
+   "바이트": 1374746,
+   "초": 16.7,
+   "파일": "url-c6503cc2c6.json.gz",
+   "꼬리": "",
+   "쪽": 21,
+   "찾은주소": 0,
+   "받은곳": [
+    [
+     "https://www.spd.org/spd-61-medal-finalists",
+     200,
+     ""
+    ],
+    [
+     "https://m.spd.org/spd-61-medal-finalists",
+     200,
+     ""
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/amp",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists.json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/oembed?url=https%3A%2F%2Fwww.spd.org%2Fspd-61-medal-finalists&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.spd.org%2Fspd-61-medal-finalists",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/rss.xml",
+     400,
+     "HTTP 400 -- 그 쪽이 거절했다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/atom.xml",
+     400,
+     "HTTP 400 -- 그 쪽이 거절했다"
+    ],
+    [
+     "https://www.spd.org/spd-61-medal-finalists/index.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://www.spd.org/spd-61-medal-finalists",
+     200,
+     ""
+    ],
+    [
+     "https://www.spd.org/\\\"https:/www.spd.org/events/61awards\\\"",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/\\\"/s/SPD-61-Medal-Finalists-Press-Release-Updated-5-8.pdf\\\"",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/\\\"/events/61awards\\\"",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.spd.org/\\\"https:/www.spd.org/spd-61-the-jury-is-here\\\"",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "Pantone 11-4201 Cloud Dancer 2026 hex",
+   "끝값": 0,
+   "바이트": 295311,
+   "초": 41.9,
+   "파일": "찾기-34d0bd115f.json.gz",
+   "꼬리": "",
+   "쪽": 54,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FPantone%252011-4201%2520Cloud%2520Dancer%25202026%2520hex%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FPantone%252011-4201%2520Cloud%2520Dancer%25202026%2520hex%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/Pantone%2011-4201%20Cloud%20Dancer%202026%20hex/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=Pantone+11-4201+Cloud+Dancer+2026+hex&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DPantone%2B11-4201%2BCloud%2BDancer%2B2026%2Bhex%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DPantone%2B11-4201%2BCloud%2BDancer%2B2026%2Bhex%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "WGSN Coloro Transformative Teal 2026 code",
+   "끝값": 0,
+   "바이트": 295863,
+   "초": 41.2,
+   "파일": "찾기-1002e60e13.json.gz",
+   "꼬리": "",
+   "쪽": 54,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FWGSN%2520Coloro%2520Transformative%2520Teal%25202026%2520code%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FWGSN%2520Coloro%2520Transformative%2520Teal%25202026%2520code%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/WGSN%20Coloro%20Transformative%20Teal%202026%20code/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=WGSN+Coloro+Transformative+Teal+2026+code&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DWGSN%2BColoro%2BTransformative%2BTeal%2B2026%2Bcode%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DWGSN%2BColoro%2BTransformative%2BTeal%2B2026%2Bcode%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "Vogue 2026 eight issues Conde Nast announcement",
+   "끝값": 0,
+   "바이트": 1729880,
+   "초": 41.1,
+   "파일": "찾기-365c3e3d9e.json.gz",
+   "꼬리": "",
+   "쪽": 72,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FVogue%25202026%2520eight%2520issues%2520Conde%2520Nast%2520announcement%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FVogue%25202026%2520eight%2520issues%2520Conde%2520Nast%2520announcement%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/Vogue%202026%20eight%20issues%20Conde%20Nast%20announcement/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=Vogue+2026+eight+issues+Conde+Nast+announcement&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DVogue%2B2026%2Beight%2Bissues%2BConde%2BNast%2Bannouncement%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DVogue%2B2026%2Beight%2Bissues%2BConde%2BNast%2Bannouncement%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "Slanted Magazine 48 Seoul pages format",
+   "끝값": 0,
+   "바이트": 268692,
+   "초": 26.9,
+   "파일": "찾기-5beec933bf.json.gz",
+   "꼬리": "",
+   "쪽": 54,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FSlanted%2520Magazine%252048%2520Seoul%2520pages%2520format%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FSlanted%2520Magazine%252048%2520Seoul%2520pages%2520format%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/Slanted%20Magazine%2048%20Seoul%20pages%20format/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=Slanted+Magazine+48+Seoul+pages+format&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DSlanted%2BMagazine%2B48%2BSeoul%2Bpages%2Bformat%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DSlanted%2BMagazine%2B48%2BSeoul%2Bpages%2Bformat%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "Flaneur magazine new issue pages size price",
+   "끝값": 0,
+   "바이트": 455367,
+   "초": 39.5,
+   "파일": "찾기-9b67b0257d.json.gz",
+   "꼬리": "",
+   "쪽": 55,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FFlaneur%2520magazine%2520new%2520issue%2520pages%2520size%2520price%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FFlaneur%2520magazine%2520new%2520issue%2520pages%2520size%2520price%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/Flaneur%20magazine%20new%20issue%20pages%20size%20price/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=Flaneur+magazine+new+issue+pages+size+price&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DFlaneur%2Bmagazine%2Bnew%2Bissue%2Bpages%2Bsize%2Bprice%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DFlaneur%2Bmagazine%2Bnew%2Bissue%2Bpages%2Bsize%2Bprice%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "IDEA magazine Tokyo quarterly 2026 issue",
+   "끝값": 0,
+   "바이트": 299781,
+   "초": 40.5,
+   "파일": "찾기-2e8f3166ca.json.gz",
+   "꼬리": "",
+   "쪽": 54,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FIDEA%2520magazine%2520Tokyo%2520quarterly%25202026%2520issue%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FIDEA%2520magazine%2520Tokyo%2520quarterly%25202026%2520issue%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/IDEA%20magazine%20Tokyo%20quarterly%202026%20issue/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=IDEA+magazine+Tokyo+quarterly+2026+issue&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DIDEA%2Bmagazine%2BTokyo%2Bquarterly%2B2026%2Bissue%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DIDEA%2Bmagazine%2BTokyo%2Bquarterly%2B2026%2Bissue%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "European Magazine Award 2026 Apotheken Umschau Jury",
+   "끝값": 0,
+   "바이트": 328676,
+   "초": 39.6,
+   "파일": "찾기-0f08466892.json.gz",
+   "꼬리": "",
+   "쪽": 55,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FEuropean%2520Magazine%2520Award%25202026%2520Apotheken%2520Umschau%2520Jury%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FEuropean%2520Magazine%2520Award%25202026%2520Apotheken%2520Umschau%2520Jury%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/European%20Magazine%20Award%202026%20Apotheken%20Umschau%20Jury/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=European+Magazine+Award+2026+Apotheken+Umschau+Jury&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DEuropean%2BMagazine%2BAward%2B2026%2BApotheken%2BUmschau%2BJury%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DEuropean%2BMagazine%2BAward%2B2026%2BApotheken%2BUmschau%2BJury%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss.xml",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "LeadAwards 2026 Magazin des Jahres",
+   "끝값": 0,
+   "바이트": 324059,
+   "초": 40.2,
+   "파일": "찾기-d269c02826.json.gz",
+   "꼬리": "",
+   "쪽": 55,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FLeadAwards%25202026%2520Magazin%2520des%2520Jahres%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2FLeadAwards%25202026%2520Magazin%2520des%2520Jahres%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/LeadAwards%202026%20Magazin%20des%20Jahres/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=LeadAwards+2026+Magazin+des+Jahres&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DLeadAwards%2B2026%2BMagazin%2Bdes%2BJahres%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3DLeadAwards%2B2026%2BMagazin%2Bdes%2BJahres%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "찾기",
+   "무엇": "magazine redesign 2026 new typeface grid art director",
+   "끝값": 0,
+   "바이트": 1990733,
+   "초": 35.9,
+   "파일": "찾기-532062e0c7.json.gz",
+   "꼬리": "",
+   "쪽": 72,
+   "찾은주소": 40,
+   "받은곳": [
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://m.shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/amp",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo?format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo?output=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo?_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo.json",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/oembed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2Fmagazine%2520redesign%25202026%2520new%2520typeface%2520grid%2520art%2520director%2F%26srchhow%3DCexpo&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fshoppinghow.kakao.com%2Fsearch%2Fmagazine%2520redesign%25202026%2520new%2520typeface%2520grid%2520art%2520director%2F%26srchhow%3DCexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/feed",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/feed/",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/rss",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/rss.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/atom.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo/index.xml",
+     200,
+     ""
+    ],
+    [
+     "https://shoppinghow.kakao.com/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://web.archive.org/web/2/https://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "http://shoppinghow.kakao.com/search/magazine%20redesign%202026%20new%20typeface%20grid%20art%20director/&srchhow=Cexpo",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://m.melon.com/search/total/index.htm?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/amp?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060&format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060&output=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060&_format=json",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm.json?q=magazine+redesign+2026+new+typeface+grid+art+director&ref=W10060",
+     200,
+     ""
+    ],
+    [
+     "https://www.melon.com/oembed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3Dmagazine%2Bredesign%2B2026%2Bnew%2Btypeface%2Bgrid%2Bart%2Bdirector%26ref%3DW10060&format=json",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.melon.com%2Fsearch%2Ftotal%2Findex.htm%3Fq%3Dmagazine%2Bredesign%2B2026%2Bnew%2Btypeface%2Bgrid%2Bart%2Bdirector%26ref%3DW10060",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/feed/",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ],
+    [
+     "https://www.melon.com/search/total/index.htm/rss",
+     404,
+     "HTTP 404 -- 그런 주소가 없다 -- 주소가 틀렸거나 그 쪽이 옮겼다"
+    ]
+   ]
+  },
+  {
+   "갈래": "pdf",
+   "무엇": "https://jalag.de/wp-content/uploads/2026/05/Jahreszeiten-Verlag_Essenz-2026_magazine-profile_EN.pdf",
+   "끝값": 3,
+   "바이트": 0,
+   "초": 0.8,
+   "파일": "pdf-83c6b67f52.txt.gz",
+   "꼬리": "못 받음: HTTP Error 404: Not Found"
+  },
+  {
+   "갈래": "pdf",
+   "무엇": "https://downloads.slanted.de/Slanted_Publishers/Slanted-Publishers-Catalog_26-2_Fall.pdf",
+   "끝값": 0,
+   "바이트": 126545,
+   "초": 1.8,
+   "파일": "pdf-08b399bda8.txt.gz",
+   "꼬리": ""
+  },
+  {
+   "갈래": "pdf",
+   "무엇": "https://reutersinstitute.politics.ox.ac.uk/sites/default/files/2026-01/Newman%20-%20Trends%20and%20Predictions%202026%20FINAL.pdf",
+   "끝값": 0,
+   "바이트": 124394,
+   "초": 1.6,
+   "파일": "pdf-682d1dd8ab.txt.gz",
+   "꼬리": ""
+  }
+ ]
+}
