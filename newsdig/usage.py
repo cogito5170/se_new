@@ -18,7 +18,10 @@ def measure(root: Path | None = None) -> dict:
     root = root or Path.home() / ".claude" / "projects"
     seen: dict[str, dict] = {}
     models: set[str] = set()
-    for f in root.glob("*/*.jsonl"):
+    # 지금 이 회차의 기록 하나만 센다 -- 가장 최근에 쓰인 파일. 실측 2026-10-12: 하위 에이전트로
+    # 돌렸더니 부모 세션의 기록까지 다 더해 2,100만이 찍혔다(제 몫은 360만).
+    files = sorted(root.rglob("*.jsonl"), key=lambda p: p.stat().st_mtime)
+    for f in files[-1:]:
         for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
             try:
                 d = json.loads(line)

@@ -21,13 +21,15 @@ from newsdig import gate as GT           # noqa: E402
 from newsdig import render as RD         # noqa: E402
 
 WORK = Path(__file__).resolve().parent / "work"
-BATCH_DOORS = 8
+BATCH_DOORS = 6
 BATCH_ARTICLES = 6
 MAX_ARTICLES = 30
 MAX_TRIES = 3
 
-FEED_PROMPT = ("List every article or story on this page, one per line, as: "
-               "title | full url | publish time (ISO 8601 with timezone if shown) | outlet | language. "
+# 문 하나가 수천 토큰을 맥락에 쌓는다. 실측 2026-10-12: 문 57곳을 다 받자 맥락이 172k 였다
+# (Haiku 한계 근처). 그래서 문마다 최신 15개로 자른다.
+FEED_PROMPT = ("List the 15 newest articles on this page, newest first, one per line, as: "
+               "title | full url | publish time (ISO 8601, or 'unknown') | outlet | language. "
                "No commentary, no summary.")
 ARTICLE_PROMPT = ("Return: line 1 the headline, line 2 the publish date/time exactly as shown, "
                   "then the full article text verbatim. Do not summarize or paraphrase.")
@@ -55,27 +57,37 @@ def doors_step(doors: list[dict]) -> str | None:
     return "\n".join(lines)
 
 
+WMO = {0: ("맑음", "가벼운 차림"), 1: ("대체로 맑음", "가벼운 차림"), 2: ("구름 조금", "겉옷 하나"),
+       3: ("흐림", "겉옷 하나"), 45: ("안개", "운전 조심"), 48: ("안개", "운전 조심"),
+       51: ("이슬비", "작은 우산"), 53: ("이슬비", "작은 우산"), 55: ("이슬비", "우산 챙기기"),
+       61: ("비", "우산 챙기기"), 63: ("비", "우산 챙기기"), 65: ("강한 비", "큰 우산"),
+       71: ("눈", "미끄럼 조심"), 73: ("눈", "미끄럼 조심"), 75: ("폭설", "외출 자제"),
+       80: ("소나기", "우산 챙기기"), 81: ("소나기", "우산 챙기기"), 82: ("강한 소나기", "큰 우산"),
+       95: ("뇌우", "실내 권장")}
+
+
 def weather_step(doors: list[dict]) -> str | None:
-    wd = next(d for d in doors if d["name"] == "weather")
+    """날씨는 모델이 옮기지 않는다 -- 코드가 받은 JSON 에서 읽는다(지어낼 자리가 없다)."""
+    import re
     wf = WORK / "weather.json"
     if wf.is_file():
-        # 기온이 받은 원문에 실제로 있는가 -- 지어낸 날씨는 화면에 못 나간다
-        try:
-            w = json.loads(wf.read_text(encoding="utf-8"))
-        except ValueError:
-            w = None
-        src = WORK / "doors" / f"{wd['id']}.txt"
-        if w == {} or (w and src.is_file() and str(w.get("temp_c")) in src.read_text(encoding="utf-8")):
-            return None
-        wf.write_text("{}", encoding="utf-8")
         return None
-    if (WORK / "doors" / f"{wd['id']}.fail").is_file():
-        (WORK / "weather.json").write_text("{}", encoding="utf-8")
-        return None
-    return ("STEP weather. From newsdig/work/doors/" + wd["id"] + ".txt take the current Seoul temperature (°C) "
-            "and condition. Write `newsdig/work/weather.json` as "
-            '{"temp_c": <number from the file>, "desc": "<Korean 2~4자, e.g. 맑음>", "tip": "<Korean 외출 팁 12자 이내>"}. '
-            "Then run step.py again.")
+    wd = next(d for d in doors if d["name"] == "weather")
+    src = WORK / "doors" / f"{wd['id']}.txt"
+    w = {}
+    if src.is_file():
+        text = src.read_text(encoding="utf-8", errors="replace")
+        cur = text[text.find('"current"'):] if '"current"' in text else text
+        mt = re.search(r'"temperature_2m"\s*:\s*(-?\d+(?:\.\d+)?)', cur)
+        mc = re.search(r'"weather_code"\s*:\s*(\d+)', cur)
+        if mt:
+            temp = float(mt.group(1))
+            desc, tip = WMO.get(int(mc.group(1)) if mc else -1, ("", ""))
+            if not tip:
+                tip = "두꺼운 외투" if temp < 5 else "겉옷 하나" if temp < 15 else "가벼운 차림"
+            w = {"temp_c": round(temp), "desc": desc, "tip": tip}
+    wf.write_text(json.dumps(w, ensure_ascii=False), encoding="utf-8")
+    return None
 
 
 CAND_SCHEMA = ('{"id":"C001","title":"…","url":"https://…","outlet":"…","country":"JP","lang":"ja",'
@@ -88,24 +100,28 @@ def candidates_step(st: dict) -> str | None:
     if not errs and n >= 15:
         return None
     return ("STEP candidates. Read the files in newsdig/work/doors/*.txt and Write `newsdig/work/candidates.jsonl`: "
-            "one JSON object per line for EVERY dated article you see there (aim 40+, both sections, many countries; "
+            "one JSON object per line for EVERY article you see there (aim 40+, both sections, many countries; "
             "do not judge importance). Each line exactly: " + CAND_SCHEMA + ". url and title must be copied from the "
-            "door file; door = the file it came from; country = outlet's country code; drop items with no date. "
+            "door file; door = the file it came from; country = outlet's country code; published = the time shown in the door file, or \"unknown\" if none (search results); skip items clearly older than 7 days. "
             f"Now {n} candidates. Fix these, rewrite the whole file, run step.py again:\n- "
             + "\n- ".join(errs[:15] or [f"need at least 15 candidates (have {n})"]))
 
 
 def pick(st: dict, now: datetime) -> list[str]:
-    """원문을 열 후보를 코드가 고른다: 36시간 안 · 갈래와 나라를 돌아가며."""
-    fresh = []
+    """원문을 열 후보를 코드가 고른다: 갈래 창 안 · 날짜 모르는 것(검색 결과)은 뒤에 · 갈래와 나라를 돌아가며."""
+    known, unknown = [], []
     for c in st["cands"].values():
         t = GT.parse_time(c.get("published", ""))
-        if t and timedelta(hours=-2) < now - t < timedelta(hours=GT.STALE_H):
-            fresh.append((now - t, c))
-    fresh.sort(key=lambda x: x[0])
+        lim = GT.WINDOW.get(c.get("section"), GT.WINDOW["tech"])[1]
+        if t is None:
+            unknown.append(c)
+        elif timedelta(hours=-26) < now - t < timedelta(hours=lim):
+            known.append((now - t, c))
+    known.sort(key=lambda x: x[0])
+    order = [c for _, c in known] + unknown
     picked, seen = [], {}
     for rnd in range(10):
-        for _, c in fresh:
+        for c in order:
             key = (c["section"], c["country"].upper())
             if c["id"] in picked or seen.get(key, 0) > rnd:
                 continue

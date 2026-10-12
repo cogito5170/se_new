@@ -64,13 +64,13 @@ def render(work: Path, now: datetime | None = None) -> str:
         for n, it in enumerate(chosen, 1):
             c = cands[it["id"]]
             out += ["", f"**{n}. {it['title']}**", f"· {it['what']}", f"· → {it['why']}",
-                    f"↳ {flag(c['country'])} [{c['outlet']}]({c['url']}) · {ago(parse_time(c['published']), now)}"]
+                    f"↳ {flag(c['country'])} [{c['outlet']}]({c['url']}) · {ago(parse_time(gate.get('times', {}).get(it['id'], '')) or parse_time(c['published']), now)}"]
     out += ["", "**━ 관찰 ━**", meta.get("observation", "")]
     lg = gate["log"]
     fails = ", ".join(lg["failed_doors"][:6]) + (" …" if len(lg["failed_doors"]) > 6 else "")
     tail = (f"게이트: 후보 {lg['candidates']} (지역 {lg['regions']}곳 · 언어 {lg['langs']}개) → "
             f"원문 대상 {lg['candidates'] - lg.get('cand_stale', 0)} (낡은 후보 {lg.get('cand_stale', 0)} 제외) → 통과 {lg['passed']} · 표시 {lg['shown']} (오래됨 {lg['stale']} · 원문 미확인 {lg['unverified']}"
-            f" · 불일치 {lg['mismatch']} · 형식 {lg['form']}) · 창 {gate['window_h']}h")
+            f" · 불일치 {lg['mismatch']} · 형식 {lg['form']}) · 창 tech/art {gate['window_h']}h")
     if fails:
         tail += f" · 실패한 문: {fails}"
     if lg["notes"]:

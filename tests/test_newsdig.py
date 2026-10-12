@@ -38,7 +38,7 @@ def _fill_doors(work: Path):
     doors = json.loads((work / "doors.json").read_text())
     for d in doors:
         if d["name"] == "weather":
-            body = '{"current_condition":[{"temp_C":"17","weatherDesc":[{"value":"Clear"}]}]}'
+            body = '{"current":{"time":"2026-10-12T21:00","temperature_2m":17.2,"weather_code":0}}'
         else:
             body = "\n".join(f"Story {d['id']}-{k} | https://news{k}.example/{d['id']}/{k} | 2026-10-12T09:00:00Z"
                              for k in range(2))
@@ -84,17 +84,18 @@ def _run(mutate=None):
         try:
             assert "STEP doors" in _step()
             doors = _fill_doors(work)
-            assert "STEP weather" in _step()
-            wd = next(d for d in doors if d["name"] == "weather")
-            (work / "weather.json").write_text(json.dumps({"temp_c": 17, "desc": "맑음", "tip": "얇은 겉옷"}))
-            assert "STEP candidates" in _step()
+            assert "STEP candidates" in _step()   # 날씨는 코드가 읽는다 -- 모델 걸음이 없다
+            assert json.loads((work / "weather.json").read_text())["temp_c"] == 17
             cands = _cands(doors)
             if mutate == "invented_url":
                 cands[0]["url"] = "https://made.up/zzz"
                 cands[0]["title"] = "nothing like it"
             if mutate == "stale":
                 for c in cands:
-                    c["published"] = (NOW - timedelta(hours=60)).isoformat()
+                    c["published"] = (NOW - timedelta(hours=200)).isoformat()
+            if mutate == "unknown_date":
+                for c in cands:
+                    c["published"] = "unknown"
             (work / "candidates.jsonl").write_text("\n".join(json.dumps(c) for c in cands))
             out = _step()
             if mutate == "invented_url":
@@ -127,7 +128,8 @@ def _run(mutate=None):
                 assert "STEP fix items" in out and "B002" in out, out
                 return "caught"
             assert out.startswith("FINAL"), out
-            for must in ("**⚡ 3줄 요약**", "**━ TECH ━**", "**━ TECH ART ━**", "**━ 관찰 ━**", "게이트:", "3시간 전", "17°C"):
+            ago = "12시간 전" if mutate == "unknown_date" else "3시간 전"   # 날짜 모르는 후보는 원문 머리의 날짜로
+            for must in ("**⚡ 3줄 요약**", "**━ TECH ━**", "**━ TECH ART ━**", "**━ 관찰 ━**", "게이트:", ago, "17°C 맑음"):
                 assert must in out, must
             return "final"
         finally:
@@ -154,6 +156,10 @@ def test_stale_not_opened():
     assert _run("stale") == "caught"
 
 
+def test_unknown_date_resolved_from_article():
+    assert _run("unknown_date") == "final"
+
+
 def test_usage_dedups_by_message_id():
     from newsdig import usage as US
     with tempfile.TemporaryDirectory() as tmp:
@@ -171,6 +177,7 @@ def test_usage_dedups_by_message_id():
 
 if __name__ == "__main__":
     for f in (test_happy_path, test_invented_url_rejected, test_number_not_in_article_rejected,
-              test_unopened_article_rejected, test_stale_not_opened, test_usage_dedups_by_message_id):
+              test_unopened_article_rejected, test_stale_not_opened, test_unknown_date_resolved_from_article,
+              test_usage_dedups_by_message_id):
         f()
         print("ok", f.__name__)
