@@ -154,8 +154,23 @@ def test_stale_not_opened():
     assert _run("stale") == "caught"
 
 
+def test_usage_dedups_by_message_id():
+    from newsdig import usage as US
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp) / "proj"
+        d.mkdir()
+        u = {"input_tokens": 2, "cache_creation_input_tokens": 10, "cache_read_input_tokens": 100, "output_tokens": 5}
+        rows = [{"message": {"id": "m1", "model": "claude-haiku-5-5", "usage": u}},
+                {"message": {"id": "m1", "model": "claude-haiku-5-5", "usage": u}},   # 같은 응답의 둘째 블록
+                {"message": {"id": "m2", "model": "claude-haiku-5-5", "usage": u}}]
+        (d / "s.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\nnot json\n")
+        t = US.measure(Path(tmp))
+        assert t["responses"] == 2 and t["processed"] == 2 * 117, t
+        assert "처리 234" in US.line(t)
+
+
 if __name__ == "__main__":
     for f in (test_happy_path, test_invented_url_rejected, test_number_not_in_article_rejected,
-              test_unopened_article_rejected, test_stale_not_opened):
+              test_unopened_article_rejected, test_stale_not_opened, test_usage_dedups_by_message_id):
         f()
         print("ok", f.__name__)

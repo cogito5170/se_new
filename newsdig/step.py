@@ -197,6 +197,8 @@ def main() -> int:
     GT.run(WORK, now)
     print("FINAL — send the text below as your whole final message, unchanged:\n")
     print(RD.render(WORK, now))
+    from newsdig import usage as US
+    print("`" + US.line(US.measure()) + "`")
     return 0
 
 
