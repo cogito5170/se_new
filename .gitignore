@@ -285,3 +285,4 @@ research/ledger.jsonl
 agentic/runs/
 # agentic 기억(RAG/Graph) -- 그 기계에서 실행이 쌓은 노트. 원장 뿌리 아래에 산다
 agentic/memory/
+newsdig/work/
