@@ -86,8 +86,6 @@ def build(now: datetime | None = None) -> list[dict]:
         add("fetch", name, url, sec)
     for sec, q in SEARCHES:
         add("search", f"search-{sec}", f"{q} {날}", sec)
-    add("fetch", "weather", "https://api.open-meteo.com/v1/forecast?latitude=37.57&longitude=126.98"
-        "&current=temperature_2m,weather_code,precipitation&timezone=Asia%2FSeoul", "weather")
     return out
 
 

@@ -43,16 +43,7 @@ def render(work: Path, now: datetime | None = None) -> str:
         if line.strip():
             c = json.loads(line)
             cands[c["id"]] = c
-    w = {}
-    if (work / "weather.json").is_file():
-        w = json.loads((work / "weather.json").read_text(encoding="utf-8"))
     head = f"📅 {now.astimezone(KST):%m/%d %H:%M}"
-    if w.get("temp_c") is not None:
-        head += f" · 서울 {w['temp_c']}°C {w.get('desc', '')}".rstrip()
-        if w.get("tip"):
-            head += f" → {w['tip']}"
-    else:
-        head += " · 서울 날씨 못 받음"
     out = [head, "", "**⚡ 3줄 요약**"]
     for n, s in enumerate(meta.get("summary", [])[:3], 1):
         out.append(f"{n}. {s['text']}")
