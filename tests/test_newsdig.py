@@ -37,11 +37,8 @@ def _step() -> str:
 def _fill_doors(work: Path):
     doors = json.loads((work / "doors.json").read_text())
     for d in doors:
-        if d["name"] == "weather":
-            body = '{"current":{"time":"2026-10-12T21:00","temperature_2m":17.2,"weather_code":0}}'
-        else:
-            body = "\n".join(f"Story {d['id']}-{k} | https://news{k}.example/{d['id']}/{k} | 2026-10-12T09:00:00Z"
-                             for k in range(2))
+        body = "\n".join(f"Story {d['id']}-{k} | https://news{k}.example/{d['id']}/{k} | 2026-10-12T09:00:00Z"
+                          for k in range(2))
         (work / "doors" / f"{d['id']}.txt").write_text(f"URL: {d['target']}\n{body}")
     return doors
 
@@ -84,8 +81,8 @@ def _run(mutate=None):
         try:
             assert "STEP doors" in _step()
             doors = _fill_doors(work)
-            assert "STEP candidates" in _step()   # 날씨는 코드가 읽는다 -- 모델 걸음이 없다
-            assert json.loads((work / "weather.json").read_text())["temp_c"] == 17
+            assert "STEP candidates" in _step()
+            assert not any(d["name"] == "weather" for d in doors)   # 날씨는 뺐다
             cands = _cands(doors)
             if mutate == "invented_url":
                 cands[0]["url"] = "https://made.up/zzz"
@@ -129,7 +126,7 @@ def _run(mutate=None):
                 return "caught"
             assert out.startswith("FINAL"), out
             ago = "12시간 전" if mutate == "unknown_date" else "3시간 전"   # 날짜 모르는 후보는 원문 머리의 날짜로
-            for must in ("**⚡ 3줄 요약**", "**━ TECH ━**", "**━ TECH ART ━**", "**━ 관찰 ━**", "게이트:", ago, "17°C 맑음"):
+            for must in ("**⚡ 3줄 요약**", "**━ TECH ━**", "**━ TECH ART ━**", "**━ 관찰 ━**", "게이트:", ago):
                 assert must in out, must
             return "final"
         finally:
@@ -173,6 +170,12 @@ def test_usage_dedups_by_message_id():
         t = US.measure(Path(tmp))
         assert t["responses"] == 2 and t["processed"] == 2 * 117, t
         assert "처리 234" in US.line(t)
+        # 원화: 두 요청 모두 10만 아래 -> 싼 칸. (2*0.10 + 10*0.125 + 100*0.01 + 5*0.50) /1e6 달러씩
+        assert abs(t["token_usd"] - 2 * (2 * 0.10 + 10 * 0.125 + 100 * 0.01 + 5 * 0.50) / 1e6) < 1e-12
+        big = {"input_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 200_000, "output_tokens": 0}
+        usd, n = US.cost_usd([big], "claude-haiku-5-5")
+        assert n == 1 and abs(usd - 200_000 * 0.05 / 1e6) < 1e-12   # 10만 넘으면 비싼 칸
+        assert US.won({"token_usd": 1.0, "web_search": 0}) == US.KRW_PER_USD
 
 
 if __name__ == "__main__":

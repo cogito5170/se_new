@@ -52,42 +52,8 @@ def doors_step(doors: list[dict]) -> str | None:
         if d["kind"] == "search":
             lines.append(f"- {d['id']} WebSearch query=\"{d['target']}\". " + _save_rule(p, "search:" + d["target"]))
         else:
-            prompt = "Return the JSON exactly as received." if d["name"] == "weather" else FEED_PROMPT
-            lines.append(f"- {d['id']} WebFetch url={d['target']} prompt=\"{prompt}\". " + _save_rule(p, d["target"]))
+            lines.append(f"- {d['id']} WebFetch url={d['target']} prompt=\"{FEED_PROMPT}\". " + _save_rule(p, d["target"]))
     return "\n".join(lines)
-
-
-WMO = {0: ("맑음", "가벼운 차림"), 1: ("대체로 맑음", "가벼운 차림"), 2: ("구름 조금", "겉옷 하나"),
-       3: ("흐림", "겉옷 하나"), 45: ("안개", "운전 조심"), 48: ("안개", "운전 조심"),
-       51: ("이슬비", "작은 우산"), 53: ("이슬비", "작은 우산"), 55: ("이슬비", "우산 챙기기"),
-       61: ("비", "우산 챙기기"), 63: ("비", "우산 챙기기"), 65: ("강한 비", "큰 우산"),
-       71: ("눈", "미끄럼 조심"), 73: ("눈", "미끄럼 조심"), 75: ("폭설", "외출 자제"),
-       80: ("소나기", "우산 챙기기"), 81: ("소나기", "우산 챙기기"), 82: ("강한 소나기", "큰 우산"),
-       95: ("뇌우", "실내 권장")}
-
-
-def weather_step(doors: list[dict]) -> str | None:
-    """날씨는 모델이 옮기지 않는다 -- 코드가 받은 JSON 에서 읽는다(지어낼 자리가 없다)."""
-    import re
-    wf = WORK / "weather.json"
-    if wf.is_file():
-        return None
-    wd = next(d for d in doors if d["name"] == "weather")
-    src = WORK / "doors" / f"{wd['id']}.txt"
-    w = {}
-    if src.is_file():
-        text = src.read_text(encoding="utf-8", errors="replace")
-        cur = text[text.find('"current"'):] if '"current"' in text else text
-        mt = re.search(r'"temperature_2m"\s*:\s*(-?\d+(?:\.\d+)?)', cur)
-        mc = re.search(r'"weather_code"\s*:\s*(\d+)', cur)
-        if mt:
-            temp = float(mt.group(1))
-            desc, tip = WMO.get(int(mc.group(1)) if mc else -1, ("", ""))
-            if not tip:
-                tip = "두꺼운 외투" if temp < 5 else "겉옷 하나" if temp < 15 else "가벼운 차림"
-            w = {"temp_c": round(temp), "desc": desc, "tip": tip}
-    wf.write_text(json.dumps(w, ensure_ascii=False), encoding="utf-8")
-    return None
 
 
 CAND_SCHEMA = ('{"id":"C001","title":"…","url":"https://…","outlet":"…","country":"JP","lang":"ja",'
@@ -201,7 +167,7 @@ def main() -> int:
     if not df.is_file():
         df.write_text(json.dumps(DR.build(now), ensure_ascii=False, indent=1), encoding="utf-8")
     doors = json.loads(df.read_text(encoding="utf-8"))
-    msg = doors_step(doors) or weather_step(doors)
+    msg = doors_step(doors)  # 날씨는 뺐다(사용자 2026-10-12: "날씨 필요없다")
     if msg:
         print(msg)
         return 0
@@ -214,7 +180,10 @@ def main() -> int:
     print("FINAL — send the text below as your whole final message, unchanged:\n")
     print(RD.render(WORK, now))
     from newsdig import usage as US
-    print("`" + US.line(US.measure()) + "`")
+    t = US.measure()
+    t["web_search"] = max(t["web_search"], sum(1 for d in doors if d["kind"] == "search"
+                                               and (WORK / "doors" / f"{d['id']}.txt").is_file()))
+    print("`" + US.line(t) + "`")
     return 0
 
 
