@@ -24,8 +24,11 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-FRESH_H = 12
-STALE_H = 36
+# 갈래마다 (좁은 창, 넓은 창) 시간. 좁은 창으로 5개가 안 차면 넓힌다.
+# 예술 매체는 주간지 박자다 -- 실측 2026-10-12: 예술 피드의 최신 글이 3~6일 전이었다.
+WINDOW = {"tech": (12, 36), "techart": (72, 168)}
+STALE_H = max(w[1] for w in WINDOW.values())
+UNKNOWN = "unknown"
 MAX_LEN = {"title": 25, "what": 40, "why": 40}
 SUMMARY_LEN = 22
 OBS_LEN = 160
@@ -44,8 +47,33 @@ def _digits(s: str) -> str:
     return re.sub(r"(?<=\d)[,.](?=\d{3}\b)", "", _norm(s))
 
 
+_MONTHS = {m: i + 1 for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
+
+
+def parse_loose(text: str) -> datetime | None:
+    """원문 머리에서 날짜 하나를 줍는다. 시각이 없으면 그날 00:00 UTC 로 둔다."""
+    head = (text or "")[:600]
+    m = re.search(r"(20\d\d)[-./년 ]\s*(\d{1,2})[-./월 ]\s*(\d{1,2})", head)
+    if m:
+        y, mo, d = map(int, m.groups())
+    else:
+        m = re.search(r"([A-Za-z]{3,9})\.? (\d{1,2}),? (20\d\d)", head)
+        m2 = None if m else re.search(r"(\d{1,2}) ([A-Za-z]{3,9})\.? (20\d\d)", head)
+        if m and m.group(1)[:3].lower() in _MONTHS:
+            mo, d, y = _MONTHS[m.group(1)[:3].lower()], int(m.group(2)), int(m.group(3))
+        elif m2 and m2.group(2)[:3].lower() in _MONTHS:
+            d, mo, y = int(m2.group(1)), _MONTHS[m2.group(2)[:3].lower()], int(m2.group(3))
+        else:
+            return None
+    try:
+        return datetime(y, mo, d, tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def parse_time(s: str) -> datetime | None:
-    if not s:
+    if not s or s.strip().lower() == UNKNOWN:
         return None
     s = s.strip().replace("Z", "+00:00")
     for fmt in (None, "%Y%m%dT%H%M%S%z", "%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z"):
@@ -103,8 +131,8 @@ def check_candidates(st: dict) -> list[str]:
             errs.append(f"{cid}: section 은 tech|techart")
         if len(c["country"]) != 2:
             errs.append(f"{cid}: country 는 두 글자 코드(US, JP …)")
-        if parse_time(c["published"]) is None:
-            errs.append(f"{cid}: published 를 ISO 8601 로 (예 2026-10-12T09:00:00+09:00)")
+        if c["published"].strip().lower() != UNKNOWN and parse_time(c["published"]) is None:
+            errs.append(f"{cid}: published 를 ISO 8601 로 (예 2026-10-12T09:00:00+09:00), 날짜가 안 보이면 \"unknown\"")
         src = st["door_text"].get(c["door"])
         if src is None:
             errs.append(f"{cid}: door {c['door']} 원문 파일이 없다")
@@ -118,7 +146,17 @@ def _url_seen(url: str, text: str) -> bool:
     return bool(u) and u[:60].lower() in text.lower()
 
 
-def check_item(it: dict, c: dict | None, work: Path, now: datetime, stale_h: int) -> tuple[list[str], str]:
+def resolved_time(c: dict, work: Path) -> datetime | None:
+    """후보의 게시 시각. 후보에 없으면(검색 결과) 원문 머리에서 줍는다."""
+    t = parse_time(c.get("published", ""))
+    if t is None:
+        art = work / "articles" / f"{c.get('id')}.txt"
+        if art.is_file():
+            t = parse_loose(read_header(art)[1])
+    return t
+
+
+def check_item(it: dict, c: dict | None, work: Path, now: datetime, wide: bool) -> tuple[list[str], str]:
     """한 항목. (위반들, 갈래) -- 갈래는 게이트 로그용: stale|unverified|mismatch|form|ok."""
     iid = it.get("id", "?")
     if c is None:
@@ -135,9 +173,12 @@ def check_item(it: dict, c: dict | None, work: Path, now: datetime, stale_h: int
     if errs:
         return errs, "form"
     # B003
-    t = parse_time(c["published"])
-    if t is None or now - t > timedelta(hours=stale_h) or t - now > timedelta(hours=2):
-        return [f"{iid}: B003 게시 {c['published']} -- {stale_h}시간 밖이거나 미래"], "stale"
+    stale_h = WINDOW.get(c["section"], WINDOW["tech"])[1 if wide else 0]
+    t = resolved_time(c, work)
+    if t is None:
+        return [f"{iid}: B003 게시 시각을 후보에서도 원문에서도 못 찾았다"], "stale"
+    if now - t > timedelta(hours=stale_h) or t - now > timedelta(hours=26):
+        return [f"{iid}: B003 게시 {t:%Y-%m-%d %H:%M}Z -- {stale_h}시간 밖이거나 미래"], "stale"
     # B002
     art = work / "articles" / f"{iid}.txt"
     if not art.is_file():
@@ -213,11 +254,12 @@ def run(work: Path, now: datetime | None = None) -> dict:
     for it in items:
         it.setdefault("section", st["cands"].get(it.get("id"), {}).get("section"))
     res = {}
-    for stale_h in (FRESH_H, STALE_H):
-        res = {it.get("id"): check_item(it, st["cands"].get(it.get("id")), work, now, stale_h) for it in items}
+    for wide in (False, True):
+        res = {it.get("id"): check_item(it, st["cands"].get(it.get("id")), work, now, wide) for it in items}
         if sum(1 for e, k in res.values() if k == "ok") >= 5:
             break
-    out["window_h"] = stale_h
+    out["window_h"] = "/".join(str(WINDOW[s][1 if wide else 0]) for s in SECTIONS)
+    out["times"] = {cid: t.isoformat() for cid, c in st["cands"].items() if (t := resolved_time(c, work))}
     passed = [it for it in items if res[it.get("id")][1] == "ok"]
     out["item_errors"] = [e for errs, _ in res.values() for e in errs]
     out["soft"] = [w for it in passed for w in soft_warnings(it)]
@@ -244,7 +286,8 @@ def run(work: Path, now: datetime | None = None) -> dict:
         "stale": kinds.count("stale"), "unverified": kinds.count("unverified"),
         "mismatch": kinds.count("mismatch"), "form": kinds.count("form"),
         "cand_stale": sum(1 for c in st["cands"].values()
-                          if (t := parse_time(c.get("published", ""))) is None or now - t > timedelta(hours=STALE_H)),
+                          if (t := parse_time(c.get("published", ""))) is not None
+                          and now - t > timedelta(hours=WINDOW.get(c.get("section"), WINDOW["tech"])[1])),
         "failed_doors": [f"{next(d['name'] for d in st['doors'] if d['id'] == k)}({v})"
                          for k, v in st["door_fail"].items()],
         "notes": notes,
